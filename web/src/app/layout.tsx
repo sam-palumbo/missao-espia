@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, Lato } from "next/font/google";
+import { Toaster } from "sonner";
+import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -37,7 +39,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${cinzel.variable} ${lato.variable} h-full`}>
-      <body className="min-h-full flex flex-col antialiased">{children}</body>
+      <body className="min-h-full flex flex-col antialiased">
+        <AuthProvider>{children}</AuthProvider>
+        <Toaster position="top-center" />
+      </body>
     </html>
   );
 }
