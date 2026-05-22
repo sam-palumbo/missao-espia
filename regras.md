@@ -58,6 +58,10 @@ O grupo pode eliminar inocentes por engano sem perder imediatamente — até um 
 
 Se o número de eliminações erradas **ultrapassar o limite**, todos os espias vencem imediatamente.
 
+### Jogador Eliminado
+
+Um jogador eliminado por votação errada **permanece na partida como observador**: continua vendo a tela do jogo, aparece na lista de jogadores (com visual de eliminado), mas não pode agir — não vota, não acusa, não faz nem responde perguntas, e não pontua ao final da rodada.
+
 ---
 
 ## Jogada do Espia

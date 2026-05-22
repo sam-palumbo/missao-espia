@@ -55,26 +55,34 @@ Cada jogador acessa o app pelo próprio celular. O app distribui as cartas, cont
 - Mesmos controles do jogador comum
 - Botão adicional: **Adivinhar** (disponível a qualquer momento)
 
-### 7. Votação
+### 7. Tela do Jogo — Jogador Eliminado
+
+- Exibe banner: **"Você foi eliminado — apenas observe"**
+- Todos os botões de ação ficam ocultos (Acusar, Fazer Pergunta, Adivinhar)
+- Overlay de votação exibe mensagem de observador em vez dos botões de voto
+- O jogador eliminado permanece visível na grade de jogadores com estilo acinzentado e texto riscado
+- Seu turno é removido de `ordem_turnos` no backend — o jogo nunca para esperando sua ação
+
+### 8. Votação
 - Triggered quando um jogador propõe acusação
 - Todos veem quem foi acusado e votam simultaneamente (👍 / 👎)
 - Acusado não vê botão de voto
 - Resultado exibido após todos votarem
 - Contador de eliminações erradas visível
 
-### 8. Adivinhação do Espia
+### 9. Adivinhação do Espia
 - Espia seleciona o evento de uma lista suspensa (a lista pública de 32 eventos)
 - Confirmação antes de enviar
 - Resultado revelado para todos imediatamente
 
-### 9. Tela de Resultado (por rodada)
+### 10. Tela de Resultado (por rodada)
 - Revela quem era o(s) espia(s) e o evento da rodada
 - Pontuação da rodada por jogador
 - Pontuação acumulada da sessão
 - Se ainda houver rodadas: botão **Próxima Rodada**
 - Na última rodada: botão **Ver Placar Final** ou **Encerrar**
 
-### 10. Placar Final
+### 11. Placar Final
 - Ranking de todos os jogadores com pontuação total da sessão
 - Botão **Nova Partida** (reinicia sala com os mesmos jogadores) ou **Encerrar**
 
