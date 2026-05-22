@@ -10,6 +10,7 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { TurnoPresencial } from "./turno-presencial";
 
 const SHEET_SPRING = { type: "spring" as const, damping: 28, stiffness: 320 };
 
@@ -120,6 +121,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const players = usePlayers(salaId);
   const rodada = useGameState(salaId);
 
+  const [modo, setModo] = useState<"online" | "presencial">("online");
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
@@ -139,8 +141,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id").eq("codigo", code).single()
-      .then(({ data }) => { if (data) setSalaId(data.id); });
+    supabase.from("salas").select("id, modo").eq("codigo", code).single()
+      .then(({ data }) => {
+        if (data) {
+          setSalaId(data.id);
+          setModo(data.modo ?? "online");
+        }
+      });
   }, [code]);
 
   useEffect(() => {
@@ -274,7 +281,21 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Current turn */}
-      {currentPlayer && (() => {
+      {currentPlayer && (modo === "presencial" ? (
+        <TurnoPresencial
+          isMinhaVez={currentPlayer.id === meuJogador?.id}
+          jogadorAtualApelido={currentPlayer.apelido}
+          primeiraRodada={primeiraRodada}
+          acting={acting}
+          onConcluir={async () => {
+            if (!rodada) return;
+            setActing(true);
+            try { await gameActions.proximoTurno(rodada.id); }
+            catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao avançar turno"); }
+            finally { setActing(false); }
+          }}
+        />
+      ) : (() => {
         const podeAbrirModal = !meuEliminado && ehMeuTurno && fase === "jogando";
         return (
           <div
@@ -298,7 +319,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             )}
           </div>
         );
-      })()}
+      })())}
 
       {/* Players grid */}
       <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: 12, boxShadow: "0 4px 16px -12px rgba(58,42,20,0.22)" }}>
@@ -386,10 +407,9 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 }
                 if (h.tipo === "turno_presencial") {
                   return (
-                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", paddingBottom: 8, borderBottom }}>
-                      <MEAvatar size={18} initial={h.jogador_apelido.slice(0,1)} variant="light" />
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: T.cardWarm, borderRadius: 999, alignSelf: "flex-start" }}>
+                      <MEAvatar size={18} initial={h.jogador_apelido.slice(0, 1)} variant="light" />
                       <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.jogador_apelido}</span>
-                      <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>— turno presencial</span>
                     </div>
                   );
                 }
