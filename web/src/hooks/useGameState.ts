@@ -50,7 +50,9 @@ export function useGameState(salaId: string | null) {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetchRodadaAtual, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [salaId]);
 
   return rodada;

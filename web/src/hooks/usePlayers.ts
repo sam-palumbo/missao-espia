@@ -18,28 +18,28 @@ export function usePlayers(salaId: string | null) {
     if (!salaId) return;
     const supabase = createClient();
 
-    supabase
-      .from("jogadores")
-      .select("id, apelido, pontuacao, ativo, conectado, user_id")
-      .eq("sala_id", salaId)
-      .then(({ data }) => { if (data) setPlayers(data); });
+    async function fetch() {
+      const { data } = await supabase
+        .from("jogadores")
+        .select("id, apelido, pontuacao, ativo, conectado, user_id")
+        .eq("sala_id", salaId!);
+      if (data) setPlayers(data);
+    }
+
+    fetch();
 
     const channel = supabase
       .channel(`players:${salaId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "jogadores", filter: `sala_id=eq.${salaId}` },
-        () => {
-          supabase
-            .from("jogadores")
-            .select("id, apelido, pontuacao, ativo, conectado, user_id")
-            .eq("sala_id", salaId)
-            .then(({ data }) => { if (data) setPlayers(data); });
-        }
+        () => fetch()
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetch, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [salaId]);
 
   return players;
