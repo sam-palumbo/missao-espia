@@ -10,6 +10,7 @@ import { encerrarRodada }  from "./handlers/encerrar-rodada.ts";
 import { dizerPalavra }    from "./handlers/dizer-palavra.ts";
 import { fazerPergunta }   from "./handlers/fazer-pergunta.ts";
 import { responderPergunta } from "./handlers/responder-pergunta.ts";
+import { definirModo }      from "./handlers/definir-modo.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +61,7 @@ Deno.serve(async (req) => {
       case "adivinhar":       return json(await adivinhar(user.id, payload));
       case "encerrar_rodada": return json(await encerrarRodada(user.id, payload));
       case "dizer_palavra":   return json(await dizerPalavra(user.id, payload));
+      case "definir_modo":    return json(await definirModo(user.id, payload));
       default: return json({ error: `Action desconhecida: ${action}` }, 400);
     }
   } catch (err) {
