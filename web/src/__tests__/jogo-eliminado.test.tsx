@@ -215,4 +215,39 @@ describe("Jogador eliminado — estado de observador", () => {
       expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
     });
   });
+
+  it("não mostra botão Dizer Palavra quando jogador está eliminado e é primeira rodada", async () => {
+    const rodadaPrimeiraRodada: RodadaAtual = {
+      id: "rodada-1",
+      numero: 1,
+      evento_id: 1,
+      encerrada_em: null,
+      estado: {
+        fase: "jogando",
+        turno_atual: "jogador-1",
+        ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
+        espia_ids: [],
+        timer_end: new Date(Date.now() + 300_000).toISOString(),
+        eliminacoes_erradas: 0,
+        acusado_id: null,
+        acusou_neste_turno: false,
+        adivinhou_evento_id: null,
+        pergunta_atual: null,
+        historico: [],
+        primeira_rodada: true,
+        palavras_primeira_rodada: [],
+      },
+    };
+
+    vi.mocked(useGameState).mockReturnValue(rodadaPrimeiraRodada);
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /dizer palavra/i })
+      ).not.toBeInTheDocument();
+    });
+  });
 });

@@ -252,12 +252,12 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
               {currentPlayer.id === meuJogador?.id ? "Sua vez" : primeiraRodada ? `${currentPlayer.apelido} está falando…` : `${currentPlayer.apelido} está perguntando…`}
             </div>
           </div>
-          {ehMeuTurno && fase === "jogando" && primeiraRodada && (
+          {!meuEliminado && ehMeuTurno && fase === "jogando" && primeiraRodada && (
             <button onClick={() => setShowWordInput(true)} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
               Dizer Palavra
             </button>
           )}
-          {ehMeuTurno && fase === "jogando" && !primeiraRodada && (
+          {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && (
             <button onClick={handleProximoTurno} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
               Passar →
             </button>
