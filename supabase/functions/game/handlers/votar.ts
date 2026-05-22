@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/votar.ts
 import { getDb }                 from "../lib/db.ts";
 import { limiteEliminacoesErradas, numEspias } from "../lib/espias.ts";
+import { resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
 import type { VotarPayload }     from "../lib/types.ts";
 
@@ -34,14 +35,16 @@ export async function votar(userId: string, payload: unknown) {
   if (votante.id === estado.acusado_id) throw Object.assign(new Error("Acusado não pode votar"), { status: 403 });
 
   // Verificar se jogador já votou nesta acusação
-  const { data: jaVotou } = await db
+  const { data: votosAnteriores } = await db
     .from("votos")
-    .select("id")
+    .select("votante_id, acusado_id")
     .eq("rodada_id", rodada_id)
-    .eq("votante_id", votante.id)
-    .eq("acusado_id", estado.acusado_id)
-    .maybeSingle();
-  if (jaVotou) throw Object.assign(new Error("Você já votou nesta acusação"), { status: 409 });
+    .eq("acusado_id", estado.acusado_id);
+  try {
+    validarVoto(votosAnteriores ?? [], votante.id, estado.acusado_id!);
+  } catch (err) {
+    throw Object.assign(err as Error, { status: 409 });
+  }
 
   const { error: votoErr } = await db.from("votos").insert({
     rodada_id,
@@ -66,15 +69,13 @@ export async function votar(userId: string, payload: unknown) {
     .eq("rodada_id", rodada_id)
     .eq("acusado_id", estado.acusado_id);
 
-  if (!votos || votos.length < elegiveis.length) {
+  const resultado = resolverVotacao(votos ?? [], elegiveis.length);
+
+  if (resultado === "aguardando") {
     return { aguardando_votos: true, votos_recebidos: votos?.length ?? 0 };
   }
 
-  // Todos votaram — resolver
-  const aprovacoes = votos.filter((v) => v.aprovado).length;
-  const maioria = aprovacoes > elegiveis.length / 2;
-
-  if (!maioria) {
+  if (resultado === "rejeitado") {
     // Votação rejeitada: voltar para jogando
     const { error } = await db
       .from("rodadas")
@@ -84,7 +85,7 @@ export async function votar(userId: string, payload: unknown) {
     return { resultado_votacao: "rejeitado" };
   }
 
-  // Maioria aprovou: verificar se acusado é espia
+  // resultado === "aprovado": verificar se acusado é espia
   const acusadoEhEspia = estado.espia_ids.includes(estado.acusado_id!);
 
   if (acusadoEhEspia) {
