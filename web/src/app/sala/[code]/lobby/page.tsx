@@ -31,19 +31,21 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const [salaId, setSalaId] = useState<string | null>(null);
   const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
   const [numRodadas, setNumRodadas] = useState<number | null>(null);
+  const [modo, setModo] = useState<"online" | "presencial">("online");
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const players = usePlayers(salaId);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, anfitriao, status, num_rodadas").eq("codigo", code).single()
+    supabase.from("salas").select("id, anfitriao, status, num_rodadas, modo").eq("codigo", code).single()
       .then(({ data }) => {
         if (!data) { toast.error("Sala não encontrada"); router.push("/"); return; }
         if (data.status === "jogando") { router.push(`/sala/${code}/jogo`); return; }
         setSalaId(data.id);
         setAnfitriaoId(data.anfitriao);
         setNumRodadas(data.num_rodadas);
+        setModo(data.modo ?? "online");
       });
   }, [code, router]);
 
@@ -53,7 +55,10 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     const channel = supabase
       .channel(`sala-status:${salaId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "salas", filter: `id=eq.${salaId}` },
-        (payload) => { if (payload.new.status === "jogando") router.push(`/sala/${code}/jogo`); })
+        (payload) => {
+          if (payload.new.status === "jogando") router.push(`/sala/${code}/jogo`);
+          if (payload.new.modo) setModo(payload.new.modo);
+        })
       .subscribe();
     const interval = setInterval(async () => {
       const { data } = await supabase.from("salas").select("status").eq("id", salaId).single();
@@ -73,6 +78,16 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao iniciar");
       setStarting(false);
+    }
+  }
+
+  async function handleModoChange(novo: "online" | "presencial") {
+    if (!salaId || !isHost || novo === modo) return;
+    try {
+      await gameActions.definirModo(salaId, novo);
+      setModo(novo);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao mudar modo");
     }
   }
 
@@ -182,6 +197,45 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
         )}
 
         <div style={{ flex: 1 }} />
+
+        {isHost ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            <Eyebrow color={T.inkSoft}>Modo</Eyebrow>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => handleModoChange("online")}
+                aria-pressed={modo === "online"}
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 999,
+                  border: "none", cursor: "pointer",
+                  background: modo === "online" ? T.ink : T.cardWarm,
+                  color: modo === "online" ? T.cardWarm : T.ink,
+                  fontFamily: F.sans, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 12,
+                }}
+              >Online</button>
+              <button
+                onClick={() => handleModoChange("presencial")}
+                aria-pressed={modo === "presencial"}
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 999,
+                  border: "none", cursor: "pointer",
+                  background: modo === "presencial" ? T.ink : T.cardWarm,
+                  color: modo === "presencial" ? T.cardWarm : T.ink,
+                  fontFamily: F.sans, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 12,
+                }}
+              >Presencial</button>
+            </div>
+            {modo === "presencial" && (
+              <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.inkSoft, lineHeight: 1.4 }}>
+                Para jogo presencial. Cada jogador faz pergunta/responde em voz alta — o app só controla turnos, acusações e tempo.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontFamily: F.sans, fontSize: 12, color: T.inkSoft, marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Modo: {modo === "presencial" ? "Presencial" : "Online"}
+          </div>
+        )}
 
         {isHost ? (
           <PrimaryBtn disabled={players.length < 4 || starting} accent={T.gold} onClick={handleIniciar}>
