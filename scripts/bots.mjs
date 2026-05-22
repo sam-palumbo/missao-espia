@@ -215,25 +215,24 @@ async function playBot({ nome, token, salaId, jogadorId }) {
 
       const sou_espia = estado.espia_ids.includes(jogadorId);
 
-      // Modo presencial: tudo é verbal — só concluir o turno
-      if (sala.modo === "presencial") {
-        try {
-          await callGame(token, "proximo_turno", { rodada_id: rodada.id });
-          log(`Turno concluído (presencial, turno ${turnos})`);
-        } catch (e) {
-          log(`Erro ao concluir turno: ${e.message}`);
-        }
-        continue;
-      }
-
       // Primeira rodada: dizer uma palavra em vez de perguntar
+      // No presencial a palavra é dita em voz alta — só concluir o turno
       if (estado.primeira_rodada) {
-        const palavra = PALAVRAS_PRIMEIRA_RODADA[Math.floor(Math.random() * PALAVRAS_PRIMEIRA_RODADA.length)];
-        try {
-          await callGame(token, "dizer_palavra", { rodada_id: rodada.id, palavra });
-          log(`Primeira rodada: disse "${palavra}"`);
-        } catch (e) {
-          log(`Erro ao dizer palavra: ${e.message}`);
+        if (sala.modo === "presencial") {
+          try {
+            await callGame(token, "proximo_turno", { rodada_id: rodada.id });
+            log(`Primeira rodada: concluí turno (presencial)`);
+          } catch (e) {
+            log(`Erro ao concluir turno: ${e.message}`);
+          }
+        } else {
+          const palavra = PALAVRAS_PRIMEIRA_RODADA[Math.floor(Math.random() * PALAVRAS_PRIMEIRA_RODADA.length)];
+          try {
+            await callGame(token, "dizer_palavra", { rodada_id: rodada.id, palavra });
+            log(`Primeira rodada: disse "${palavra}"`);
+          } catch (e) {
+            log(`Erro ao dizer palavra: ${e.message}`);
+          }
         }
         continue;
       }
@@ -269,26 +268,36 @@ async function playBot({ nome, token, salaId, jogadorId }) {
       }
 
       // Fazer pergunta (em vez de passar turno)
-      try {
-        const ativos = await getJogadoresAtivos(token, salaId);
-        const alvos = ativos.filter((j) => j.id !== jogadorId);
-        
-        if (alvos.length > 0 && Math.random() < 0.7) {
-          // 70% chance de fazer pergunta, 30% de passar turno
-          const alvo = alvos[Math.floor(Math.random() * alvos.length)];
-          const pergunta = PERGUNTAS_GENERICAS[Math.floor(Math.random() * PERGUNTAS_GENERICAS.length)];
-          await callGame(token, "fazer_pergunta", { 
-            rodada_id: rodada.id, 
-            destinatario_id: alvo.id, 
-            texto: pergunta 
-          });
-          log(`Perguntei para ${alvo.apelido}: "${pergunta}"`);
-        } else {
+      // No presencial perguntas são verbais — só passar turno
+      if (sala.modo === "presencial") {
+        try {
           await callGame(token, "proximo_turno", { rodada_id: rodada.id });
-          log(`Passou o turno (turno ${turnos})`);
+          log(`Passou o turno (presencial, turno ${turnos})`);
+        } catch (e) {
+          log(`Erro ao passar turno: ${e.message}`);
         }
-      } catch (e) {
-        log(`Erro ao fazer pergunta/passar turno: ${e.message}`);
+      } else {
+        try {
+          const ativos = await getJogadoresAtivos(token, salaId);
+          const alvos = ativos.filter((j) => j.id !== jogadorId);
+          
+          if (alvos.length > 0 && Math.random() < 0.7) {
+            // 70% chance de fazer pergunta, 30% de passar turno
+            const alvo = alvos[Math.floor(Math.random() * alvos.length)];
+            const pergunta = PERGUNTAS_GENERICAS[Math.floor(Math.random() * PERGUNTAS_GENERICAS.length)];
+            await callGame(token, "fazer_pergunta", { 
+              rodada_id: rodada.id, 
+              destinatario_id: alvo.id, 
+              texto: pergunta 
+            });
+            log(`Perguntei para ${alvo.apelido}: "${pergunta}"`);
+          } else {
+            await callGame(token, "proximo_turno", { rodada_id: rodada.id });
+            log(`Passou o turno (turno ${turnos})`);
+          }
+        } catch (e) {
+          log(`Erro ao fazer pergunta/passar turno: ${e.message}`);
+        }
       }
     }
 

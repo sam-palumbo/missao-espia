@@ -10,7 +10,7 @@ export async function acusar(userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, encerrada_em")
+    .select("*, salas(modo)")
     .eq("id", rodada_id)
     .single();
 
@@ -21,6 +21,7 @@ export async function acusar(userId: string, payload: unknown) {
   if (estado.fase !== "jogando") throw new Error("Só é possível acusar na fase 'jogando'");
   if (estado.primeira_rodada) throw new Error("Não é possível acusar na primeira rodada");
   if (estado.acusou_neste_turno) throw Object.assign(new Error("Você já acusou neste turno"), { status: 403 });
+  if (rodada.numero < 2) throw new Error("Não é possível acusar na primeira rodada do jogo");
 
   // Verificar que caller é o jogador do turno atual
   const { data: caller } = await db

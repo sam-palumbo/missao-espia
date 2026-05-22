@@ -286,6 +286,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
           isMinhaVez={currentPlayer.id === meuJogador?.id}
           jogadorAtualApelido={currentPlayer.apelido}
           primeiraRodada={primeiraRodada}
+          rodadaNumero={rodada?.numero ?? 1}
+          acusouNesteTurno={acusouNesteTurno}
           acting={acting}
           onConcluir={async () => {
             if (!rodada) return;
@@ -294,6 +296,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao avançar turno"); }
             finally { setActing(false); }
           }}
+          onOpenAccuse={() => setShowAccuse(true)}
         />
       ) : (() => {
         const podeAbrirModal = !meuEliminado && ehMeuTurno && fase === "jogando";
@@ -688,7 +691,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                     <button onClick={() => { setShowTurnModal(false); setShowAskQuestion(true); }} style={{ background: T.sienna, color: "white", border: "none", borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
                       Fazer Pergunta
                     </button>
-                    {!acusouNesteTurno && (
+                    {!acusouNesteTurno && (rodada?.numero ?? 1) >= 2 && (
                       <button onClick={() => { setShowTurnModal(false); setShowAccuse(true); }} style={{ background: T.brick, color: "white", border: "none", borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
                         <MEIcon name="spy" size={15} color="white" />
                         Acusar

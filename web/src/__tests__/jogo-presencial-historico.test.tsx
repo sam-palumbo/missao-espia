@@ -214,4 +214,36 @@ describe("Jogo presencial — TurnoPresencial integrado", () => {
     });
     expect(screen.queryByRole("button", { name: /Conclu[íi] turno/i })).not.toBeInTheDocument();
   });
+
+  // ── Acusação ──────────────────────────────────────────────────
+
+  it("rodada 2+ mostra botão Acusar", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaPresencial("jogador-1"));
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Acusar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("clicar Acusar abre a sheet de acusação (lista de jogadores)", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaPresencial("jogador-1"));
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Acusar/i })).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Acusar/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Quem é o Espia/i)).toBeInTheDocument();
+    });
+  });
 });

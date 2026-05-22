@@ -87,8 +87,8 @@ const PARAMS = Promise.resolve({ code: "TEST" });
 
 function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
   return {
-    id: "rodada-1",
-    numero: 1,
+    id: "rodada-2",
+    numero: 2,
     evento_id: 1,
     encerrada_em: null,
     estado: {

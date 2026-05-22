@@ -19,3 +19,5 @@ export function validarTrocaModo(input: ValidarTrocaModoInput): void {
     throw new Error("Não é possível trocar o modo após iniciar a partida");
   }
 }
+
+
