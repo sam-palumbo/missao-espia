@@ -27,11 +27,14 @@ export interface SalaComJogador {
 }
 
 export const gameActions = {
-  criarSala: (apelido: string, num_rodadas: number, senha?: string) =>
-    callGame<SalaComJogador>("criar_sala", { apelido, num_rodadas, senha }),
+  criarSala: (apelido: string, num_rodadas: number, opts?: { modo?: "online" | "presencial"; senha?: string }) =>
+    callGame<SalaComJogador>("criar_sala", { apelido, num_rodadas, modo: opts?.modo, senha: opts?.senha }),
 
   entrarSala: (codigo: string, apelido: string, senha?: string) =>
     callGame<SalaComJogador>("entrar_sala", { codigo, apelido, senha }),
+
+  definirModo: (sala_id: string, modo: "online" | "presencial") =>
+    callGame<{ ok: true; modo: "online" | "presencial" }>("definir_modo", { sala_id, modo }),
 
   iniciarRodada: (sala_id: string) =>
     callGame("iniciar_rodada", { sala_id }),
