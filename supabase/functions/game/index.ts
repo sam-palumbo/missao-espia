@@ -46,19 +46,20 @@ Deno.serve(async (req) => {
 
   try {
     switch (action) {
-      case "criar_sala":     return json(await criarSala(user.id, payload));
-      case "entrar_sala":    return json(await entrarSala(user.id, payload));
-      case "iniciar_rodada": return json(await iniciarRodada(user.id, payload));
-      case "proximo_turno":  return json(await proximoTurno(user.id, payload));
-      case "acusar":         return json(await acusar(user.id, payload));
-      case "votar":          return json(await votar(user.id, payload));
-      case "adivinhar":      return json(await adivinhar(user.id, payload));
-      case "encerrar_rodada":return json(await encerrarRodada(user.id, payload));
+      case "criar_sala":      return json(await criarSala(user.id, payload));
+      case "entrar_sala":     return json(await entrarSala(user.id, payload));
+      case "iniciar_rodada":  return json(await iniciarRodada(user.id, payload));
+      case "proximo_turno":   return json(await proximoTurno(user.id, payload));
+      case "acusar":          return json(await acusar(user.id, payload));
+      case "votar":           return json(await votar(user.id, payload));
+      case "adivinhar":       return json(await adivinhar(user.id, payload));
+      case "encerrar_rodada": return json(await encerrarRodada(user.id, payload));
       default: return json({ error: `Action desconhecida: ${action}` }, 400);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro interno";
-    console.error(`[game] action=${action} error:`, msg);
-    return json({ error: msg }, 500);
+    const status = (err as { status?: number }).status ?? 500;
+    console.error(`[game] action=${action} status=${status} error:`, msg);
+    return json({ error: msg }, status);
   }
 });
