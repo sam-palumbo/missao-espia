@@ -145,6 +145,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
+  const meuEliminado = meuJogador?.ativo === false;
 
   async function handleAcusar(acusadoId: string) {
     if (!rodada) return;
@@ -268,12 +269,18 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: 12, boxShadow: "0 4px 16px -12px rgba(58,42,20,0.22)" }}>
         <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
         <div style={{ position: "relative", display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-          {players.filter(p => p.ativo).map(p => {
+          {players.map(p => {
             const isActive = p.id === rodada?.estado.turno_atual;
+            const isEliminated = !p.ativo;
             return (
-              <button key={p.id} onClick={ehMeuTurno ? handleProximoTurno : undefined} disabled={!ehMeuTurno} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: ehMeuTurno ? "pointer" : "default", padding: "4px 2px" }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${isActive ? T.gold : T.hairlineStrong}`, background: isActive ? T.goldSoft : T.cardWarm, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                  <span style={{ fontFamily: F.serif, fontSize: 14, fontWeight: 600, color: isActive ? T.sienna : T.inkSoft }}>{p.apelido.slice(0,2).toUpperCase()}</span>
+              <button
+                key={p.id}
+                onClick={ehMeuTurno && !isEliminated ? handleProximoTurno : undefined}
+                disabled={!ehMeuTurno || isEliminated}
+                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: ehMeuTurno && !isEliminated ? "pointer" : "default", padding: "4px 2px", opacity: isEliminated ? 0.4 : 1 }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${isActive ? T.gold : T.hairlineStrong}`, background: isEliminated ? T.hairline : isActive ? T.goldSoft : T.cardWarm, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+                  <span style={{ fontFamily: F.serif, fontSize: 14, fontWeight: 600, color: isActive ? T.sienna : T.inkSoft, textDecoration: isEliminated ? "line-through" : "none" }}>{p.apelido.slice(0,2).toUpperCase()}</span>
                 </div>
                 <span style={{ fontFamily: F.sans, fontSize: 10, color: isActive ? T.ink : T.muted, fontWeight: isActive ? 700 : 400 }}>{p.apelido.split(" ")[0]}</span>
               </button>
@@ -334,23 +341,32 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
       {/* Action buttons */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10 }}>
-        {isSpy && (fase === "jogando" || fase === "adivinhacao") && (
+        {!meuEliminado && isSpy && (fase === "jogando" || fase === "adivinhacao") && (
           <button onClick={() => setShowGuess(true)} style={{ flex: 1, background: T.card, color: T.ink, border: `1.5px solid ${T.sienna}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
             Adivinhar
           </button>
         )}
-        {ehMeuTurno && fase === "jogando" && !primeiraRodada && (
+        {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && (
           <button onClick={() => setShowAskQuestion(true)} style={{ flex: 1, background: T.sienna, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
             Fazer Pergunta
           </button>
         )}
-        {ehMeuTurno && fase === "jogando" && !acusouNesteTurno && (
+        {!meuEliminado && ehMeuTurno && fase === "jogando" && !acusouNesteTurno && (
           <button onClick={() => setShowAccuse(true)} style={{ flex: 1, background: T.brick, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <MEIcon name="spy" size={15} color="white" />
             Acusar
           </button>
         )}
       </div>
+
+      {/* ELIMINATED OBSERVER BANNER */}
+      {meuEliminado && fase !== "votacao" && (
+        <div style={{ position: "relative", zIndex: 1, background: T.brick, borderRadius: 14, padding: "12px 16px", textAlign: "center" }}>
+          <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            Você foi eliminado — apenas observe
+          </span>
+        </div>
+      )}
 
       {/* VOTING OVERLAY */}
       {fase === "votacao" && acusadoNome && (
@@ -360,7 +376,9 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
             <Eyebrow color={T.inkSoft}>Votação</Eyebrow>
             <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink, lineHeight: 1.1 }}>{acusadoNome} é o espia?</div>
-            {meuJogador?.id !== rodada?.estado.acusado_id ? (
+            {meuEliminado ? (
+              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Você foi eliminado — apenas observe.</div>
+            ) : meuJogador?.id !== rodada?.estado.acusado_id ? (
               <div style={{ display: "flex", gap: 10 }}>
                 <button disabled={acting} onClick={() => handleVotar(true)} style={{ flex: 1, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                   👍 Sim
