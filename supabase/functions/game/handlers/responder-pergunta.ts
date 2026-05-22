@@ -9,9 +9,10 @@ export async function responderPergunta(userId: string, payload: unknown) {
 
   const db = getDb();
 
-  const { data: rodada } = await db.from("rodadas").select("*").eq("id", rodada_id).single();
+  const { data: rodada } = await db.from("rodadas").select("*, salas(modo)").eq("id", rodada_id).single();
   if (!rodada) throw Object.assign(new Error("Rodada não encontrada"), { status: 404 });
   if (rodada.encerrada_em) throw new Error("Rodada já encerrada");
+  if (rodada.salas?.modo === "presencial") throw new Error("Ação indisponível no modo presencial");
 
   const estado = rodada.estado;
   if (estado.fase !== "aguardando_resposta") throw new Error(`Não é possível responder na fase '${estado.fase}'`);

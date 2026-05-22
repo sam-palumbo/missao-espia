@@ -9,9 +9,10 @@ export async function dizerPalavra(userId: string, payload: unknown) {
 
   const db = getDb();
 
-  const { data: rodada } = await db.from("rodadas").select("*").eq("id", rodada_id).single();
+  const { data: rodada } = await db.from("rodadas").select("*, salas(modo)").eq("id", rodada_id).single();
   if (!rodada) throw Object.assign(new Error("Rodada não encontrada"), { status: 404 });
   if (rodada.encerrada_em) throw new Error("Rodada já encerrada");
+  if (rodada.salas?.modo === "presencial") throw new Error("Ação indisponível no modo presencial");
 
   const estado = rodada.estado;
   if (estado.fase !== "jogando") throw new Error(`Não é possível falar na fase '${estado.fase}'`);
@@ -51,7 +52,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     .eq("sala_id", rodada.sala_id)
     .eq("ativo", true);
   
-  const palavrasPorJogador = new Set(novoEstado.palavras_primeira_rodada?.map(p => p.jogador_id) ?? []);
+  const palavrasPorJogador = new Set(novoEstado.palavras_primeira_rodada?.map((p: { jogador_id: string }) => p.jogador_id) ?? []);
   const todosFalaram = todosJogadores && todosJogadores.length > 0 && todosJogadores.every(j => palavrasPorJogador.has(j.id));
 
   // Se todos falaram, encerrar a primeira rodada
