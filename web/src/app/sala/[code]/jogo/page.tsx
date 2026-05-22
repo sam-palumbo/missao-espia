@@ -30,7 +30,7 @@ function useTimer(timerEnd: string | null) {
 // ── Reveal Screen (before tap) ─────────────────────────────────
 function RevealScreen({ isSpy, evento, onReveal }: { isSpy: boolean; evento: { evento: string; local: string; testament: string } | undefined; onReveal: () => void }) {
   return (
-    <main style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px 20px 48px", maxWidth: 390, margin: "0 auto", background: T.bg }}>
+    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, width: "100%", maxWidth: 860, margin: "0 auto" }}>
       <ParchmentBg />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 16 }}>
         {/* Badge */}
@@ -209,7 +209,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const currentPlayer = players.find(p => p.id === rodada?.estado.turno_atual);
 
   return (
-    <main style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px 20px 48px", maxWidth: 390, margin: "0 auto", background: T.bg, gap: 14 }}>
+    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 14 }}>
       <ParchmentBg />
 
       {/* TopBar */}
