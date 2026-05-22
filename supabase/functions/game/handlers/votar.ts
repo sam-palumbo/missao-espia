@@ -118,9 +118,19 @@ export async function votar(userId: string, payload: unknown) {
   }
 
   // Continuar jogo com eliminação registrada
+  const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id);
+
   await db
     .from("rodadas")
-    .update({ estado: { ...estado, fase: "jogando", acusado_id: null, eliminacoes_erradas: novasElim } })
+    .update({
+      estado: {
+        ...estado,
+        fase: "jogando",
+        acusado_id: null,
+        eliminacoes_erradas: novasElim,
+        ordem_turnos: novaOrdem,
+      },
+    })
     .eq("id", rodada_id);
 
   return { resultado_votacao: "aprovado", espia_pego: false, eliminacoes_erradas: novasElim };
