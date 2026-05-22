@@ -1,7 +1,22 @@
 // supabase/functions/game/lib/types.ts
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
-export type FaseJogo = "jogando" | "votacao" | "adivinhacao" | "resultado";
+export type FaseJogo = "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "resultado";
+
+export interface PerguntaAtual {
+  perguntador_id: string;
+  perguntador_apelido: string;
+  destinatario_id: string;
+  destinatario_apelido: string;
+  texto: string;
+}
+
+export interface HistoricoItem {
+  perguntador_apelido: string;
+  destinatario_apelido: string;
+  pergunta: string;
+  resposta: string;
+}
 
 export interface Sala {
   id: string;
@@ -34,6 +49,10 @@ export interface EstadoRodada {
   eliminacoes_erradas: number;
   acusado_id: string | null;
   adivinhou_evento_id: number | null;
+  pergunta_atual: PerguntaAtual | null;
+  historico: HistoricoItem[];
+  primeira_rodada: boolean;
+  palavras_primeira_rodada: { jogador_id: string; apelido: string; palavra: string }[];
 }
 
 export interface Rodada {
@@ -46,40 +65,16 @@ export interface Rodada {
   encerrada_em: string | null;
 }
 
-export interface CriarSalaPayload {
-  apelido: string;
-  num_rodadas: number;
-  senha?: string;
-}
-
-export interface EntrarSalaPayload {
-  codigo: string;
-  apelido: string;
-  senha?: string;
-}
-
-export interface IniciarRodadaPayload {
-  sala_id: string;
-}
-
-export interface ProximoTurnoPayload {
-  rodada_id: string;
-}
-
-export interface AcusarPayload {
-  rodada_id: string;
-  acusado_id: string;
-}
-
-export interface VotarPayload {
-  rodada_id: string;
-  aprovado: boolean;
-}
-
-export interface AdivinharPayload {
-  rodada_id: string;
-  evento_id: number;
-}
+export interface CriarSalaPayload  { apelido: string; num_rodadas: number; senha?: string; }
+export interface EntrarSalaPayload { codigo: string; apelido: string; senha?: string; }
+export interface IniciarRodadaPayload  { sala_id: string; }
+export interface ProximoTurnoPayload   { rodada_id: string; }
+export interface AcusarPayload         { rodada_id: string; acusado_id: string; }
+export interface VotarPayload          { rodada_id: string; aprovado: boolean; }
+export interface AdivinharPayload      { rodada_id: string; evento_id: number; }
+export interface FazerPerguntaPayload  { rodada_id: string; destinatario_id: string; texto: string; }
+export interface ResponderPerguntaPayload { rodada_id: string; resposta: string; }
+export interface DizerPalavraPayload { rodada_id: string; palavra: string; }
 
 export type GameResponse<T = Record<string, unknown>> =
   | { data: T; error?: never }

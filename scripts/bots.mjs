@@ -14,6 +14,15 @@ const NOMES = [
 
 const TOTAL_EVENTOS = 32;
 
+// Palavras para a primeira rodada (uma palavra relacionada a eventos bíblicos)
+const PALAVRAS_PRIMEIRA_RODADA = [
+  "água", "fogo", "monte", "mar", "deserto", "jardim", "templo",
+  "anjo", "profeta", "rei", "povo", "tribo", "cidade", "muralha",
+  "espada", "escudo", "arco", "flecha", "cordeiro", "pão", "vinho",
+  "oração", "milagre", "promessa", "aliança", "lei", "mandamento",
+  "fé", "esperança", "amor", "graça", "salvação", "vida", "morte",
+];
+
 const codigo = process.argv[2];
 const numBots = Math.min(parseInt(process.argv[3] ?? "3", 10), NOMES.length);
 
@@ -157,8 +166,22 @@ async function playBot({ nome, token, salaId, jogadorId }) {
       turnos++;
       await sleep(1000 + Math.random() * 1500);
 
-      // Espia tenta adivinhar depois de algumas rodadas de turnos
       const sou_espia = estado.espia_ids.includes(jogadorId);
+
+      // Primeira rodada: dizer uma palavra em vez de perguntar
+      if (estado.primeira_rodada) {
+        const palavra = PALAVRAS_PRIMEIRA_RODADA[Math.floor(Math.random() * PALAVRAS_PRIMEIRA_RODADA.length)];
+        try {
+          await callGame(token, "dizer_palavra", { rodada_id: rodada.id, palavra });
+          log(`Primeira rodada: disse "${palavra}"`);
+        } catch (e) {
+          log(`Erro ao dizer palavra: ${e.message}`);
+        }
+        continue;
+      }
+
+      // Rodadas normais: perguntas e acusações
+      // Espia tenta adivinhar depois de algumas rodadas de turnos
       if (sou_espia && !adivinheiNestaRodada && turnos >= 4 && Math.random() < 0.3) {
         const eventoId = Math.ceil(Math.random() * TOTAL_EVENTOS);
         try {

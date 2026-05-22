@@ -9,7 +9,6 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
-import { useChat } from "@/hooks/useChat";
 
 // ── Timer ──────────────────────────────────────────────────────
 function useTimer(timerEnd: string | null) {
@@ -106,13 +105,15 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [chatInput, setChatInput] = useState("");
+  const [showWordInput, setShowWordInput] = useState(false);
+  const [wordInput, setWordInput] = useState("");
+  const [showAskQuestion, setShowAskQuestion] = useState(false);
+  const [questionInput, setQuestionInput] = useState("");
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null);
+  const [showAnswerQuestion, setShowAnswerQuestion] = useState(false);
+  const [answerInput, setAnswerInput] = useState("");
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
-  const { mensagens, enviar } = useChat(salaId);
-  const [lastSeenCount, setLastSeenCount] = useState(0);
-  const unread = showChat ? 0 : mensagens.length - lastSeenCount;
 
   const { display, pct } = useTimer(rodada?.estado.timer_end ?? null);
 
@@ -127,11 +128,22 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   }, [rodada?.estado.fase, code, router]);
 
   const meuJogador = players.find(p => p.user_id === user?.id);
+
+  // Show answer sheet when player is the recipient of a question
+  useEffect(() => {
+    if (rodada?.estado.fase === "aguardando_resposta" && rodada.estado.pergunta_atual) {
+      const isRecipient = rodada.estado.pergunta_atual.destinatario_id === meuJogador?.id;
+      if (isRecipient && !showAnswerQuestion) {
+        setShowAnswerQuestion(true);
+      }
+    }
+  }, [rodada?.estado.fase, rodada?.estado.pergunta_atual, meuJogador?.id, showAnswerQuestion]);
   const isSpy = rodada ? (rodada.estado.espia_ids ?? []).includes(meuJogador?.id ?? "") : false;
   const ehMeuTurno = meuJogador?.id === rodada?.estado.turno_atual;
   const fase = rodada?.estado.fase ?? "jogando";
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
+  const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
 
   async function handleAcusar(acusadoId: string) {
     if (!rodada) return;
@@ -157,17 +169,34 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     finally { setActing(false); }
   }
 
-  async function handleEnviarMensagem() {
-    if (!chatInput.trim() || !salaId || !meuJogador) return;
-    const texto = chatInput.trim();
-    setChatInput("");
-    await enviar(salaId, meuJogador.id, meuJogador.apelido, texto);
-  }
-
   async function handleProximoTurno() {
     if (!rodada) return;
     try { await gameActions.proximoTurno(rodada.id); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao avançar turno"); }
+  }
+
+  async function handleDizerPalavra() {
+    if (!rodada || !wordInput.trim()) return;
+    setActing(true);
+    try { await gameActions.dizerPalavra(rodada.id, wordInput.trim()); setWordInput(""); setShowWordInput(false); }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao dizer palavra"); }
+    finally { setActing(false); }
+  }
+
+  async function handleFazerPergunta() {
+    if (!rodada || !selectedRecipientId || !questionInput.trim()) return;
+    setActing(true);
+    try { await gameActions.fazerPergunta(rodada.id, selectedRecipientId, questionInput.trim()); setQuestionInput(""); setSelectedRecipientId(null); setShowAskQuestion(false); }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao fazer pergunta"); }
+    finally { setActing(false); }
+  }
+
+  async function handleResponderPergunta() {
+    if (!rodada || !answerInput.trim()) return;
+    setActing(true);
+    try { await gameActions.responderPergunta(rodada.id, answerInput.trim()); setAnswerInput(""); setShowAnswerQuestion(false); }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao responder pergunta"); }
+    finally { setActing(false); }
   }
 
   // Show reveal screen first
@@ -218,10 +247,15 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
           <div style={{ flex: 1, position: "relative" }}>
             <Eyebrow color={T.gold} size={9}>Vez de</Eyebrow>
             <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.cardWarm, marginTop: 3, lineHeight: 1.1 }}>
-              {currentPlayer.id === meuJogador?.id ? "Sua vez" : `${currentPlayer.apelido} está perguntando…`}
+              {currentPlayer.id === meuJogador?.id ? "Sua vez" : primeiraRodada ? `${currentPlayer.apelido} está falando…` : `${currentPlayer.apelido} está perguntando…`}
             </div>
           </div>
-          {ehMeuTurno && fase === "jogando" && (
+          {ehMeuTurno && fase === "jogando" && primeiraRodada && (
+            <button onClick={() => setShowWordInput(true)} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
+              Dizer Palavra
+            </button>
+          )}
+          {ehMeuTurno && fase === "jogando" && !primeiraRodada && (
             <button onClick={handleProximoTurno} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
               Passar →
             </button>
@@ -249,26 +283,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
       <div style={{ flex: 1 }} />
 
-      {/* Chat button */}
-      <button
-        onClick={() => { setShowChat(true); setLastSeenCount(mensagens.length); }}
-        style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 8, background: T.card, border: `1px solid ${T.hairline}`, borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.inkSoft, width: "100%" }}>
-        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-        <span style={{ flex: 1, textAlign: "left" }}>
-          {mensagens.length > 0 ? mensagens[mensagens.length - 1].texto.slice(0, 40) + (mensagens[mensagens.length - 1].texto.length > 40 ? "…" : "") : "Chat da sala…"}
-        </span>
-        {unread > 0 && (
-          <span style={{ background: T.brick, color: "white", fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 7px", fontFamily: F.mono }}>{unread}</span>
-        )}
-      </button>
-
       {/* Action buttons */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10 }}>
         {isSpy && (fase === "jogando" || fase === "adivinhacao") && (
           <button onClick={() => setShowGuess(true)} style={{ flex: 1, background: T.card, color: T.ink, border: `1.5px solid ${T.sienna}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
             Adivinhar
+          </button>
+        )}
+        {ehMeuTurno && fase === "jogando" && !primeiraRodada && (
+          <button onClick={() => setShowAskQuestion(true)} style={{ flex: 1, background: T.sienna, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+            Fazer Pergunta
           </button>
         )}
         {ehMeuTurno && fase === "jogando" && (
@@ -326,63 +350,107 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         </div>
       )}
 
-      {/* CHAT SHEET */}
-      {showChat && (
+      {/* ASK QUESTION SHEET */}
+      {showAskQuestion && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "20px 20px 0", display: "flex", flexDirection: "column", gap: 12, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", height: "70dvh" }}>
+          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative" }}>
-              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, position: "absolute", left: "50%", transform: "translateX(-50%)", top: -8 }} />
-              <Eyebrow color={T.inkSoft}>Chat da Sala</Eyebrow>
-              <button onClick={() => { setShowChat(false); setLastSeenCount(mensagens.length); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
-                <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M6 6 L18 18 M18 6 L6 18" /></svg>
+            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+            <Eyebrow color={T.inkSoft}>Fazer Pergunta</Eyebrow>
+            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Para quem perguntar?</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>
+              {players.filter(p => p.ativo && p.id !== meuJogador?.id).map(p => (
+                <button key={p.id} onClick={() => setSelectedRecipientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: `2px solid ${selectedRecipientId === p.id ? T.sienna : T.hairline}`, background: selectedRecipientId === p.id ? T.siennaSoft : T.cardWarm, cursor: "pointer", textAlign: "left", transition: "all 150ms" }}>
+                  <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant="light" />
+                  <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 15, color: T.ink }}>{p.apelido}</span>
+                </button>
+              ))}
+            </div>
+            {selectedRecipientId && (
+              <>
+                <input
+                  type="text"
+                  value={questionInput}
+                  onChange={e => setQuestionInput(e.target.value)}
+                  placeholder="Sua pergunta…"
+                  maxLength={200}
+                  autoFocus
+                  style={{ background: T.cardWarm, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 12, padding: "14px 16px", fontFamily: F.bodySerif, fontSize: 16, color: T.ink, outline: "none" }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                  <button onClick={() => { setShowAskQuestion(false); setQuestionInput(""); setSelectedRecipientId(null); }} style={{ flex: 1, background: "none", border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, color: T.inkSoft, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Cancelar
+                  </button>
+                  <button disabled={!questionInput.trim() || acting} onClick={handleFazerPergunta} style={{ flex: 2, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, cursor: questionInput.trim() ? "pointer" : "not-allowed", opacity: questionInput.trim() ? 1 : 0.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Enviar ✦
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ANSWER QUESTION SHEET */}
+      {showAnswerQuestion && rodada?.estado.pergunta_atual && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+            <Eyebrow color={T.inkSoft}>Responder Pergunta</Eyebrow>
+            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>{rodada.estado.pergunta_atual.perguntador_apelido} perguntou:</div>
+            <div style={{ background: T.cardWarm, borderRadius: 12, padding: "14px 16px", fontFamily: F.bodySerif, fontSize: 16, color: T.ink, lineHeight: 1.4 }}>
+              {rodada.estado.pergunta_atual.texto}
+            </div>
+            <input
+              type="text"
+              value={answerInput}
+              onChange={e => setAnswerInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleResponderPergunta(); } }}
+              placeholder="Sua resposta…"
+              maxLength={200}
+              autoFocus
+              style={{ background: T.cardWarm, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 12, padding: "14px 16px", fontFamily: F.bodySerif, fontSize: 16, color: T.ink, outline: "none" }}
+            />
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button onClick={() => { setShowAnswerQuestion(false); setAnswerInput(""); }} style={{ flex: 1, background: "none", border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, color: T.inkSoft, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Cancelar
+              </button>
+              <button disabled={!answerInput.trim() || acting} onClick={handleResponderPergunta} style={{ flex: 2, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, cursor: answerInput.trim() ? "pointer" : "not-allowed", opacity: answerInput.trim() ? 1 : 0.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Responder ✦
               </button>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingRight: 4 }}>
-              {mensagens.length === 0 ? (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 14, color: T.muted }}>Nenhuma mensagem ainda.<br />Seja o primeiro a escrever.</div>
-                </div>
-              ) : mensagens.map((m) => {
-                const isMe = m.jogador_id === meuJogador?.id;
-                return (
-                  <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", gap: 3 }}>
-                    {!isMe && (
-                      <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, color: T.sienna, letterSpacing: "0.1em", textTransform: "uppercase", paddingLeft: 4 }}>
-                        {m.apelido}
-                      </div>
-                    )}
-                    <div style={{ maxWidth: "80%", padding: "9px 14px", borderRadius: isMe ? "16px 4px 16px 16px" : "4px 16px 16px 16px", background: isMe ? T.ink : T.cardWarm, border: `1px solid ${isMe ? "transparent" : T.hairlineStrong}`, fontFamily: F.bodySerif, fontSize: 15, color: isMe ? T.cardWarm : T.ink, lineHeight: 1.4 }}>
-                      {m.texto}
-                    </div>
-                    <div style={{ fontFamily: F.mono, fontSize: 9, color: T.muted, paddingLeft: 4, paddingRight: 4 }}>
-                      {new Date(m.criada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  </div>
-                );
-              })}
+      {/* WORD INPUT SHEET (Primeira Rodada) */}
+      {showWordInput && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+            <Eyebrow color={T.inkSoft}>Primeira Rodada</Eyebrow>
+            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Diga uma palavra</div>
+            <div style={{ fontFamily: F.bodySerif, fontSize: 14, color: T.inkSoft, lineHeight: 1.4 }}>
+              Na primeira rodada, cada jogador diz apenas uma palavra relacionada ao evento ou local.
             </div>
-
-            {/* Input */}
-            <div style={{ display: "flex", gap: 8, padding: "12px 0 20px", borderTop: `1px solid ${T.hairline}` }}>
-              <input
-                type="text"
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEnviarMensagem(); } }}
-                placeholder="Escreva uma mensagem…"
-                maxLength={200}
-                style={{ flex: 1, background: T.cardWarm, border: `1px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "10px 16px", fontFamily: F.bodySerif, fontSize: 15, color: T.ink, outline: "none" }}
-              />
-              <button
-                onClick={handleEnviarMensagem}
-                disabled={!chatInput.trim()}
-                style={{ width: 44, height: 44, borderRadius: "50%", background: chatInput.trim() ? T.ink : T.hairlineStrong, border: "none", cursor: chatInput.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 150ms" }}>
-                <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={chatInput.trim() ? T.cardWarm : T.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 2 L11 13 M22 2 L15 22 L11 13 L2 9 Z" />
-                </svg>
+            <input
+              type="text"
+              value={wordInput}
+              onChange={e => setWordInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleDizerPalavra(); } }}
+              placeholder="Uma palavra apenas…"
+              maxLength={50}
+              autoFocus
+              style={{ background: T.cardWarm, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 12, padding: "14px 16px", fontFamily: F.bodySerif, fontSize: 16, color: T.ink, outline: "none" }}
+            />
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button onClick={() => { setShowWordInput(false); setWordInput(""); }} style={{ flex: 1, background: "none", border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, color: T.inkSoft, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Cancelar
+              </button>
+              <button disabled={!wordInput.trim() || acting} onClick={handleDizerPalavra} style={{ flex: 2, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, cursor: wordInput.trim() ? "pointer" : "not-allowed", opacity: wordInput.trim() ? 1 : 0.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Confirmar ✦
               </button>
             </div>
           </div>

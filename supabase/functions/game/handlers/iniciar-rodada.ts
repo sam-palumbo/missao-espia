@@ -42,16 +42,18 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     .select("evento_id")
     .eq("sala_id", sala_id);
 
-  const usados = new Set((rodadasAnteriores ?? []).map((r) => r.evento_id));
+  const usados = new Set((rodadasAnteriores ?? []).map((r: { evento_id: number }) => r.evento_id));
   const disponiveis = EVENTOS.filter((e) => !usados.has(e.id));
   if (disponiveis.length === 0) throw new Error("Todos os eventos já foram usados");
 
   const evento = disponiveis[Math.floor(Math.random() * disponiveis.length)];
 
+  const novoNumero = sala.rodada_atual + 1;
+
   const n = numEspias(jogadores.length);
-  const ids = jogadores.map((j) => j.id);
-  const shuffled = shuffle(ids);
-  const espia_ids = shuffled.slice(0, n);
+  const ids = jogadores.map((j: { id: string }) => j.id);
+  const shuffled = shuffle(ids) as string[];
+  const espia_ids = shuffled.slice(0, n) as string[];
 
   const minutos = 5 + jogadores.length - n;
   const timer_end = new Date(Date.now() + minutos * 60 * 1000).toISOString();
@@ -65,9 +67,11 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     eliminacoes_erradas: 0,
     acusado_id: null,
     adivinhou_evento_id: null,
+    pergunta_atual: null,
+    historico: [],
+    primeira_rodada: novoNumero === 1,
+    palavras_primeira_rodada: [],
   };
-
-  const novoNumero = sala.rodada_atual + 1;
 
   const { data: rodada, error } = await db
     .from("rodadas")

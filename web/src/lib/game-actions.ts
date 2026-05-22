@@ -39,6 +39,15 @@ export const gameActions = {
   proximoTurno: (rodada_id: string) =>
     callGame("proximo_turno", { rodada_id }),
 
+  dizerPalavra: (rodada_id: string, palavra: string) =>
+    callGame("dizer_palavra", { rodada_id, palavra }),
+
+  fazerPergunta: (rodada_id: string, destinatario_id: string, texto: string) =>
+    callGame("fazer_pergunta", { rodada_id, destinatario_id, texto }),
+
+  responderPergunta: (rodada_id: string, resposta: string) =>
+    callGame("responder_pergunta", { rodada_id, resposta }),
+
   acusar: (rodada_id: string, acusado_id: string) =>
     callGame("acusar", { rodada_id, acusado_id }),
 
