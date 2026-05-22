@@ -212,7 +212,7 @@ describe("Jogador eliminado — estado de observador", () => {
       expect(screen.getByText(/Votação/)).toBeInTheDocument();
       expect(screen.queryByText(/👍 Sim/)).not.toBeInTheDocument();
       expect(screen.queryByText(/👎 Não/)).not.toBeInTheDocument();
-      expect(screen.getByText(/eliminado/i)).toBeInTheDocument();
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
     });
   });
 });
