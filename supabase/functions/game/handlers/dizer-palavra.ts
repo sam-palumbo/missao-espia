@@ -43,8 +43,23 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     ],
   };
 
+  // Verificar se todos os jogadores ativos já disseram suas palavras
+  const { data: todosJogadores } = await db
+    .from("jogadores")
+    .select("id")
+    .eq("sala_id", rodada.sala_id)
+    .eq("ativo", true);
+  
+  const palavrasPorJogador = new Set(novoEstado.palavras_primeira_rodada?.map(p => p.jogador_id) ?? []);
+  const todosFalaram = todosJogadores && todosJogadores.length > 0 && todosJogadores.every(j => palavrasPorJogador.has(j.id));
+
+  // Se todos falaram, encerrar a primeira rodada
+  if (todosFalaram) {
+    novoEstado.primeira_rodada = false;
+  }
+
   const { error } = await db.from("rodadas").update({ estado: novoEstado }).eq("id", rodada_id);
   if (error) throw new Error("Falha ao registrar palavra: " + error.message);
 
-  return { ok: true, turno_atual: proximo };
+  return { ok: true, turno_atual: proximo, primeira_rodada_encerrada: todosFalaram };
 }
