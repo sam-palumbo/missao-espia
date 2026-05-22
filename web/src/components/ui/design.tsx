@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { motion, AnimatePresence } from "motion/react";
 
 // ── Design tokens (mirrors app-tokens.jsx) ─────────────────────
 export const T = {
@@ -154,9 +155,11 @@ export function Eyebrow({ children, color = T.sienna, size = 11 }: EyebrowProps)
 interface PrimaryBtnProps { children: React.ReactNode; accent?: string; dark?: boolean; onClick?: () => void; disabled?: boolean; }
 export function PrimaryBtn({ children, accent = T.gold, dark = false, onClick, disabled }: PrimaryBtnProps) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
       disabled={disabled}
+      whileTap={{ scale: disabled ? 1 : 0.97 }}
+      transition={{ type: "spring", stiffness: 400, damping: 22 }}
       style={{
         width: "100%",
         background: dark ? T.inkDeep : T.ink,
@@ -176,7 +179,7 @@ export function PrimaryBtn({ children, accent = T.gold, dark = false, onClick, d
           <path d="M13 6 L19 12 L13 18 M7 6 L13 12 L7 18" />
         </svg>
       </span>
-    </button>
+    </motion.button>
   );
 }
 
@@ -184,9 +187,11 @@ export function PrimaryBtn({ children, accent = T.gold, dark = false, onClick, d
 interface OutlineBtnProps { children: React.ReactNode; onClick?: () => void; disabled?: boolean; icon?: React.ReactNode; }
 export function OutlineBtn({ children, onClick, disabled, icon }: OutlineBtnProps) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
       disabled={disabled}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 22 }}
       style={{
         width: "100%",
         background: "transparent", color: T.ink,
@@ -204,7 +209,56 @@ export function OutlineBtn({ children, onClick, disabled, icon }: OutlineBtnProp
           {icon}
         </span>
       )}
-    </button>
+    </motion.button>
+  );
+}
+
+// ── BottomSheet ───────────────────────────────────────────────
+interface BottomSheetProps {
+  open: boolean;
+  onClose?: () => void;
+  children: React.ReactNode;
+  maxHeight?: string;
+}
+export function BottomSheet({ open, onClose, children, maxHeight = "85dvh" }: BottomSheetProps) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="bs-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            onClick={onClose}
+            style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}
+          />
+          <motion.div
+            key="bs-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            style={{
+              position: "fixed", bottom: 0, left: "50%",
+              transform: "translateX(-50%)",
+              width: "100%", maxWidth: 390,
+              zIndex: 51,
+              background: T.card,
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 20px 28px",
+              display: "flex", flexDirection: "column", gap: 14,
+              maxHeight,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto -2px" }} />
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 

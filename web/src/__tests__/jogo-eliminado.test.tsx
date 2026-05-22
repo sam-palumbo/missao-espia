@@ -216,6 +216,18 @@ describe("Jogador eliminado — estado de observador", () => {
     });
   });
 
+  it("não mostra botões Adivinhar/Acusar (fase votacao mostra só overlay)", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaVotacaoComEliminada());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Votação/)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
+  });
+
   it("não mostra botão Dizer Palavra quando jogador está eliminado e é primeira rodada", async () => {
     const rodadaPrimeiraRodada: RodadaAtual = {
       id: "rodada-1",
@@ -249,5 +261,248 @@ describe("Jogador eliminado — estado de observador", () => {
         screen.queryByRole("button", { name: /dizer palavra/i })
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+// ── Fixtures adicionais ────────────────────────────────────────
+
+const ALICE_ATIVA = {
+  id: "jogador-1",
+  user_id: "user-1",
+  apelido: "Alice",
+  ativo: true,
+};
+
+function rodadaAliceTurno(): RodadaAtual {
+  return {
+    id: "rodada-1",
+    numero: 1,
+    evento_id: 1,
+    encerrada_em: null,
+    estado: {
+      fase: "jogando",
+      turno_atual: "jogador-1",
+      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
+      espia_ids: [],
+      timer_end: new Date(Date.now() + 300_000).toISOString(),
+      eliminacoes_erradas: 0,
+      acusado_id: null,
+      acusou_neste_turno: false,
+      adivinhou_evento_id: null,
+      pergunta_atual: null,
+      historico: [],
+      primeira_rodada: false,
+      palavras_primeira_rodada: [],
+    },
+  };
+}
+
+function rodadaBobTurno(): RodadaAtual {
+  const base = rodadaAliceTurno();
+  return { ...base, estado: { ...base.estado, turno_atual: "jogador-2" } };
+}
+
+// ── Regressão: jogador ativo vê botões de ação ─────────────────
+
+describe("Regressão — jogador ativo vê botões de ação", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-2" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
+    vi.clearAllMocks();
+  });
+
+  it("mostra botão Fazer Pergunta para jogador ativo no seu turno", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
+    });
+  });
+
+  it("mostra botão Acusar para jogador ativo no seu turno", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /acusar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("não mostra banner de observador para jogador ativo", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── Race condition: ativo stale, ausente de ordem_turnos ───────
+
+describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    // Alice ainda ativa em usePlayers (stale)
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
+    vi.clearAllMocks();
+  });
+
+  it("mostra banner de observador quando ativo=true mas ausente de ordem_turnos", async () => {
+    // useGameState já removeu Alice de ordem_turnos
+    vi.mocked(useGameState).mockReturnValue(rodadaJogandoComEliminada());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
+    });
+  });
+
+  it("oculta botão Fazer Pergunta quando ativo=true mas ausente de ordem_turnos", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaJogandoComEliminada());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /fazer pergunta/i })).not.toBeInTheDocument();
+  });
+
+  it("oculta botão Acusar quando ativo=true mas ausente de ordem_turnos", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaJogandoComEliminada());
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
+  });
+
+  it("NÃO trata como eliminado quando ordem_turnos está vazia (edge case transitório)", async () => {
+    const base = rodadaJogandoComEliminada();
+    const rodadaOrdemVazia: RodadaAtual = {
+      ...base,
+      estado: { ...base.estado, ordem_turnos: [] },
+    };
+    vi.mocked(useGameState).mockReturnValue(rodadaOrdemVazia);
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    // Não pode tratar como eliminado se ordem_turnos vier vazia transitoriamente
+    expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── meuJogador ausente ─────────────────────────────────────────
+
+describe("meuJogador ausente — sem crash nem banner", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("não mostra banner de observador quando usuário não está na lista de jogadores", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-999" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
+    vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── Sheet fecha quando jogador é eliminado ─────────────────────
+
+describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.clearAllMocks();
+  });
+
+  it("fecha o sheet de 'Fazer Pergunta' quando o jogador é eliminado", async () => {
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
+    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurno());
+
+    const { rerender } = render(
+      <Suspense fallback={null}>
+        <JogoPage params={PARAMS} />
+      </Suspense>
+    );
+    await act(async () => {});
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /fazer pergunta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /fazer pergunta/i }));
+    });
+    expect(screen.getByText(/Para quem perguntar/i)).toBeInTheDocument();
+
+    // Alice é eliminada
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ELIMINADA, BOB, CARLOS]);
+    vi.mocked(useGameState).mockReturnValue(rodadaJogandoComEliminada());
+
+    await act(async () => {
+      rerender(
+        <Suspense fallback={null}>
+          <JogoPage params={PARAMS} />
+        </Suspense>
+      );
+    });
+
+    expect(screen.queryByText(/Para quem perguntar/i)).not.toBeInTheDocument();
+  });
+
+  it("fecha o sheet de 'Acusar' quando o jogador é eliminado", async () => {
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
+    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurno());
+
+    const { rerender } = render(
+      <Suspense fallback={null}>
+        <JogoPage params={PARAMS} />
+      </Suspense>
+    );
+    await act(async () => {});
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /^acusar$/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^acusar$/i }));
+    });
+    expect(screen.getByText(/Quem é o Espia/i)).toBeInTheDocument();
+
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ELIMINADA, BOB, CARLOS]);
+    vi.mocked(useGameState).mockReturnValue(rodadaJogandoComEliminada());
+
+    await act(async () => {
+      rerender(
+        <Suspense fallback={null}>
+          <JogoPage params={PARAMS} />
+        </Suspense>
+      );
+    });
+
+    expect(screen.queryByText(/Quem é o Espia/i)).not.toBeInTheDocument();
   });
 });

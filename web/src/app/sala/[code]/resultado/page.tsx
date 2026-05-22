@@ -1,11 +1,18 @@
 "use client";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import { EVENTOS } from "@/lib/eventos";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { createClient } from "@/lib/supabase";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+
+const listVariants = { show: { transition: { staggerChildren: 0.07, delayChildren: 0.25 } } };
+const rowVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 360, damping: 28 } },
+};
 
 export default function ResultadoPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -51,7 +58,12 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
       </div>
 
       {/* Victory banner */}
-      <div style={{ position: "relative", zIndex: 1, background: groupWon ? `radial-gradient(120% 100% at 50% 0%, ${T.gold} 0%, #B58A30 100%)` : `linear-gradient(135deg, ${T.brick} 0%, #7A2E10 100%)`, borderRadius: 22, padding: "18px 18px 16px", overflow: "hidden" }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26, delay: 0.05 }}
+        style={{ position: "relative", zIndex: 1, background: groupWon ? `radial-gradient(120% 100% at 50% 0%, ${T.gold} 0%, #B58A30 100%)` : `linear-gradient(135deg, ${T.brick} 0%, #7A2E10 100%)`, borderRadius: 22, padding: "18px 18px 16px", overflow: "hidden" }}
+      >
         <InsetFrame color={groupWon ? T.ink : T.gold} inset={6} radius={18} opacity={0.4} opacity2={0.2} />
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
           <MEMedallion size={68} inset="star" variant={groupWon ? "gold" : "dark"} />
@@ -62,7 +74,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Spy reveal */}
       {espias.length > 0 && (
@@ -100,21 +112,26 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, padding: "0 4px" }}>
           <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.ink }}>Pontuação</div>
         </div>
-        <div style={{ background: T.card, borderRadius: 18, padding: 10, boxShadow: "0 4px 14px -10px rgba(58,42,20,0.2)", position: "relative" }}>
+        <motion.div
+          variants={listVariants}
+          initial="hidden"
+          animate="show"
+          style={{ background: T.card, borderRadius: 18, padding: 10, boxShadow: "0 4px 14px -10px rgba(58,42,20,0.2)", position: "relative" }}
+        >
           <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
           {[...players].sort((a,b) => b.pontuacao - a.pontuacao).map((p, i) => {
             const isEspia = espiaIds.includes(p.id);
             return (
-              <div key={p.id} style={{ position: "relative", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderBottom: i < players.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
+              <motion.div key={p.id} variants={rowVariants} style={{ position: "relative", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderBottom: i < players.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
                 <div style={{ width: 18, fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: i === 0 ? T.sienna : T.muted, textAlign: "center" }}>{String(i+1).padStart(2,"0")}</div>
                 <MEAvatar size={34} initial={p.apelido.slice(0,1)} variant={i === 0 ? "gold" : "light"} />
                 <div style={{ flex: 1, fontFamily: F.sans, fontSize: 15, fontWeight: 600, color: T.ink }}>{p.apelido}</div>
                 {isEspia && <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: T.brick, border: `1px solid ${T.brick}`, borderRadius: 4, padding: "2px 6px", textTransform: "uppercase" }}>Espia</span>}
                 <div style={{ fontFamily: F.serif, fontSize: 20, fontWeight: 600, minWidth: 28, textAlign: "right", color: T.ink, fontVariantNumeric: "tabular-nums" }}>{p.pontuacao}</div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
 
       <div style={{ flex: 1 }} />

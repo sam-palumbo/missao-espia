@@ -1,6 +1,7 @@
 "use client";
 import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { EVENTOS } from "@/lib/eventos";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
@@ -9,6 +10,8 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+
+const SHEET_SPRING = { type: "spring" as const, damping: 28, stiffness: 320 };
 
 // ── Timer ──────────────────────────────────────────────────────
 function useTimer(timerEnd: string | null) {
@@ -32,14 +35,29 @@ function RevealScreen({ isSpy, evento, onReveal }: { isSpy: boolean; evento: { e
   return (
     <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, width: "100%", maxWidth: 860, margin: "0 auto" }}>
       <ParchmentBg />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.38, ease: "easeOut" }}
+        style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 16 }}
+      >
         {/* Badge */}
-        <div style={{ alignSelf: "center", background: T.goldSoft, color: T.ink, padding: "5px 14px", borderRadius: 999 }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15, type: "spring", stiffness: 400, damping: 24 }}
+          style={{ alignSelf: "center", background: T.goldSoft, color: T.ink, padding: "5px 14px", borderRadius: 999 }}
+        >
           <Eyebrow color={T.ink} size={9}>Só você pode ver</Eyebrow>
-        </div>
+        </motion.div>
 
         {/* Card */}
-        <div style={{ background: `radial-gradient(140% 90% at 50% 0%, ${T.cardWarm} 0%, ${T.card} 80%)`, borderRadius: 22, padding: "22px 18px 20px", boxShadow: "0 16px 36px -16px rgba(58,42,20,0.4)", position: "relative", overflow: "hidden" }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 280, damping: 28 }}
+          style={{ background: `radial-gradient(140% 90% at 50% 0%, ${T.cardWarm} 0%, ${T.card} 80%)`, borderRadius: 22, padding: "22px 18px 20px", boxShadow: "0 16px 36px -16px rgba(58,42,20,0.4)", position: "relative", overflow: "hidden" }}
+        >
           <InsetFrame color={T.sienna} inset={6} radius={18} />
           <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             {isSpy ? (
@@ -68,7 +86,7 @@ function RevealScreen({ isSpy, evento, onReveal }: { isSpy: boolean; evento: { e
               </>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Hint card */}
         <div style={{ padding: "12px 14px", background: T.card, borderRadius: 16, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 4px 14px -10px rgba(58,42,20,0.2)", position: "relative" }}>
@@ -88,7 +106,7 @@ function RevealScreen({ isSpy, evento, onReveal }: { isSpy: boolean; evento: { e
 
         <div style={{ flex: 1 }} />
         <PrimaryBtn accent={T.gold} onClick={onReveal}>Memorizei</PrimaryBtn>
-      </div>
+      </motion.div>
     </main>
   );
 }
@@ -145,7 +163,26 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
-  const meuEliminado = meuJogador?.ativo === false;
+  // Eliminado se: (a) ativo=false em jogadores, OU (b) ausente de ordem_turnos quando ordem está populada.
+  // (b) cobre race condition entre usePlayers e useGameState (cada um com seu próprio polling/Realtime):
+  // useGameState pode atualizar ordem_turnos antes de usePlayers refletir ativo=false.
+  const meuEliminado =
+    meuJogador?.ativo === false ||
+    (!!meuJogador &&
+      !!rodada &&
+      rodada.estado.ordem_turnos.length > 0 &&
+      !rodada.estado.ordem_turnos.includes(meuJogador.id));
+
+  // Quando o jogador é eliminado no meio da rodada, fecha qualquer sheet aberto
+  // — o backend já recusa a ação, mas a UI não deve permitir que ele continue tentando.
+  useEffect(() => {
+    if (meuEliminado) {
+      setShowAccuse(false);
+      setShowGuess(false);
+      setShowWordInput(false);
+      setShowAskQuestion(false);
+    }
+  }, [meuEliminado]);
 
   async function handleAcusar(acusadoId: string) {
     if (!rodada) return;
@@ -370,58 +407,75 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       )}
 
       {/* VOTING OVERLAY */}
-      {fase === "votacao" && acusadoNome && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
-            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
-            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
-            <Eyebrow color={T.inkSoft}>Votação</Eyebrow>
-            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink, lineHeight: 1.1 }}>{acusadoNome} é o espia?</div>
-            {meuEliminado ? (
-              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Você foi eliminado — apenas observe.</div>
-            ) : meuJogador?.id !== rodada?.estado.acusado_id ? (
-              <div style={{ display: "flex", gap: 10 }}>
-                <button disabled={acting} onClick={() => handleVotar(true)} style={{ flex: 1, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                  👍 Sim
-                </button>
-                <button disabled={acting} onClick={() => handleVotar(false)} style={{ flex: 1, background: T.card, color: T.ink, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                  👎 Não
-                </button>
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Aguardando votação…</div>
-            )}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {fase === "votacao" && acusadoNome && (
+          <motion.div
+            key="voting"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={SHEET_SPRING}
+              style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}
+            >
+              <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+              <Eyebrow color={T.inkSoft}>Votação</Eyebrow>
+              <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink, lineHeight: 1.1 }}>{acusadoNome} é o espia?</div>
+              {meuEliminado ? (
+                <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Você foi eliminado — apenas observe.</div>
+              ) : meuJogador?.id !== rodada?.estado.acusado_id ? (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button disabled={acting} onClick={() => handleVotar(true)} style={{ flex: 1, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                    👍 Sim
+                  </button>
+                  <button disabled={acting} onClick={() => handleVotar(false)} style={{ flex: 1, background: T.card, color: T.ink, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                    👎 Não
+                  </button>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Aguardando votação…</div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ACCUSATION SHEET */}
-      {showAccuse && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
-            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
-            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
-            <Eyebrow color={T.inkSoft}>Acusar Jogador</Eyebrow>
-            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Quem é o Espia?</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {players.filter(p => p.ativo && p.id !== meuJogador?.id).map(p => (
-                <button key={p.id} disabled={acting} onClick={() => handleAcusar(p.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: `1.5px solid ${T.hairline}`, background: T.cardWarm, cursor: "pointer", textAlign: "left" }}>
-                  <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant="light" />
-                  <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 15, color: T.ink }}>{p.apelido}</span>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setShowAccuse(false)} style={{ background: "none", border: "none", fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.inkSoft, cursor: "pointer", padding: "8px 0", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showAccuse && (
+          <motion.div key="accuse" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+              <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+              <Eyebrow color={T.inkSoft}>Acusar Jogador</Eyebrow>
+              <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Quem é o Espia?</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {players.filter(p => p.ativo && p.id !== meuJogador?.id).map(p => (
+                  <button key={p.id} disabled={acting} onClick={() => handleAcusar(p.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, border: `1.5px solid ${T.hairline}`, background: T.cardWarm, cursor: "pointer", textAlign: "left" }}>
+                    <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant="light" />
+                    <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 15, color: T.ink }}>{p.apelido}</span>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowAccuse(false)} style={{ background: "none", border: "none", fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.inkSoft, cursor: "pointer", padding: "8px 0", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Cancelar
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ASK QUESTION SHEET */}
-      {showAskQuestion && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
+      <AnimatePresence>
+        {showAskQuestion && (
+          <motion.div key="ask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
             <Eyebrow color={T.inkSoft}>Fazer Pergunta</Eyebrow>
@@ -455,14 +509,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ANSWER QUESTION SHEET */}
-      {showAnswerQuestion && rodada?.estado.pergunta_atual && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+      <AnimatePresence>
+        {showAnswerQuestion && rodada?.estado.pergunta_atual && (
+          <motion.div key="answer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
             <Eyebrow color={T.inkSoft}>Responder Pergunta</Eyebrow>
@@ -488,14 +544,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 Responder ✦
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* WORD INPUT SHEET (Primeira Rodada) */}
-      {showWordInput && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+      <AnimatePresence>
+        {showWordInput && (
+          <motion.div key="word" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
             <Eyebrow color={T.inkSoft}>Primeira Rodada</Eyebrow>
@@ -521,14 +579,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 Confirmar ✦
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* GUESS SHEET */}
-      {showGuess && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px 0", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
+      <AnimatePresence>
+        {showGuess && (
+          <motion.div key="guess" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px 0", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
             <Eyebrow color={T.inkSoft}>Adivinhar Local</Eyebrow>
@@ -549,9 +609,10 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 Confirmar ✦
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

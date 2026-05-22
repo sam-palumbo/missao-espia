@@ -17,9 +17,10 @@ export async function fazerPergunta(userId: string, payload: unknown) {
   if (estado.primeira_rodada) throw new Error("Na primeira rodada não há perguntas, apenas uma palavra por jogador");
 
   const { data: perguntador } = await db
-    .from("jogadores").select("id, apelido")
+    .from("jogadores").select("id, apelido, ativo")
     .eq("sala_id", rodada.sala_id).eq("user_id", userId).single();
   if (!perguntador) throw Object.assign(new Error("Jogador não encontrado"), { status: 404 });
+  if (!perguntador.ativo) throw Object.assign(new Error("Jogador eliminado não pode agir"), { status: 403 });
   if (perguntador.id !== estado.turno_atual) throw Object.assign(new Error("Não é seu turno"), { status: 403 });
 
   const { data: destinatario } = await db

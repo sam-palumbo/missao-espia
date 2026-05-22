@@ -2,12 +2,21 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEAvatar, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+
+const playerListVariants = {
+  show: { transition: { staggerChildren: 0.07 } },
+};
+const playerItemVariants = {
+  hidden: { opacity: 0, scale: 0.88 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 380, damping: 26 } },
+};
 
 function numEspias(n: number) {
   if (n <= 6) return 1;
@@ -92,7 +101,12 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
         </div>
 
         {/* Room code — dark card */}
-        <div style={{ background: T.inkDeep, borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 340, damping: 28, delay: 0.06 }}
+          style={{ background: T.inkDeep, borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden" }}
+        >
           <InsetFrame color={T.gold} inset={6} radius={18} opacity={0.5} opacity2={0.25} />
           <div style={{ position: "relative" }}>
             <Eyebrow color={T.gold} size={10}>Código da Sala</Eyebrow>
@@ -102,7 +116,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
             <MEIcon name="share" size={12} color={T.ink} />
             {copied ? "Copiado!" : "Convidar"}
           </button>
-        </div>
+        </motion.div>
 
         {/* Stats row */}
         <div style={{ display: "flex", gap: 12 }}>
@@ -129,29 +143,36 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
             </div>
           </div>
 
-          <div style={{ background: T.card, borderRadius: 22, padding: 14, boxShadow: "0 6px 18px -12px rgba(58,42,20,0.28)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" }}>
+          <motion.div
+            style={{ background: T.card, borderRadius: 22, padding: 14, boxShadow: "0 6px 18px -12px rgba(58,42,20,0.28)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" }}
+            variants={playerListVariants}
+            initial="hidden"
+            animate="show"
+          >
             <InsetFrame color={T.sienna} inset={6} radius={18} opacity={0.25} opacity2={0.12} />
-            {players.map((p, i) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", position: "relative" }}>
-                <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant={p.user_id === anfitriaoId ? "gold" : "light"} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.apelido}</div>
-                  <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: p.user_id === anfitriaoId ? T.sienna : T.inkSoft, textTransform: "uppercase", marginTop: 2 }}>
-                    {p.user_id === anfitriaoId ? "Anfitrião" : "Pronto"}
+            <AnimatePresence>
+              {players.map((p) => (
+                <motion.div key={p.id} variants={playerItemVariants} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", position: "relative" }}>
+                  <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant={p.user_id === anfitriaoId ? "gold" : "light"} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.apelido}</div>
+                    <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: p.user_id === anfitriaoId ? T.sienna : T.inkSoft, textTransform: "uppercase", marginTop: 2 }}>
+                      {p.user_id === anfitriaoId ? "Anfitrião" : "Pronto"}
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
             {/* Empty slots */}
             {Array.from({ length: Math.max(0, 4 - players.length) }).map((_, i) => (
-              <div key={`e${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px" }}>
+              <motion.div key={`e${i}`} variants={playerItemVariants} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px" }}>
                 <div style={{ width: 38, height: 38, borderRadius: "50%", border: `1px dashed ${T.hairlineStrong}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <MEIcon name="plus" size={14} color={T.muted} />
                 </div>
                 <div style={{ fontFamily: F.sans, fontSize: 13, color: T.muted, fontStyle: "italic" }}>Aguardando…</div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
 
         {players.length < 4 && (
