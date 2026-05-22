@@ -11,6 +11,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   const { code } = use(params);
   const router = useRouter();
   const [salaId, setSalaId] = useState<string | null>(null);
+  const [salaEncerrada, setSalaEncerrada] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
   const rodada = useGameState(salaId);
@@ -18,8 +19,13 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id").eq("codigo", code).single()
-      .then(({ data }) => { if (data) setSalaId(data.id); });
+    supabase.from("salas").select("id, status").eq("codigo", code).single()
+      .then(({ data }) => {
+        if (data) {
+          setSalaId(data.id);
+          setSalaEncerrada(data.status === "encerrada");
+        }
+      });
   }, [code]);
 
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
@@ -117,10 +123,17 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
       </div>
 
       <div className="relative z-10 flex flex-col gap-3 animate-fade-up delay-300">
-        <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
-          onClick={() => router.push(`/sala/${code}/lobby`)}>
-          Nova Rodada ✦
-        </Button>
+        {salaEncerrada ? (
+          <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
+            onClick={() => router.push(`/sala/${code}/placar`)}>
+            Ver Placar Final ✦
+          </Button>
+        ) : (
+          <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
+            onClick={() => router.push(`/sala/${code}/lobby`)}>
+            Próxima Rodada ✦
+          </Button>
+        )}
         <Button variant="ghost" size="md" className="w-full font-display tracking-widest text-sm"
           onClick={() => router.push("/")}>
           Encerrar Partida

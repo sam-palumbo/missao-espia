@@ -27,24 +27,32 @@ function PlayerAvatar({ name, isHost }: { name: string; isHost?: boolean }) {
   );
 }
 
+function numEspias(n: number) {
+  if (n <= 6) return 1;
+  if (n <= 9) return 2;
+  return 3;
+}
+
 export default function LobbyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
   const { user } = useAuth();
   const [salaId, setSalaId] = useState<string | null>(null);
   const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
+  const [numRodadas, setNumRodadas] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const players = usePlayers(salaId);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, anfitriao, status").eq("codigo", code).single()
+    supabase.from("salas").select("id, anfitriao, status, num_rodadas").eq("codigo", code).single()
       .then(({ data }) => {
         if (!data) { toast.error("Sala não encontrada"); router.push("/"); return; }
         if (data.status === "jogando") { router.push(`/sala/${code}/jogo`); return; }
         setSalaId(data.id);
         setAnfitriaoId(data.anfitriao);
+        setNumRodadas(data.num_rodadas);
       });
   }, [code, router]);
 
@@ -104,6 +112,19 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
         <button onClick={copyCode} className="text-xs font-display tracking-widest text-[var(--gold)] hover:text-[var(--gold-light)] transition-colors">
           {copied ? "✓ Copiado!" : "Toque para copiar"}
         </button>
+      </div>
+
+      <div className="flex gap-3 animate-fade-up delay-150">
+        <div className="card flex-1 p-4 flex flex-col items-center gap-1">
+          <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase">Rodadas</p>
+          <p className="font-display text-2xl font-black text-[var(--stone)]">{numRodadas ?? "—"}</p>
+        </div>
+        <div className="card flex-1 p-4 flex flex-col items-center gap-1">
+          <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase">Espias</p>
+          <p className="font-display text-2xl font-black text-[var(--crimson)]">
+            {players.length >= 4 ? numEspias(players.length) : "—"}
+          </p>
+        </div>
       </div>
 
       <div className="card p-5 flex flex-col gap-1 animate-fade-up delay-200 flex-1">
