@@ -153,6 +153,7 @@ async function playBot({ nome, token, salaId, jogadorId }) {
   let votouNestaRodada = false;
   let adivinheiNestaRodada = false;
   let turnos = 0;
+  let eliminado = false;
 
   const log = (msg) => console.log(`[${nome}] ${msg}`);
 
@@ -188,6 +189,7 @@ async function playBot({ nome, token, salaId, jogadorId }) {
       votouNestaRodada = false;
       adivinheiNestaRodada = false;
       turnos = 0;
+      eliminado = false;
       const estado = rodada.estado;
       const sou_espia = estado.espia_ids.includes(jogadorId);
       log(`Rodada ${rodada.numero} iniciada. ${sou_espia ? "🕵️ SOU O ESPIA" : "👤 Jogador comum"}`);
@@ -195,6 +197,13 @@ async function playBot({ nome, token, salaId, jogadorId }) {
 
     const estado = rodada.estado;
     const { fase } = estado;
+
+    // Detectar eliminação: ordem_turnos não contém mais este jogador
+    if (!eliminado && estado.ordem_turnos.length > 0 && !estado.ordem_turnos.includes(jogadorId)) {
+      eliminado = true;
+      log("Fui eliminado — apenas observando.");
+    }
+    if (eliminado) continue;
 
     // ── Fase: jogando ──────────────────────────────────────────────────────
     if (fase === "jogando") {
