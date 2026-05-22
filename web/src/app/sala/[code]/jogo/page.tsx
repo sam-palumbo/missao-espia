@@ -282,7 +282,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 <div style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${isActive ? T.gold : T.hairlineStrong}`, background: isEliminated ? T.hairline : isActive ? T.goldSoft : T.cardWarm, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
                   <span style={{ fontFamily: F.serif, fontSize: 14, fontWeight: 600, color: isActive ? T.sienna : T.inkSoft, textDecoration: isEliminated ? "line-through" : "none" }}>{p.apelido.slice(0,2).toUpperCase()}</span>
                 </div>
-                <span style={{ fontFamily: F.sans, fontSize: 10, color: isActive ? T.ink : T.muted, fontWeight: isActive ? 700 : 400 }}>{p.apelido.split(" ")[0]}</span>
+                <span style={{ fontFamily: F.sans, fontSize: 10, color: isActive ? T.ink : T.muted, fontWeight: isActive ? 700 : 400, textDecoration: isEliminated ? "line-through" : "none" }}>{p.apelido.split(" ")[0]}</span>
               </button>
             );
           })}
@@ -360,6 +360,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* ELIMINATED OBSERVER BANNER */}
+      {/* banner oculto durante votação — o overlay de votação já exibe a mensagem de observador */}
       {meuEliminado && fase !== "votacao" && (
         <div style={{ position: "relative", zIndex: 1, background: T.brick, borderRadius: 14, padding: "12px 16px", textAlign: "center" }}>
           <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
