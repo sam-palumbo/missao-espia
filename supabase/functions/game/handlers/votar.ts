@@ -33,7 +33,16 @@ export async function votar(userId: string, payload: unknown) {
   if (!votante || !votante.ativo) throw Object.assign(new Error("Jogador não encontrado ou eliminado"), { status: 403 });
   if (votante.id === estado.acusado_id) throw Object.assign(new Error("Acusado não pode votar"), { status: 403 });
 
-  // Inserir voto (unique constraint evita duplicatas)
+  // Verificar se jogador já votou nesta acusação
+  const { data: jaVotou } = await db
+    .from("votos")
+    .select("id")
+    .eq("rodada_id", rodada_id)
+    .eq("votante_id", votante.id)
+    .eq("acusado_id", estado.acusado_id)
+    .maybeSingle();
+  if (jaVotou) throw Object.assign(new Error("Você já votou nesta acusação"), { status: 409 });
+
   const { error: votoErr } = await db.from("votos").insert({
     rodada_id,
     votante_id: votante.id,
