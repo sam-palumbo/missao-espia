@@ -2,30 +2,12 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
-
-function PlayerAvatar({ name, isHost }: { name: string; isHost?: boolean }) {
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="relative">
-        <div className="w-10 h-10 rounded-full bg-[var(--gold-bg)] border-2 border-[var(--gold-light)] flex items-center justify-center">
-          <span className="font-display text-sm font-bold text-[var(--gold)]">{name.slice(0, 2).toUpperCase()}</span>
-        </div>
-        {isHost && <span className="absolute -top-1 -right-1 text-[10px]">✦</span>}
-      </div>
-      <div className="flex-1">
-        <p className="font-body font-bold text-[var(--stone)] text-sm">{name}</p>
-        {isHost && <p className="text-[10px] text-[var(--gold)] font-display tracking-widest">ANFITRIÃO</p>}
-      </div>
-      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-    </div>
-  );
-}
+import { ParchmentBg, InsetFrame, MEAvatar, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 function numEspias(n: number) {
   if (n <= 6) return 1;
@@ -59,20 +41,15 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   useEffect(() => {
     if (!salaId) return;
     const supabase = createClient();
-
-    // Realtime
     const channel = supabase
       .channel(`sala-status:${salaId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "salas", filter: `id=eq.${salaId}` },
         (payload) => { if (payload.new.status === "jogando") router.push(`/sala/${code}/jogo`); })
       .subscribe();
-
-    // Polling fallback para jogadores que não recebem o evento Realtime
     const interval = setInterval(async () => {
       const { data } = await supabase.from("salas").select("status").eq("id", salaId).single();
       if (data?.status === "jogando") router.push(`/sala/${code}/jogo`);
     }, 3000);
-
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [salaId, code, router]);
 
@@ -96,64 +73,103 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const espias = players.length >= 4 ? numEspias(players.length) : null;
+
   return (
-    <main className="relative min-h-dvh flex flex-col px-5 pt-10 pb-10 max-w-sm mx-auto gap-6">
-      <header className="flex items-center justify-between animate-fade-up">
-        <div>
-          <p className="font-display text-[10px] tracking-[0.3em] text-[var(--muted)] uppercase">Sala de Espera</p>
-          <h2 className="font-display text-xl font-bold text-[var(--stone)]">Missão Espia</h2>
-        </div>
-        <Link href="/" className="text-xs text-[var(--muted)] font-display tracking-wider hover:text-[var(--stone)] transition-colors">Sair</Link>
-      </header>
+    <main style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px 20px 48px", maxWidth: 390, margin: "0 auto", background: T.bg }}>
+      <ParchmentBg />
 
-      <div className="card p-5 flex flex-col items-center gap-3 animate-fade-up delay-100 animate-pulse-gold">
-        <p className="font-display text-[10px] tracking-[0.35em] text-[var(--muted)] uppercase">Compartilhe o Código</p>
-        <div className="room-code">{code}</div>
-        <button onClick={copyCode} className="text-xs font-display tracking-widest text-[var(--gold)] hover:text-[var(--gold-light)] transition-colors">
-          {copied ? "✓ Copiado!" : "Toque para copiar"}
-        </button>
-      </div>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 16 }}>
+        {/* TopBar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
+            <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
+          </Link>
+          <Eyebrow color={T.inkSoft}>Sala de Espera</Eyebrow>
+          <button onClick={copyCode} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}`, cursor: "pointer" }}>
+            <MEIcon name="share" size={16} color={T.inkSoft} />
+          </button>
+        </div>
 
-      <div className="flex gap-3 animate-fade-up delay-150">
-        <div className="card flex-1 p-4 flex flex-col items-center gap-1">
-          <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase">Rodadas</p>
-          <p className="font-display text-2xl font-black text-[var(--stone)]">{numRodadas ?? "—"}</p>
+        {/* Room code — dark card */}
+        <div style={{ background: T.inkDeep, borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
+          <InsetFrame color={T.gold} inset={6} radius={18} opacity={0.5} opacity2={0.25} />
+          <div style={{ position: "relative" }}>
+            <Eyebrow color={T.gold} size={10}>Código da Sala</Eyebrow>
+            <div style={{ fontFamily: F.mono, fontSize: 28, fontWeight: 700, letterSpacing: "0.4em", marginTop: 6, color: T.gold }}>{code}</div>
+          </div>
+          <button onClick={copyCode} style={{ position: "relative", background: T.gold, color: T.ink, border: "none", borderRadius: 999, padding: "8px 14px", fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <MEIcon name="share" size={12} color={T.ink} />
+            {copied ? "Copiado!" : "Convidar"}
+          </button>
         </div>
-        <div className="card flex-1 p-4 flex flex-col items-center gap-1">
-          <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase">Espias</p>
-          <p className="font-display text-2xl font-black text-[var(--crimson)]">
-            {players.length >= 4 ? numEspias(players.length) : "—"}
-          </p>
-        </div>
-      </div>
 
-      <div className="card p-5 flex flex-col gap-1 animate-fade-up delay-200 flex-1">
-        <div className="flex items-center justify-between mb-2">
-          <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase">Jogadores</p>
-          <span className="text-xs font-body text-[var(--muted)]">{players.length} / 12</span>
-        </div>
-        <div className="divide-y divide-[var(--border)]">
-          {players.map(p => (
-            <PlayerAvatar key={p.id} name={p.apelido} isHost={p.user_id === anfitriaoId} />
+        {/* Stats row */}
+        <div style={{ display: "flex", gap: 12 }}>
+          {[
+            { label: "Rodadas", value: numRodadas ?? "—", icon: "clock" },
+            { label: "Espias", value: espias ?? "—", color: T.brick },
+          ].map((s, i) => (
+            <div key={i} style={{ flex: 1, background: T.card, borderRadius: 18, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, position: "relative", boxShadow: "0 4px 14px -10px rgba(58,42,20,0.2)" }}>
+              <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
+              <div style={{ position: "relative", flex: 1 }}>
+                <Eyebrow color={T.inkSoft} size={9}>{s.label}</Eyebrow>
+                <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: (s as {color?: string}).color ?? T.ink, lineHeight: 1.1, marginTop: 2 }}>{s.value}</div>
+              </div>
+            </div>
           ))}
         </div>
-        {players.length < 4 && (
-          <p className="text-xs text-[var(--muted)] font-light italic text-center mt-3">
-            Aguardando mínimo de 4 jogadores...
-          </p>
-        )}
-      </div>
 
-      <div className="animate-fade-up delay-400">
+        {/* Players */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, padding: "0 4px" }}>
+            <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink }}>Jogadores</div>
+            <div style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: T.sienna, background: T.siennaSoft, padding: "4px 10px", borderRadius: 999, letterSpacing: "0.1em" }}>
+              {String(players.length).padStart(2,"0")} / 12
+            </div>
+          </div>
+
+          <div style={{ background: T.card, borderRadius: 22, padding: 14, boxShadow: "0 6px 18px -12px rgba(58,42,20,0.28)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, position: "relative" }}>
+            <InsetFrame color={T.sienna} inset={6} radius={18} opacity={0.25} opacity2={0.12} />
+            {players.map((p, i) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", position: "relative" }}>
+                <MEAvatar size={38} initial={p.apelido.slice(0,1)} variant={p.user_id === anfitriaoId ? "gold" : "light"} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.apelido}</div>
+                  <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: p.user_id === anfitriaoId ? T.sienna : T.inkSoft, textTransform: "uppercase", marginTop: 2 }}>
+                    {p.user_id === anfitriaoId ? "Anfitrião" : "Pronto"}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Empty slots */}
+            {Array.from({ length: Math.max(0, 4 - players.length) }).map((_, i) => (
+              <div key={`e${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px" }}>
+                <div style={{ width: 38, height: 38, borderRadius: "50%", border: `1px dashed ${T.hairlineStrong}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <MEIcon name="plus" size={14} color={T.muted} />
+                </div>
+                <div style={{ fontFamily: F.sans, fontSize: 13, color: T.muted, fontStyle: "italic" }}>Aguardando…</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {players.length < 4 && (
+          <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 13, color: T.inkSoft }}>
+            Aguardando mínimo de 4 jogadores…
+          </div>
+        )}
+
+        <div style={{ flex: 1 }} />
+
         {isHost ? (
-          <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
-            disabled={players.length < 4 || starting} onClick={handleIniciar}>
-            {starting ? "Iniciando..." : "Iniciar Partida ✦"}
-          </Button>
+          <PrimaryBtn disabled={players.length < 4 || starting} accent={T.gold} onClick={handleIniciar}>
+            {starting ? "Iniciando…" : "Iniciar Partida"}
+          </PrimaryBtn>
         ) : (
-          <p className="text-center text-sm text-[var(--muted)] font-display tracking-wider">
-            Aguardando o anfitrião iniciar...
-          </p>
+          <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 14, color: T.inkSoft }}>
+            Aguardando o anfitrião iniciar…
+          </div>
         )}
       </div>
     </main>

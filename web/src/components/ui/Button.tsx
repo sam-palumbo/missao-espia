@@ -13,18 +13,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-body font-700 rounded-2xl transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none",
+          "inline-flex items-center justify-center gap-2 font-sans font-semibold rounded-2xl transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none select-none",
           {
-            "primary": "bg-[var(--stone)] text-white shadow-[0_4px_16px_rgba(28,25,23,0.25)] hover:bg-[var(--stone-mid)]",
-            "secondary": "bg-[var(--gold-bg)] text-[var(--gold)] border border-[var(--gold-light)] hover:bg-[var(--gold)] hover:text-white",
-            "ghost": "bg-transparent text-[var(--stone-mid)] hover:bg-[var(--border)]",
-            "danger": "bg-[var(--crimson-bg)] text-[var(--crimson)] border border-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white",
+            primary:   "bg-[var(--ink)] text-[var(--card-warm)] shadow-[0_4px_16px_rgba(42,28,10,0.3)] hover:opacity-90",
+            secondary: "bg-[var(--sienna-soft)] text-[var(--sienna)] border border-[var(--sienna)] hover:bg-[var(--sienna)] hover:text-[var(--card-warm)]",
+            ghost:     "bg-transparent text-[var(--ink-soft)] hover:bg-[var(--hairline)]",
+            danger:    "bg-[var(--brick-soft)] text-[var(--brick)] border border-[var(--brick)] hover:bg-[var(--brick)] hover:text-white",
           }[variant],
-          {
-            "sm": "h-9 px-4 text-sm",
-            "md": "h-12 px-6 text-base",
-            "lg": "h-14 px-8 text-lg",
-          }[size],
+          { sm: "h-9 px-4 text-sm", md: "h-12 px-6 text-base", lg: "h-14 px-8 text-lg" }[size],
           className
         )}
         {...props}

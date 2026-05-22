@@ -1,11 +1,11 @@
 "use client";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
 import { EVENTOS } from "@/lib/eventos";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { createClient } from "@/lib/supabase";
+import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 export default function ResultadoPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -21,10 +21,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
     const supabase = createClient();
     supabase.from("salas").select("id, status").eq("codigo", code).single()
       .then(({ data }) => {
-        if (data) {
-          setSalaId(data.id);
-          setSalaEncerrada(data.status === "encerrada");
-        }
+        if (data) { setSalaId(data.id); setSalaEncerrada(data.status === "encerrada"); }
       });
   }, [code]);
 
@@ -37,107 +34,102 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
 
   if (!rodada || players.length === 0) {
     return (
-      <main className="min-h-dvh flex items-center justify-center bg-[var(--parchment)]">
-        <p className="font-display text-xs tracking-widest text-[var(--muted)] uppercase animate-pulse">Carregando...</p>
+      <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
+        <div style={{ fontFamily: F.sans, fontSize: 11, letterSpacing: "0.18em", color: T.muted, textTransform: "uppercase" }}>Carregando…</div>
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-dvh flex flex-col px-5 pt-10 pb-10 max-w-sm mx-auto gap-6 overflow-hidden">
+    <main style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px 20px 48px", maxWidth: 390, margin: "0 auto", background: T.bg, gap: 16 }}>
+      <ParchmentBg />
 
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full opacity-20"
-          style={{ background: `radial-gradient(circle, ${groupWon ? "var(--gold-light)" : "var(--crimson)"} 0%, transparent 70%)` }} />
+      {/* Header */}
+      <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+        <Eyebrow color={T.inkSoft}>Resultado da Rodada</Eyebrow>
+        <div style={{ marginTop: 8 }}><MERule color={T.sienna} /></div>
       </div>
 
-      <header className="relative z-10 text-center animate-fade-up">
-        <p className="font-display text-[10px] tracking-[0.35em] text-[var(--muted)] uppercase mb-3">Resultado da Rodada</p>
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-display tracking-widest mb-3"
-          style={{
-            borderColor: groupWon ? "var(--gold-light)" : "var(--crimson)",
-            color: groupWon ? "var(--gold)" : "var(--crimson)",
-            background: groupWon ? "var(--gold-bg)" : "var(--crimson-bg)",
-          }}>
-          {groupWon ? "✦ Grupo Venceu" : "Espia Venceu"}
-        </div>
-        <h2 className="font-display text-3xl font-black text-[var(--stone)] leading-tight">
-          {groupWon ? "Espia\nDesmascarado" : "Missão\nCumprida"}
-        </h2>
-      </header>
-
-      <button
-        className="relative z-10 card p-5 text-center flex flex-col items-center gap-3 w-full animate-fade-up delay-100 active:scale-[0.98] transition-transform"
-        onClick={() => setRevealed(true)}>
-        {revealed && evento ? (
-          <>
-            <p className="font-display text-[10px] tracking-[0.3em] text-[var(--gold)] uppercase">
-              {evento.testament === "AT" ? "Antigo Testamento" : "Novo Testamento"}
-            </p>
-            <p className="font-display text-xl font-bold text-[var(--stone)]">{evento.evento}</p>
-            <p className="text-sm text-[var(--muted)] font-light">{evento.local}</p>
-          </>
-        ) : (
-          <>
-            <div className="w-12 h-12 rounded-full bg-[var(--gold-bg)] flex items-center justify-center">
-              <span className="text-xl">✦</span>
+      {/* Victory banner */}
+      <div style={{ position: "relative", zIndex: 1, background: groupWon ? `radial-gradient(120% 100% at 50% 0%, ${T.gold} 0%, #B58A30 100%)` : `linear-gradient(135deg, ${T.brick} 0%, #7A2E10 100%)`, borderRadius: 22, padding: "18px 18px 16px", overflow: "hidden" }}>
+        <InsetFrame color={groupWon ? T.ink : T.gold} inset={6} radius={18} opacity={0.4} opacity2={0.2} />
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
+          <MEMedallion size={68} inset="star" variant={groupWon ? "gold" : "dark"} />
+          <div style={{ flex: 1 }}>
+            <Eyebrow color={groupWon ? T.ink : T.goldSoft} size={10}>{groupWon ? "Vitória do grupo" : "Vitória do espia"}</Eyebrow>
+            <div style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 600, lineHeight: 1.05, color: groupWon ? T.ink : T.goldSoft, marginTop: 4 }}>
+              {groupWon ? "Espia caçado!" : "Missão cumprida"}
             </div>
-            <p className="font-display text-sm font-bold text-[var(--stone)]">Revelar Evento da Rodada</p>
-            <p className="text-xs text-[var(--muted)] font-display tracking-wider">Toque para revelar</p>
-          </>
-        )}
-      </button>
+          </div>
+        </div>
+      </div>
 
-      <div className="relative z-10 card p-5 flex flex-col gap-1 animate-fade-up delay-200">
-        <p className="font-display text-[10px] tracking-widest text-[var(--muted)] uppercase mb-3">Pontuação</p>
-        <div className="divide-y divide-[var(--border)]">
-          {[...players].sort((a, b) => b.pontuacao - a.pontuacao).map((p, i) => {
+      {/* Spy reveal */}
+      {espias.length > 0 && (
+        <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 20, padding: "14px 16px", boxShadow: "0 6px 20px -12px rgba(58,42,20,0.25)" }}>
+          <InsetFrame color={T.sienna} inset={5} radius={16} opacity={0.22} opacity2={0.1} />
+          <div style={{ position: "relative" }}>
+            <Eyebrow color={T.inkSoft} size={10}>O espia era</Eyebrow>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8 }}>
+              <MEAvatar size={52} initial={espias[0].apelido.slice(0,1)} variant="light" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, lineHeight: 1.05, color: T.ink }}>{espias[0].apelido}</div>
+                <Eyebrow color={T.brick} size={10}>{espiaAdivinhou ? "Adivinhou o local" : "Não adivinhou o local"}</Eyebrow>
+              </div>
+              <div style={{ background: espiaAdivinhou ? T.siennaSoft : T.brickSoft, color: espiaAdivinhou ? T.sienna : T.brick, padding: "5px 10px", borderRadius: 999, fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>
+                {espiaAdivinhou ? "+1 pt" : "0 pt"}
+              </div>
+            </div>
+            {/* Event reveal */}
+            <button onClick={() => setRevealed(true)} style={{ marginTop: 12, padding: "10px 12px", background: T.bg, borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center", border: `1px solid ${T.hairline}`, width: "100%", cursor: "pointer" }}>
+              <div>
+                <Eyebrow color={T.inkSoft} size={10}>Local da rodada</Eyebrow>
+                <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.ink, marginTop: 3 }}>
+                  {revealed && evento ? evento.local : "Toque para revelar"}
+                </div>
+                {revealed && evento && <div style={{ fontFamily: F.sans, fontSize: 11, color: T.muted, marginTop: 2 }}>{evento.evento}</div>}
+              </div>
+              <MEIcon name="book" size={20} color={T.sienna} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scores */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, padding: "0 4px" }}>
+          <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.ink }}>Pontuação</div>
+        </div>
+        <div style={{ background: T.card, borderRadius: 18, padding: 10, boxShadow: "0 4px 14px -10px rgba(58,42,20,0.2)", position: "relative" }}>
+          <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
+          {[...players].sort((a,b) => b.pontuacao - a.pontuacao).map((p, i) => {
             const isEspia = espiaIds.includes(p.id);
             return (
-              <div key={p.id} className="flex items-center gap-3 py-3">
-                <span className="font-display text-xs text-[var(--muted)] w-4">{i + 1}</span>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center border-2 flex-shrink-0"
-                  style={{ borderColor: isEspia ? "var(--crimson)" : "var(--gold-light)", background: isEspia ? "var(--crimson-bg)" : "var(--gold-bg)" }}>
-                  <span className="font-display text-xs font-bold" style={{ color: isEspia ? "var(--crimson)" : "var(--gold)" }}>
-                    {p.apelido.slice(0, 2).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-body font-bold text-sm text-[var(--stone)]">{p.apelido}</p>
-                    {isEspia && (
-                      <span className="text-[10px] font-display tracking-widest text-[var(--crimson)] border border-[var(--crimson)] rounded px-1.5 py-0.5">ESPIA</span>
-                    )}
-                    {!p.ativo && (
-                      <span className="text-[10px] font-display tracking-widest text-[var(--muted)] border border-[var(--border)] rounded px-1.5 py-0.5">ELIMINADO</span>
-                    )}
-                  </div>
-                </div>
-                <span className="font-display font-bold text-lg" style={{ color: p.pontuacao > 0 ? "var(--gold)" : "var(--muted)" }}>
-                  {p.pontuacao}
-                </span>
+              <div key={p.id} style={{ position: "relative", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderBottom: i < players.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
+                <div style={{ width: 18, fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: i === 0 ? T.sienna : T.muted, textAlign: "center" }}>{String(i+1).padStart(2,"0")}</div>
+                <MEAvatar size={34} initial={p.apelido.slice(0,1)} variant={i === 0 ? "gold" : "light"} />
+                <div style={{ flex: 1, fontFamily: F.sans, fontSize: 15, fontWeight: 600, color: T.ink }}>{p.apelido}</div>
+                {isEspia && <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: T.brick, border: `1px solid ${T.brick}`, borderRadius: 4, padding: "2px 6px", textTransform: "uppercase" }}>Espia</span>}
+                <div style={{ fontFamily: F.serif, fontSize: 20, fontWeight: 600, minWidth: 28, textAlign: "right", color: T.ink, fontVariantNumeric: "tabular-nums" }}>{p.pontuacao}</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col gap-3 animate-fade-up delay-300">
-        {salaEncerrada ? (
-          <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
-            onClick={() => router.push(`/sala/${code}/placar`)}>
-            Ver Placar Final ✦
-          </Button>
-        ) : (
-          <Button variant="primary" size="lg" className="w-full font-display tracking-widest text-sm"
-            onClick={() => router.push(`/sala/${code}/lobby`)}>
-            Próxima Rodada ✦
-          </Button>
-        )}
-        <Button variant="ghost" size="md" className="w-full font-display tracking-widest text-sm"
-          onClick={() => router.push("/")}>
-          Encerrar Partida
-        </Button>
+      <div style={{ flex: 1 }} />
+
+      <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10 }}>
+        <button onClick={() => router.push("/")} style={{ flex: 1, background: T.card, color: T.ink, border: `1px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+          Sair
+        </button>
+        <div style={{ flex: 2 }}>
+          {salaEncerrada ? (
+            <PrimaryBtn accent={T.gold} onClick={() => router.push(`/sala/${code}/placar`)}>Ver Placar Final</PrimaryBtn>
+          ) : (
+            <PrimaryBtn accent={T.gold} onClick={() => router.push(`/sala/${code}/lobby`)}>Próxima Rodada</PrimaryBtn>
+          )}
+        </div>
       </div>
     </main>
   );

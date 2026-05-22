@@ -1,21 +1,43 @@
 import type { Metadata, Viewport } from "next";
-import { Cinzel, Lato } from "next/font/google";
+import { Cormorant_Garamond, EB_Garamond, Frank_Ruhl_Libre, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
+const cormorant = Cormorant_Garamond({
+  variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const lato = Lato({
-  variable: "--font-lato",
+const ebGaramond = EB_Garamond({
+  variable: "--font-body-serif",
   subsets: ["latin"],
-  weight: ["300", "400", "700"],
+  weight: ["400", "500"],
   style: ["normal", "italic"],
+  display: "swap",
+});
+
+const frankRuhl = Frank_Ruhl_Libre({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700", "900"],
+  display: "swap",
+});
+
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["500", "700"],
   display: "swap",
 });
 
@@ -29,16 +51,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#F7F3EC",
+  themeColor: "#ECE2C9",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${cinzel.variable} ${lato.variable} h-full`}>
+    <html lang="pt-BR" className={`${cormorant.variable} ${ebGaramond.variable} ${frankRuhl.variable} ${inter.variable} ${jetbrains.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         <AuthProvider>{children}</AuthProvider>
         <Toaster position="top-center" />
