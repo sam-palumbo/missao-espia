@@ -40,6 +40,20 @@ vi.mock("@/lib/game-actions", () => ({
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/eventos", () => ({ EVENTOS: [] }));
 
+vi.mock("motion/react", async () => {
+  const { createElement } = await import("react");
+  return {
+    motion: new Proxy({} as Record<string, unknown>, {
+      get: (_, tag: string) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function MotionEl({ children, initial, animate, exit, transition, whileTap, whileHover, variants, ...rest }: Record<string, unknown>) {
+          return createElement(tag as keyof JSX.IntrinsicElements, rest as React.HTMLAttributes<HTMLElement>, children as React.ReactNode);
+        },
+    }),
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
 vi.mock("@/components/ui/design", () => {
   const T = new Proxy({}, { get: () => "" });
   const F = new Proxy({}, { get: () => "" });

@@ -32,7 +32,7 @@ Jogo de dedução social com temática bíblica.
 
 ### Primeira Rodada
 
-Na primeira rodada, **não há perguntas**. Em sentido horário, cada jogador apenas diz **uma única palavra** relacionada ao evento ou local. Isso garante um início equilibrado sem entregar o evento logo de cara.
+Na primeira rodada, **não há perguntas nem acusações**. Em sentido horário, cada jogador apenas diz **uma única palavra** relacionada ao evento ou local. Isso garante um início equilibrado sem entregar o evento logo de cara.
 
 ---
 

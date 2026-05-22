@@ -99,7 +99,7 @@ Cada jogador acessa o app pelo próprio celular. O app distribui as cartas, cont
 - [ ] Timer com fórmula: 5 min + jogadores − espias (ex: 4 jogadores e 1 espia = 8 min; 7 jogadores e 2 espias = 10 min; 12 jogadores e 3 espias = 14 min)
 - [ ] Controle de turnos em sentido horário: cada jogador faz uma pergunta a qualquer outro
 - [ ] O perguntado deve responder (sem passar), podendo ser vago ou específico
-- [ ] Primeira rodada: não há perguntas, cada jogador apenas diz uma única palavra relacionada ao evento ou local
+- [ ] Primeira rodada: não há perguntas nem acusações, cada jogador apenas diz uma única palavra relacionada ao evento ou local
 - [ ] Controle de turnos em tempo real
 - [ ] Fluxo de acusação e votação
 - [ ] Adivinhação do espia com lista pública

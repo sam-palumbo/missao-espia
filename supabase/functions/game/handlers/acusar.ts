@@ -19,6 +19,7 @@ export async function acusar(userId: string, payload: unknown) {
 
   const estado = rodada.estado;
   if (estado.fase !== "jogando") throw new Error("Só é possível acusar na fase 'jogando'");
+  if (estado.primeira_rodada) throw new Error("Não é possível acusar na primeira rodada");
   if (estado.acusou_neste_turno) throw Object.assign(new Error("Você já acusou neste turno"), { status: 403 });
 
   // Verificar que caller é o jogador do turno atual

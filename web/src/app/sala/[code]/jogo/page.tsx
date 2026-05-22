@@ -388,7 +388,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             Fazer Pergunta
           </button>
         )}
-        {!meuEliminado && ehMeuTurno && fase === "jogando" && !acusouNesteTurno && (
+        {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && !acusouNesteTurno && (
           <button onClick={() => setShowAccuse(true)} style={{ flex: 1, background: T.brick, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
             <MEIcon name="spy" size={15} color="white" />
             Acusar

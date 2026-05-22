@@ -72,7 +72,7 @@ const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: tru
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1" } = {}): RodadaAtual {
+function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
   return {
     id: "rodada-1",
     numero: 1,
@@ -90,7 +90,7 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1" } = 
       adivinhou_evento_id: null,
       pergunta_atual: null,
       historico: [],
-      primeira_rodada: false,
+      primeira_rodada: primeiraRodada,
       palavras_primeira_rodada: [],
     },
   };
@@ -151,6 +151,19 @@ describe("Botão Acusar", () => {
   it("não aparece quando não é o turno do jogador", async () => {
     vi.mocked(useGameState).mockReturnValue(
       rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-2" }),
+    );
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+    });
+  });
+
+  it("não aparece na primeira rodada mesmo sendo o turno do jogador", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      rodadaJogando({ primeiraRodada: true, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
     );
 
     await act(async () => { renderJogo(); });
