@@ -97,6 +97,7 @@ Cada jogador acessa o app pelo próprio celular. O app distribui as cartas, cont
 - [ ] Placar final ao fim da partida
 
 ### Secundárias
+- [x] Chat de texto durante a partida (tempo real via Supabase Realtime)
 - [ ] Histórico de partidas para contas Google
 - [ ] Contador de eliminações erradas com alerta de limite
 - [ ] Animações de revelação de carta e resultado

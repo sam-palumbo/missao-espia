@@ -9,6 +9,7 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { useChat } from "@/hooks/useChat";
 
 // ── Timer ──────────────────────────────────────────────────────
 function useTimer(timerEnd: string | null) {
@@ -105,8 +106,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
+  const { mensagens, enviar } = useChat(salaId);
+  const [lastSeenCount, setLastSeenCount] = useState(0);
+  const unread = showChat ? 0 : mensagens.length - lastSeenCount;
 
   const { display, pct } = useTimer(rodada?.estado.timer_end ?? null);
 
@@ -149,6 +155,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     try { await gameActions.adivinhar(rodada.id, selectedGuessId); setShowGuess(false); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao adivinhar"); }
     finally { setActing(false); }
+  }
+
+  async function handleEnviarMensagem() {
+    if (!chatInput.trim() || !salaId || !meuJogador) return;
+    const texto = chatInput.trim();
+    setChatInput("");
+    await enviar(salaId, meuJogador.id, meuJogador.apelido, texto);
   }
 
   async function handleProximoTurno() {
@@ -236,6 +249,21 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
       <div style={{ flex: 1 }} />
 
+      {/* Chat button */}
+      <button
+        onClick={() => { setShowChat(true); setLastSeenCount(mensagens.length); }}
+        style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 8, background: T.card, border: `1px solid ${T.hairline}`, borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.inkSoft, width: "100%" }}>
+        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        <span style={{ flex: 1, textAlign: "left" }}>
+          {mensagens.length > 0 ? mensagens[mensagens.length - 1].texto.slice(0, 40) + (mensagens[mensagens.length - 1].texto.length > 40 ? "…" : "") : "Chat da sala…"}
+        </span>
+        {unread > 0 && (
+          <span style={{ background: T.brick, color: "white", fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 7px", fontFamily: F.mono }}>{unread}</span>
+        )}
+      </button>
+
       {/* Action buttons */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10 }}>
         {isSpy && (fase === "jogando" || fase === "adivinhacao") && (
@@ -294,6 +322,69 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             <button onClick={() => setShowAccuse(false)} style={{ background: "none", border: "none", fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.inkSoft, cursor: "pointer", padding: "8px 0", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               Cancelar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* CHAT SHEET */}
+      {showChat && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.7)", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "20px 20px 0", display: "flex", flexDirection: "column", gap: 12, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", height: "70dvh" }}>
+            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative" }}>
+              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, position: "absolute", left: "50%", transform: "translateX(-50%)", top: -8 }} />
+              <Eyebrow color={T.inkSoft}>Chat da Sala</Eyebrow>
+              <button onClick={() => { setShowChat(false); setLastSeenCount(mensagens.length); }} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M6 6 L18 18 M18 6 L6 18" /></svg>
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingRight: 4 }}>
+              {mensagens.length === 0 ? (
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 14, color: T.muted }}>Nenhuma mensagem ainda.<br />Seja o primeiro a escrever.</div>
+                </div>
+              ) : mensagens.map((m) => {
+                const isMe = m.jogador_id === meuJogador?.id;
+                return (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", gap: 3 }}>
+                    {!isMe && (
+                      <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, color: T.sienna, letterSpacing: "0.1em", textTransform: "uppercase", paddingLeft: 4 }}>
+                        {m.apelido}
+                      </div>
+                    )}
+                    <div style={{ maxWidth: "80%", padding: "9px 14px", borderRadius: isMe ? "16px 4px 16px 16px" : "4px 16px 16px 16px", background: isMe ? T.ink : T.cardWarm, border: `1px solid ${isMe ? "transparent" : T.hairlineStrong}`, fontFamily: F.bodySerif, fontSize: 15, color: isMe ? T.cardWarm : T.ink, lineHeight: 1.4 }}>
+                      {m.texto}
+                    </div>
+                    <div style={{ fontFamily: F.mono, fontSize: 9, color: T.muted, paddingLeft: 4, paddingRight: 4 }}>
+                      {new Date(m.criada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Input */}
+            <div style={{ display: "flex", gap: 8, padding: "12px 0 20px", borderTop: `1px solid ${T.hairline}` }}>
+              <input
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEnviarMensagem(); } }}
+                placeholder="Escreva uma mensagem…"
+                maxLength={200}
+                style={{ flex: 1, background: T.cardWarm, border: `1px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "10px 16px", fontFamily: F.bodySerif, fontSize: 15, color: T.ink, outline: "none" }}
+              />
+              <button
+                onClick={handleEnviarMensagem}
+                disabled={!chatInput.trim()}
+                style={{ width: 44, height: 44, borderRadius: "50%", background: chatInput.trim() ? T.ink : T.hairlineStrong, border: "none", cursor: chatInput.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 150ms" }}>
+                <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={chatInput.trim() ? T.cardWarm : T.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2 L11 13 M22 2 L15 22 L11 13 L2 9 Z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
