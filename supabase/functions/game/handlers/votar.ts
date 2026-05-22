@@ -118,6 +118,7 @@ export async function votar(userId: string, payload: unknown) {
   }
 
   // Continuar jogo com eliminação registrada
+  // acusar.ts garante acusado_id !== turno_atual, logo turno_atual não precisa ser atualizado
   const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id);
 
   await db
