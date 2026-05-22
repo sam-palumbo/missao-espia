@@ -20,7 +20,7 @@ This stack is designed for maximum mobile performance, ease of maintenance, and 
 | Visuals | **Lucide React** | Essential minimalist icon library for UI. |
 | Mobile UX | **Vaul** | Bottom sheets (Drawers) for mobile-native feel. |
 | Forms | **React Hook Form** | High-performance state management and input validation. |
-| Unit Testing | **Jest** | Logic testing and isolated function verification. |
+| Unit Testing | **Vitest + React Testing Library** | Component and logic testing in jsdom environment. |
 | E2E Testing | **Playwright** | Real-world usage simulation on mobile devices. |
 
 ### Complementary Tools (Optional)

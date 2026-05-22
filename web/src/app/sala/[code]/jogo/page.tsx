@@ -129,15 +129,15 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   const meuJogador = players.find(p => p.user_id === user?.id);
 
-  // Show answer sheet when player is the recipient of a question
+  // Show answer sheet when player is the recipient of a question; close when phase changes
   useEffect(() => {
     if (rodada?.estado.fase === "aguardando_resposta" && rodada.estado.pergunta_atual) {
       const isRecipient = rodada.estado.pergunta_atual.destinatario_id === meuJogador?.id;
-      if (isRecipient && !showAnswerQuestion) {
-        setShowAnswerQuestion(true);
-      }
+      if (isRecipient) setShowAnswerQuestion(true);
+    } else {
+      setShowAnswerQuestion(false);
     }
-  }, [rodada?.estado.fase, rodada?.estado.pergunta_atual, meuJogador?.id, showAnswerQuestion]);
+  }, [rodada?.estado.fase, rodada?.estado.pergunta_atual, meuJogador?.id]);
   const isSpy = rodada ? (rodada.estado.espia_ids ?? []).includes(meuJogador?.id ?? "") : false;
   const ehMeuTurno = meuJogador?.id === rodada?.estado.turno_atual;
   const fase = rodada?.estado.fase ?? "jogando";

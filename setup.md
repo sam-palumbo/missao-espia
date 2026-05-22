@@ -159,6 +159,31 @@ Missao_Espia/
 
 ---
 
+## Deploy na Vercel
+
+O projeto já está vinculado à Vercel. Para configurar variáveis de ambiente no projeto da Vercel (necessário uma vez ao criar o projeto ou mudar de conta):
+
+```bash
+cd web
+npx vercel link --yes                        # vincula ao projeto existente
+
+# Adicionar as duas variáveis para produção e development
+npx vercel env add NEXT_PUBLIC_SUPABASE_URL production --value <url> --yes
+npx vercel env add NEXT_PUBLIC_SUPABASE_URL development --value <url> --yes
+npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production --value <key> --yes
+npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY development --value <key> --yes
+
+# Verificar
+npx vercel env ls
+
+# Fazer deploy manual (normalmente o push ao GitHub já dispara o deploy)
+npx vercel --prod --yes
+```
+
+> **Atenção:** sem as variáveis de ambiente configuradas na Vercel, o app carrega mas falha no lado do cliente com "This page couldn't load" — o cliente Supabase não consegue inicializar.
+
+---
+
 ## Problemas conhecidos e soluções
 
 | Problema | Causa | Solução |
@@ -168,3 +193,4 @@ Missao_Espia/
 | `GET /jogadores 500` | RLS com recursão infinita | Migration 3 resolve; confirmar que `db push` foi executado |
 | Jogadores não atualizam em tempo real | Tabelas fora da publicação Realtime | Executar o `alter publication` do passo 6 |
 | Lobby travado em "Iniciando..." | Realtime de `salas` não funcionando | Passo 6 resolve; o polling de 3s é o fallback enquanto isso |
+| "This page couldn't load" na Vercel | Variáveis de ambiente ausentes no projeto Vercel | Adicionar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` via `vercel env add` (ver seção Deploy na Vercel) |
