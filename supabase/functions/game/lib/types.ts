@@ -2,6 +2,7 @@
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
 export type FaseJogo = "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "resultado";
+export type ModoSala = "online" | "presencial";
 
 export interface PerguntaAtual {
   perguntador_id: string;
@@ -26,13 +27,19 @@ export interface HistoricoVotacao {
   resultado: "eliminado" | "sobreviveu" | "espia_pego";
 }
 
-export type HistoricoItem = HistoricoPergunta | HistoricoVotacao;
+export interface HistoricoTurnoPresencial {
+  tipo: "turno_presencial";
+  jogador_apelido: string;
+}
+
+export type HistoricoItem = HistoricoPergunta | HistoricoVotacao | HistoricoTurnoPresencial;
 
 export interface Sala {
   id: string;
   codigo: string;
   anfitriao: string | null;
   status: SalaStatus;
+  modo: ModoSala;
   num_rodadas: number;
   rodada_atual: number;
   senha_hash: string | null;
@@ -76,7 +83,7 @@ export interface Rodada {
   encerrada_em: string | null;
 }
 
-export interface CriarSalaPayload  { apelido: string; num_rodadas: number; senha?: string; }
+export interface CriarSalaPayload  { apelido: string; num_rodadas: number; modo?: ModoSala; senha?: string; }
 export interface EntrarSalaPayload { codigo: string; apelido: string; senha?: string; }
 export interface IniciarRodadaPayload  { sala_id: string; }
 export interface ProximoTurnoPayload   { rodada_id: string; }
@@ -86,6 +93,7 @@ export interface AdivinharPayload      { rodada_id: string; evento_id: number; }
 export interface FazerPerguntaPayload  { rodada_id: string; destinatario_id: string; texto: string; }
 export interface ResponderPerguntaPayload { rodada_id: string; resposta: string; }
 export interface DizerPalavraPayload { rodada_id: string; palavra: string; }
+export interface DefinirModoPayload { sala_id: string; modo: ModoSala; }
 
 export type GameResponse<T = Record<string, unknown>> =
   | { data: T; error?: never }
