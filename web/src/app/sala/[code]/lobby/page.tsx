@@ -51,12 +51,21 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   useEffect(() => {
     if (!salaId) return;
     const supabase = createClient();
+
+    // Realtime
     const channel = supabase
       .channel(`sala-status:${salaId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "salas", filter: `id=eq.${salaId}` },
         (payload) => { if (payload.new.status === "jogando") router.push(`/sala/${code}/jogo`); })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    // Polling fallback para jogadores que não recebem o evento Realtime
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from("salas").select("status").eq("id", salaId).single();
+      if (data?.status === "jogando") router.push(`/sala/${code}/jogo`);
+    }, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [salaId, code, router]);
 
   const isHost = user?.id === anfitriaoId;
@@ -66,6 +75,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     setStarting(true);
     try {
       await gameActions.iniciarRodada(salaId);
+      router.push(`/sala/${code}/jogo`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao iniciar");
       setStarting(false);
