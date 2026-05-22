@@ -263,49 +263,6 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         </div>
       )}
 
-      {/* Histórico */}
-      {(primeiraRodada && rodada?.estado.palavras_primeira_rodada && rodada.estado.palavras_primeira_rodada.length > 0) && (
-        <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: "16px 14px", boxShadow: "0 4px 16px -8px rgba(58,42,20,0.2)" }}>
-          <InsetFrame color={T.sienna} inset={4} radius={15} opacity={0.2} opacity2={0.1} />
-          <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-            {rodada.estado.palavras_primeira_rodada.map((p, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
-                <MEAvatar size={20} initial={p.apelido.slice(0,1)} variant="light" />
-                <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
-                <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>"{p.palavra}"</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!primeiraRodada && rodada?.estado.historico && rodada.estado.historico.length > 0 && (
-        <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: "16px 14px", boxShadow: "0 4px 16px -8px rgba(58,42,20,0.2)", maxHeight: 200, overflowY: "auto" }}>
-          <InsetFrame color={T.sienna} inset={4} radius={15} opacity={0.2} opacity2={0.1} />
-          <Eyebrow color={T.inkSoft} size={8}>Histórico de Perguntas</Eyebrow>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            {rodada.estado.historico.map((h, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom: i < rodada.estado.historico.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <MEAvatar size={18} initial={h.perguntador_apelido.slice(0,1)} variant="light" />
-                  <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.perguntador_apelido}</span>
-                  <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
-                  <MEAvatar size={18} initial={h.destinatario_apelido.slice(0,1)} variant="light" />
-                  <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.destinatario_apelido}</span>
-                </div>
-                <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
-                  <span style={{ fontStyle: "italic", color: T.inkSoft }}>{h.pergunta}</span>
-                </div>
-                <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.sienna, paddingLeft: 24, fontWeight: 500 }}>
-                  {h.resposta}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Players grid */}
       <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: 12, boxShadow: "0 4px 16px -12px rgba(58,42,20,0.22)" }}>
         <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
@@ -322,6 +279,54 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             );
           })}
         </div>
+      </div>
+
+      {/* Histórico - Infinite scroll frame below names */}
+      <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: "16px 14px", boxShadow: "0 4px 16px -8px rgba(58,42,20,0.2)", flex: 1, minHeight: 200, maxHeight: 400, overflowY: "auto" }}>
+        <InsetFrame color={T.sienna} inset={4} radius={15} opacity={0.2} opacity2={0.1} />
+        
+        {primeiraRodada && rodada?.estado.palavras_primeira_rodada && rodada.estado.palavras_primeira_rodada.length > 0 && (
+          <>
+            <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginBottom: 16 }}>
+              {rodada.estado.palavras_primeira_rodada.map((p, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
+                  <MEAvatar size={20} initial={p.apelido.slice(0,1)} variant="light" />
+                  <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
+                  <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>"{p.palavra}"</span>
+                </div>
+              ))}
+            </div>
+            {rodada?.estado.historico && rodada.estado.historico.length > 0 && (
+              <div style={{ height: 1, background: T.hairline, margin: "12px 0" }} />
+            )}
+          </>
+        )}
+
+        {rodada?.estado.historico && rodada.estado.historico.length > 0 && (
+          <>
+            <Eyebrow color={T.inkSoft} size={8}>Histórico de Perguntas</Eyebrow>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+              {rodada.estado.historico.map((h, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom: i < rodada.estado.historico.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <MEAvatar size={18} initial={h.perguntador_apelido.slice(0,1)} variant="light" />
+                    <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.perguntador_apelido}</span>
+                    <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
+                    <MEAvatar size={18} initial={h.destinatario_apelido.slice(0,1)} variant="light" />
+                    <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.destinatario_apelido}</span>
+                  </div>
+                  <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
+                    <span style={{ fontStyle: "italic", color: T.inkSoft }}>{h.pergunta}</span>
+                  </div>
+                  <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.sienna, paddingLeft: 24, fontWeight: 500 }}>
+                    {h.resposta}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ flex: 1 }} />

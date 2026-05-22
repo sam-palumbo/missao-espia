@@ -23,6 +23,44 @@ const PALAVRAS_PRIMEIRA_RODADA = [
   "fé", "esperança", "amor", "graça", "salvação", "vida", "morte",
 ];
 
+// Perguntas genéricas que os bots podem fazer
+const PERGUNTAS_GENERICAS = [
+  "O que você está sentindo agora?",
+  "Você consegue ver algo importante?",
+  "Há alguém com você?",
+  "O que aconteceu antes de você chegar aqui?",
+  "Você sabe por que estamos aqui?",
+  "Isso é familiar para você?",
+  "Você já esteve em um lugar assim?",
+  "O que você acha que devemos fazer?",
+  "Há algum perigo por perto?",
+  "Você reconhece alguém aqui?",
+  "Isso faz parte de algo maior?",
+  "Você se lembra de algo importante?",
+  "O que esse lugar significa para você?",
+  "Você está preocupado com algo?",
+  "Isso tem alguma conexão com o passado?",
+];
+
+// Respostas genéricas que os bots podem dar
+const RESPOSTAS_GENERICAS = [
+  "Não tenho certeza...",
+  "Acho que sim.",
+  "Talvez.",
+  "Não sei ao certo.",
+  "É possível.",
+  "Não posso dizer com certeza.",
+  "Depende.",
+  "Não é tão simples assim.",
+  "Não tenho informações suficientes.",
+  "Prefiro não comentar.",
+  "É complicado explicar.",
+  "Não posso revelar muito.",
+  "Não sei o que pensar.",
+  "É uma boa pergunta.",
+  "Não tenho certeza sobre isso.",
+];
+
 const codigo = process.argv[2];
 const numBots = Math.min(parseInt(process.argv[3] ?? "3", 10), NOMES.length);
 
@@ -210,12 +248,42 @@ async function playBot({ nome, token, salaId, jogadorId }) {
         }
       }
 
-      // Passar o turno
+      // Fazer pergunta (em vez de passar turno)
       try {
-        await callGame(token, "proximo_turno", { rodada_id: rodada.id });
-        log(`Passou o turno (turno ${turnos})`);
+        const ativos = await getJogadoresAtivos(token, salaId);
+        const alvos = ativos.filter((j) => j.id !== jogadorId);
+        
+        if (alvos.length > 0 && Math.random() < 0.7) {
+          // 70% chance de fazer pergunta, 30% de passar turno
+          const alvo = alvos[Math.floor(Math.random() * alvos.length)];
+          const pergunta = PERGUNTAS_GENERICAS[Math.floor(Math.random() * PERGUNTAS_GENERICAS.length)];
+          await callGame(token, "fazer_pergunta", { 
+            rodada_id: rodada.id, 
+            destinatario_id: alvo.id, 
+            texto: pergunta 
+          });
+          log(`Perguntei para ${alvo.apelido}: "${pergunta}"`);
+        } else {
+          await callGame(token, "proximo_turno", { rodada_id: rodada.id });
+          log(`Passou o turno (turno ${turnos})`);
+        }
       } catch (e) {
-        log(`Erro ao passar turno: ${e.message}`);
+        log(`Erro ao fazer pergunta/passar turno: ${e.message}`);
+      }
+    }
+
+    // ── Fase: aguardando_resposta ─────────────────────────────────────────────
+    else if (fase === "aguardando_resposta") {
+      const pergunta_atual = estado.pergunta_atual;
+      if (!pergunta_atual || pergunta_atual.destinatario_id !== jogadorId) continue;
+
+      await sleep(1500 + Math.random() * 2000);
+      const resposta = RESPOSTAS_GENERICAS[Math.floor(Math.random() * RESPOSTAS_GENERICAS.length)];
+      try {
+        await callGame(token, "responder_pergunta", { rodada_id: rodada.id, resposta });
+        log(`Respondi: "${resposta}"`);
+      } catch (e) {
+        log(`Erro ao responder: ${e.message}`);
       }
     }
 
