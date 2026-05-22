@@ -1,4 +1,13 @@
 export type ResultadoVotacao = "aguardando" | "rejeitado" | "aprovado";
+export type ResultadoVotacaoHistorico = "eliminado" | "sobreviveu" | "espia_pego";
+
+export function classificarResultadoVotacao(
+  resolucao: Exclude<ResultadoVotacao, "aguardando">,
+  acusadoEhEspia: boolean,
+): ResultadoVotacaoHistorico {
+  if (resolucao === "rejeitado") return "sobreviveu";
+  return acusadoEhEspia ? "espia_pego" : "eliminado";
+}
 
 export function resolverVotacao(
   votos: { aprovado: boolean }[],

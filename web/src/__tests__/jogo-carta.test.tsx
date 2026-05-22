@@ -27,18 +27,23 @@ vi.mock("@/hooks/useAuth");
 
 vi.mock("@/lib/game-actions", () => ({
   gameActions: {
-    acusar: vi.fn(),
-    votar: vi.fn(),
     fazerPergunta: vi.fn(),
     responderPergunta: vi.fn(),
     dizerPalavra: vi.fn(),
+    acusar: vi.fn(),
+    votar: vi.fn(),
     adivinhar: vi.fn(),
     proximoTurno: vi.fn(),
   },
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
-vi.mock("@/lib/eventos", () => ({ EVENTOS: [] }));
+
+vi.mock("@/lib/eventos", () => ({
+  EVENTOS: [
+    { id: 1, evento: "Criação", local: "Jardim do Éden", testament: "AT" },
+  ],
+}));
 
 vi.mock("motion/react", async () => {
   const { createElement } = await import("react");
@@ -73,38 +78,51 @@ vi.mock("@/components/ui/design", () => {
   };
 });
 
-// ── Imports e helpers ──────────────────────────────────────────
+// ── Imports ────────────────────────────────────────────────────
 
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import JogoPage from "@/app/sala/[code]/jogo/page";
 
+// ── Fixtures ───────────────────────────────────────────────────
+
 const ALICE = { id: "jogador-1", user_id: "user-1", apelido: "Alice", ativo: true };
 const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: true };
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
+function rodadaNaoEspia(): RodadaAtual {
   return {
     id: "rodada-1",
     numero: 1,
-    evento_id: 1,
+    evento_id: 1, // Criação / Jardim do Éden
     encerrada_em: null,
     estado: {
       fase: "jogando",
-      turno_atual: turnoAtual,
+      turno_atual: "jogador-2",
       ordem_turnos: ["jogador-1", "jogador-2"],
-      espia_ids: [],
+      espia_ids: ["jogador-2"], // Bob é espia, Alice não é
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: null,
-      acusou_neste_turno: acusouNesteTurno,
+      acusou_neste_turno: false,
       adivinhou_evento_id: null,
       pergunta_atual: null,
       historico: [],
-      primeira_rodada: primeiraRodada,
+      primeira_rodada: false,
       palavras_primeira_rodada: [],
+    },
+  };
+}
+
+function rodadaEspia(): RodadaAtual {
+  return {
+    ...rodadaNaoEspia(),
+    estado: {
+      ...rodadaNaoEspia().estado,
+      turno_atual: "jogador-1",
+      espia_ids: ["jogador-1"], // Alice é espia
     },
   };
 }
@@ -119,17 +137,12 @@ function renderJogo() {
 
 async function passarRevealScreen() {
   const btn = screen.queryByText("Memorizei");
-  if (btn) await act(async () => { (btn as HTMLElement).click(); });
-}
-
-async function abrirModalTurno() {
-  await waitFor(() => screen.getByText("Sua vez"));
-  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
+  if (btn) await act(async () => { fireEvent.click(btn); });
 }
 
 // ── Tests ──────────────────────────────────────────────────────
 
-describe("Botão Acusar", () => {
+describe("Rever minha carta", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
@@ -138,89 +151,66 @@ describe("Botão Acusar", () => {
       linkGoogle: vi.fn(),
     });
     vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
+    vi.clearAllMocks();
   });
 
-  it("aparece quando é o turno do jogador e ainda não acusou", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-
-    await act(async () => { renderJogo(); });
-    await passarRevealScreen();
-    await abrirModalTurno();
-
-    await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
-    });
-  });
-
-  it("não aparece quando o jogador já acusou neste turno", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
+  it("botão Minha Carta está visível durante o jogo", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaNaoEspia());
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /minha carta/i })).toBeInTheDocument();
     });
   });
 
-  it("não aparece quando não é o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-2" }),
-    );
+  it("clicar em Minha Carta abre sheet com botão Fechar", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaNaoEspia());
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-  });
-
-  it("não aparece na primeira rodada mesmo sendo o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ primeiraRodada: true, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-
-    await act(async () => { renderJogo(); });
-    await passarRevealScreen();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-  });
-
-  it("reaparece quando o turno passa para o mesmo jogador novamente (acusou_neste_turno resetado)", async () => {
-    const { rerender } = renderJogo();
-
-    // Turno de Alice, já acusou
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
     await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
     });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /fechar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("sheet exibe evento e local para jogador não-espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaNaoEspia());
+
+    await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-
-    // Turno passa para Bob e volta para Alice com flag resetada
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
     await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
     });
 
-    await abrirModalTurno();
+    await waitFor(() => {
+      expect(screen.getByText("Criação")).toBeInTheDocument();
+      expect(screen.getByText("Jardim do Éden")).toBeInTheDocument();
+    });
+  });
+
+  it("sheet exibe 'Espia' para o jogador espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaEspia());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
+    });
 
     await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
+      expect(screen.getByText(/espia/i)).toBeInTheDocument();
     });
   });
 });

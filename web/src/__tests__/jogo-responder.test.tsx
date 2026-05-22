@@ -140,6 +140,30 @@ function passarRevealScreen() {
 
 // ── Tests ──────────────────────────────────────────────────────
 
+describe("Não existe opção de passar turno", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.mocked(usePlayers).mockReturnValue([JOGADOR_1, JOGADOR_2]);
+  });
+
+  it("botão Passar não aparece quando é o turno do jogador fora da primeira rodada", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaJogando());
+
+    await act(async () => { renderJogo(); });
+    passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText("Sua vez")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /passar/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("Sheet de responder pergunta", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({

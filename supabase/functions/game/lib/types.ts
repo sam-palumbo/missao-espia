@@ -11,12 +11,22 @@ export interface PerguntaAtual {
   texto: string;
 }
 
-export interface HistoricoItem {
+export interface HistoricoPergunta {
+  tipo?: "pergunta";
   perguntador_apelido: string;
   destinatario_apelido: string;
   pergunta: string;
   resposta: string;
 }
+
+export interface HistoricoVotacao {
+  tipo: "votacao";
+  acusado_apelido: string;
+  votos: { votante_apelido: string; aprovado: boolean }[];
+  resultado: "eliminado" | "sobreviveu" | "espia_pego";
+}
+
+export type HistoricoItem = HistoricoPergunta | HistoricoVotacao;
 
 export interface Sala {
   id: string;

@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { RodadaAtual } from "@/hooks/useGameState";
 
@@ -73,19 +73,22 @@ vi.mock("@/components/ui/design", () => {
   };
 });
 
-// ── Imports e helpers ──────────────────────────────────────────
+// ── Imports ────────────────────────────────────────────────────
 
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import JogoPage from "@/app/sala/[code]/jogo/page";
 
+// ── Fixtures ───────────────────────────────────────────────────
+
 const ALICE = { id: "jogador-1", user_id: "user-1", apelido: "Alice", ativo: true };
 const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: true };
+const CARLOS = { id: "jogador-3", user_id: "user-3", apelido: "Carlos", ativo: true };
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
+function rodadaComVotacao(resultado: "eliminado" | "sobreviveu" | "espia_pego"): RodadaAtual {
   return {
     id: "rodada-1",
     numero: 1,
@@ -93,17 +96,27 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", pri
     encerrada_em: null,
     estado: {
       fase: "jogando",
-      turno_atual: turnoAtual,
-      ordem_turnos: ["jogador-1", "jogador-2"],
+      turno_atual: "jogador-1",
+      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
       espia_ids: [],
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: null,
-      acusou_neste_turno: acusouNesteTurno,
+      acusou_neste_turno: false,
       adivinhou_evento_id: null,
       pergunta_atual: null,
-      historico: [],
-      primeira_rodada: primeiraRodada,
+      historico: [
+        {
+          tipo: "votacao",
+          acusado_apelido: "Bob",
+          votos: [
+            { votante_apelido: "Alice",  aprovado: true },
+            { votante_apelido: "Carlos", aprovado: false },
+          ],
+          resultado,
+        },
+      ],
+      primeira_rodada: false,
       palavras_primeira_rodada: [],
     },
   };
@@ -122,14 +135,9 @@ async function passarRevealScreen() {
   if (btn) await act(async () => { (btn as HTMLElement).click(); });
 }
 
-async function abrirModalTurno() {
-  await waitFor(() => screen.getByText("Sua vez"));
-  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
-}
-
 // ── Tests ──────────────────────────────────────────────────────
 
-describe("Botão Acusar", () => {
+describe("Histórico de votações", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
@@ -137,90 +145,64 @@ describe("Botão Acusar", () => {
       isAnonymous: false,
       linkGoogle: vi.fn(),
     });
-    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB, CARLOS]);
+    vi.clearAllMocks();
   });
 
-  it("aparece quando é o turno do jogador e ainda não acusou", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-
-    await act(async () => { renderJogo(); });
-    await passarRevealScreen();
-    await abrirModalTurno();
-
-    await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
-    });
-  });
-
-  it("não aparece quando o jogador já acusou neste turno", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
+  it("mostra o nome do acusado no painel de histórico", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaComVotacao("eliminado"));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+      expect(screen.getByText(/acusado:\s*bob/i)).toBeInTheDocument();
     });
   });
 
-  it("não aparece quando não é o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-2" }),
-    );
+  it("mostra cada votante com seu voto (Sim/Não)", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaComVotacao("eliminado"));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+      // Alice votou 👍 Sim, Carlos votou 👎 Não — confirma rótulos específicos da votação
+      expect(screen.getByText(/👍 sim/i)).toBeInTheDocument();
+      expect(screen.getByText(/👎 não/i)).toBeInTheDocument();
     });
   });
 
-  it("não aparece na primeira rodada mesmo sendo o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ primeiraRodada: true, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
+  it("mostra resultado 'eliminado' quando o acusado foi eliminado", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaComVotacao("eliminado"));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+      expect(screen.getByText(/eliminad/i)).toBeInTheDocument();
     });
   });
 
-  it("reaparece quando o turno passa para o mesmo jogador novamente (acusou_neste_turno resetado)", async () => {
-    const { rerender } = renderJogo();
+  it("mostra resultado 'sobreviveu' quando a votação foi rejeitada", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaComVotacao("sobreviveu"));
 
-    // Turno de Alice, já acusou
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
-    await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
-    });
+    await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
+      expect(screen.getByText(/sobrevive/i)).toBeInTheDocument();
     });
+  });
 
-    // Turno passa para Bob e volta para Alice com flag resetada
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-    await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
-    });
+  it("mostra resultado 'espia pego' quando o espia foi descoberto", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaComVotacao("espia_pego"));
 
-    await abrirModalTurno();
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
+      expect(screen.getByText(/espia pego/i)).toBeInTheDocument();
     });
   });
 });

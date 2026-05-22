@@ -132,6 +132,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [answerInput, setAnswerInput] = useState("");
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
+  const [showMyCard, setShowMyCard] = useState(false);
+  const [showTurnModal, setShowTurnModal] = useState(false);
 
   const { display, pct } = useTimer(rodada?.estado.timer_end ?? null);
 
@@ -181,6 +183,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       setShowGuess(false);
       setShowWordInput(false);
       setShowAskQuestion(false);
+      setShowTurnModal(false);
     }
   }, [meuEliminado]);
 
@@ -206,12 +209,6 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     try { await gameActions.adivinhar(rodada.id, selectedGuessId); setShowGuess(false); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao adivinhar"); }
     finally { setActing(false); }
-  }
-
-  async function handleProximoTurno() {
-    if (!rodada) return;
-    try { await gameActions.proximoTurno(rodada.id); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao avançar turno"); }
   }
 
   async function handleDizerPalavra() {
@@ -277,30 +274,31 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Current turn */}
-      {currentPlayer && (
-        <div style={{ position: "relative", zIndex: 1, background: T.inkDeep, borderRadius: 18, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, overflow: "hidden" }}>
-          <InsetFrame color={T.gold} inset={5} radius={14} opacity={0.4} opacity2={0.2} />
-          <div style={{ position: "relative" }}>
-            <MEAvatar size={38} initial={currentPlayer.apelido.slice(0,1)} variant={currentPlayer.id === meuJogador?.id ? "gold" : "dark"} />
-          </div>
-          <div style={{ flex: 1, position: "relative" }}>
-            <Eyebrow color={T.gold} size={9}>Vez de</Eyebrow>
-            <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.cardWarm, marginTop: 3, lineHeight: 1.1 }}>
-              {currentPlayer.id === meuJogador?.id ? "Sua vez" : primeiraRodada ? `${currentPlayer.apelido} está falando…` : `${currentPlayer.apelido} está perguntando…`}
+      {currentPlayer && (() => {
+        const podeAbrirModal = !meuEliminado && ehMeuTurno && fase === "jogando";
+        return (
+          <div
+            onClick={podeAbrirModal ? () => setShowTurnModal(true) : undefined}
+            style={{ position: "relative", zIndex: 1, background: T.inkDeep, borderRadius: 18, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, overflow: "hidden", cursor: podeAbrirModal ? "pointer" : "default" }}
+          >
+            <InsetFrame color={T.gold} inset={5} radius={14} opacity={0.4} opacity2={0.2} />
+            <div style={{ position: "relative" }}>
+              <MEAvatar size={38} initial={currentPlayer.apelido.slice(0,1)} variant={currentPlayer.id === meuJogador?.id ? "gold" : "dark"} />
             </div>
+            <div style={{ flex: 1, position: "relative" }}>
+              <Eyebrow color={T.gold} size={9}>Vez de</Eyebrow>
+              <div style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 600, color: T.cardWarm, marginTop: 3, lineHeight: 1.1 }}>
+                {currentPlayer.id === meuJogador?.id ? "Sua vez" : primeiraRodada ? `${currentPlayer.apelido} está falando…` : `${currentPlayer.apelido} está perguntando…`}
+              </div>
+            </div>
+            {podeAbrirModal && (
+              <div style={{ position: "relative", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: T.gold, background: "rgba(212,168,82,0.18)", padding: "5px 10px", borderRadius: 999 }}>
+                Toque
+              </div>
+            )}
           </div>
-          {!meuEliminado && ehMeuTurno && fase === "jogando" && primeiraRodada && (
-            <button onClick={() => setShowWordInput(true)} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
-              Dizer Palavra
-            </button>
-          )}
-          {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && (
-            <button onClick={handleProximoTurno} style={{ position: "relative", background: T.goldSoft, color: T.ink, border: "none", borderRadius: 999, padding: "6px 12px", fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
-              Passar →
-            </button>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Players grid */}
       <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: 12, boxShadow: "0 4px 16px -12px rgba(58,42,20,0.22)" }}>
@@ -310,17 +308,15 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
             const isActive = p.id === rodada?.estado.turno_atual;
             const isEliminated = !p.ativo;
             return (
-              <button
+              <div
                 key={p.id}
-                onClick={ehMeuTurno && !isEliminated ? handleProximoTurno : undefined}
-                disabled={!ehMeuTurno || isEliminated}
-                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: ehMeuTurno && !isEliminated ? "pointer" : "default", padding: "4px 2px", opacity: isEliminated ? 0.4 : 1 }}
+                style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "4px 2px", opacity: isEliminated ? 0.4 : 1 }}
               >
                 <div style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${isActive ? T.gold : T.hairlineStrong}`, background: isEliminated ? T.hairline : isActive ? T.goldSoft : T.cardWarm, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
                   <span style={{ fontFamily: F.serif, fontSize: 14, fontWeight: 600, color: isActive ? T.sienna : T.inkSoft, textDecoration: isEliminated ? "line-through" : "none" }}>{p.apelido.slice(0,2).toUpperCase()}</span>
                 </div>
                 <span style={{ fontFamily: F.sans, fontSize: 10, color: isActive ? T.ink : T.muted, fontWeight: isActive ? 700 : 400, textDecoration: isEliminated ? "line-through" : "none" }}>{p.apelido.split(" ")[0]}</span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -350,25 +346,62 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
         {rodada?.estado.historico && rodada.estado.historico.length > 0 && (
           <>
-            <Eyebrow color={T.inkSoft} size={8}>Histórico de Perguntas</Eyebrow>
+            <Eyebrow color={T.inkSoft} size={8}>Histórico</Eyebrow>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-              {rodada.estado.historico.map((h, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom: i < rodada.estado.historico.length - 1 ? `1px solid ${T.hairline}` : "none" }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <MEAvatar size={18} initial={h.perguntador_apelido.slice(0,1)} variant="light" />
-                    <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.perguntador_apelido}</span>
-                    <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
-                    <MEAvatar size={18} initial={h.destinatario_apelido.slice(0,1)} variant="light" />
-                    <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.destinatario_apelido}</span>
+              {rodada.estado.historico.map((h, i) => {
+                const isLast = i === rodada.estado.historico.length - 1;
+                const borderBottom = isLast ? "none" : `1px solid ${T.hairline}`;
+                if (h.tipo === "votacao") {
+                  const labelResultado =
+                    h.resultado === "espia_pego" ? "Espia pego!" :
+                    h.resultado === "eliminado"  ? `${h.acusado_apelido} foi eliminado` :
+                                                   `${h.acusado_apelido} sobreviveu`;
+                  const corResultado =
+                    h.resultado === "espia_pego" ? T.gold :
+                    h.resultado === "eliminado"  ? T.brick :
+                                                   T.sienna;
+                  return (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 8, borderBottom }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <MEIcon name="spy" size={14} color={T.brick} />
+                        <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.inkSoft }}>Votação</span>
+                        <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.ink, fontWeight: 600 }}>Acusado: {h.acusado_apelido}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingLeft: 22 }}>
+                        {h.votos.map((v, vi) => (
+                          <div key={vi} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <MEAvatar size={16} initial={v.votante_apelido.slice(0,1)} variant="light" />
+                            <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: T.ink, minWidth: 64 }}>{v.votante_apelido}</span>
+                            <span style={{ fontFamily: F.bodySerif, fontSize: 12, fontWeight: 600, color: v.aprovado ? T.brick : T.inkSoft }}>
+                              {v.aprovado ? "👍 Sim" : "👎 Não"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontFamily: F.bodySerif, fontSize: 13, fontWeight: 600, color: corResultado, paddingLeft: 22, fontStyle: "italic" }}>
+                        {labelResultado}
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <MEAvatar size={18} initial={h.perguntador_apelido.slice(0,1)} variant="light" />
+                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.perguntador_apelido}</span>
+                      <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
+                      <MEAvatar size={18} initial={h.destinatario_apelido.slice(0,1)} variant="light" />
+                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.destinatario_apelido}</span>
+                    </div>
+                    <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
+                      <span style={{ fontStyle: "italic", color: T.inkSoft }}>{h.pergunta}</span>
+                    </div>
+                    <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.sienna, paddingLeft: 24, fontWeight: 500 }}>
+                      {h.resposta}
+                    </div>
                   </div>
-                  <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
-                    <span style={{ fontStyle: "italic", color: T.inkSoft }}>{h.pergunta}</span>
-                  </div>
-                  <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.sienna, paddingLeft: 24, fontWeight: 500 }}>
-                    {h.resposta}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
@@ -378,27 +411,20 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
       {/* Action buttons */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10 }}>
-        {!meuEliminado && isSpy && (fase === "jogando" || fase === "adivinhacao") && (
+        <button onClick={() => setShowMyCard(true)} style={{ flex: 1, background: T.card, color: T.inkSoft, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}>
+          Minha Carta
+        </button>
+        {isSpy && fase === "adivinhacao" && (
           <button onClick={() => setShowGuess(true)} style={{ flex: 1, background: T.card, color: T.ink, border: `1.5px solid ${T.sienna}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
             Adivinhar
-          </button>
-        )}
-        {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && (
-          <button onClick={() => setShowAskQuestion(true)} style={{ flex: 1, background: T.sienna, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
-            Fazer Pergunta
-          </button>
-        )}
-        {!meuEliminado && ehMeuTurno && fase === "jogando" && !primeiraRodada && !acusouNesteTurno && (
-          <button onClick={() => setShowAccuse(true)} style={{ flex: 1, background: T.brick, color: "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
-            <MEIcon name="spy" size={15} color="white" />
-            Acusar
           </button>
         )}
       </div>
 
       {/* ELIMINATED OBSERVER BANNER */}
       {/* banner oculto durante votação — o overlay de votação já exibe a mensagem de observador */}
-      {meuEliminado && fase !== "votacao" && (
+      {/* banner oculto para espia pego durante adivinhacao — ele ainda precisa adivinhar */}
+      {meuEliminado && fase !== "votacao" && !(isSpy && fase === "adivinhacao") && (
         <div style={{ position: "relative", zIndex: 1, background: T.brick, borderRadius: 14, padding: "12px 16px", textAlign: "center" }}>
           <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             Você foi eliminado — apenas observe
@@ -610,6 +636,71 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
               </button>
             </div>
           </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TURN MODAL */}
+      <AnimatePresence>
+        {showTurnModal && !meuEliminado && ehMeuTurno && fase === "jogando" && (
+          <motion.div key="turn-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }} onClick={() => setShowTurnModal(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} onClick={e => e.stopPropagation()} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px 28px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+              <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+              <Eyebrow color={T.inkSoft}>Sua Vez</Eyebrow>
+              <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink, lineHeight: 1.15 }}>O que você quer fazer?</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                {primeiraRodada ? (
+                  <button onClick={() => { setShowTurnModal(false); setShowWordInput(true); }} style={{ background: T.gold, color: T.ink, border: "none", borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+                    Dizer Palavra
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => { setShowTurnModal(false); setShowAskQuestion(true); }} style={{ background: T.sienna, color: "white", border: "none", borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+                      Fazer Pergunta
+                    </button>
+                    {!acusouNesteTurno && (
+                      <button onClick={() => { setShowTurnModal(false); setShowAccuse(true); }} style={{ background: T.brick, color: "white", border: "none", borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}>
+                        <MEIcon name="spy" size={15} color="white" />
+                        Acusar
+                      </button>
+                    )}
+                  </>
+                )}
+                {isSpy && (
+                  <button onClick={() => { setShowTurnModal(false); setShowGuess(true); }} style={{ background: T.card, color: T.ink, border: `1.5px solid ${T.sienna}`, borderRadius: 999, padding: "14px 16px", fontFamily: F.sans, fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+                    Adivinhar
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setShowTurnModal(false)} style={{ marginTop: 6, background: "none", border: "none", fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.inkSoft, cursor: "pointer", padding: "6px 0", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Cancelar
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MY CARD SHEET */}
+      <AnimatePresence>
+        {showMyCard && (
+          <motion.div key="mycard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }} onClick={() => setShowMyCard(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} onClick={e => e.stopPropagation()} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px 32px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}>
+              <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+              <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+              <Eyebrow color={T.inkSoft}>Minha Carta</Eyebrow>
+              {isSpy ? (
+                <div style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink }}>Espia</div>
+              ) : (
+                <>
+                  <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink, lineHeight: 1.1 }}>{evento?.evento ?? "—"}</div>
+                  <div style={{ fontFamily: F.bodySerif, fontSize: 17, color: T.inkSoft, fontWeight: 500 }}>{evento?.local ?? "—"}</div>
+                </>
+              )}
+              <button onClick={() => setShowMyCard(false)} style={{ marginTop: 8, background: "none", border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, color: T.inkSoft, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Fechar
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

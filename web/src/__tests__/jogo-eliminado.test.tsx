@@ -154,6 +154,11 @@ async function passarRevealScreen() {
   if (btn) await act(async () => { fireEvent.click(btn); });
 }
 
+async function abrirModalTurno() {
+  await waitFor(() => screen.getByText("Sua vez"));
+  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
+}
+
 // ── Tests ──────────────────────────────────────────────────────
 
 describe("Jogador eliminado — estado de observador", () => {
@@ -334,6 +339,7 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
+    await abrirModalTurno();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
     });
@@ -343,6 +349,7 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
+    await abrirModalTurno();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /acusar/i })).toBeInTheDocument();
     });
@@ -353,7 +360,7 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
+      expect(screen.getByText("Sua vez")).toBeInTheDocument();
     });
     expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
   });
@@ -418,6 +425,99 @@ describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
   });
 });
 
+// ── Espia pego por votação — fase adivinhacao ──────────────────
+
+const ALICE_ESPIA_PEGA = {
+  id: "jogador-1",
+  user_id: "user-1",
+  apelido: "Alice",
+  ativo: true, // ainda ativa (só elimina ao errar o palpite)
+};
+
+function rodadaAdivinhacaoEspiaPego(): RodadaAtual {
+  return {
+    id: "rodada-1",
+    numero: 1,
+    evento_id: 1,
+    encerrada_em: null,
+    estado: {
+      fase: "adivinhacao",
+      turno_atual: "jogador-2", // Bob acusou, turno continua dele
+      ordem_turnos: ["jogador-2", "jogador-3"], // Alice (espia pega) removida da ordem
+      espia_ids: ["jogador-1"], // Alice é espia
+      timer_end: new Date(Date.now() + 300_000).toISOString(),
+      eliminacoes_erradas: 0,
+      acusado_id: "jogador-1", // Alice foi acusada
+      acusou_neste_turno: true,
+      adivinhou_evento_id: null,
+      pergunta_atual: null,
+      historico: [],
+      primeira_rodada: false,
+      palavras_primeira_rodada: [],
+    },
+  };
+}
+
+describe("Espia pego por votação — fase adivinhacao", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ESPIA_PEGA, BOB, CARLOS]);
+    vi.clearAllMocks();
+  });
+
+  it("espia pego ainda vê o botão Adivinhar", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaAdivinhacaoEspiaPego());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /adivinhar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("espia pego não vê o banner de observador", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaAdivinhacaoEspiaPego());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /adivinhar/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
+  });
+
+  it("espia pego não vê botão Fazer Pergunta", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaAdivinhacaoEspiaPego());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /adivinhar/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /fazer pergunta/i })).not.toBeInTheDocument();
+  });
+
+  it("espia pego não vê botão Acusar", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaAdivinhacaoEspiaPego());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /adivinhar/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
+  });
+});
+
 // ── meuJogador ausente ─────────────────────────────────────────
 
 describe("meuJogador ausente — sem crash nem banner", () => {
@@ -466,6 +566,7 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     );
     await act(async () => {});
     await passarRevealScreen();
+    await abrirModalTurno();
 
     await waitFor(() => screen.getByRole("button", { name: /fazer pergunta/i }));
     await act(async () => {
@@ -499,6 +600,7 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     );
     await act(async () => {});
     await passarRevealScreen();
+    await abrirModalTurno();
 
     await waitFor(() => screen.getByRole("button", { name: /^acusar$/i }));
     await act(async () => {

@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "std/assert";
-import { resolverVotacao, validarVoto } from "./votacao.ts";
+import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "./votacao.ts";
 
 // ── resolverVotacao ────────────────────────────────────────────
 
@@ -82,4 +82,34 @@ Deno.test("não lança erro quando outro jogador votou no mesmo acusado", () => 
     { votante_id: "jogador-2", acusado_id: "acusado-A" },
   ];
   validarVoto(votosExistentes, "jogador-1", "acusado-A");
+});
+
+// ── classificarResultadoVotacao ────────────────────────────────
+
+Deno.test("votação rejeitada → acusado sobreviveu", () => {
+  assertEquals(
+    classificarResultadoVotacao("rejeitado", /* acusadoEhEspia */ false),
+    "sobreviveu",
+  );
+});
+
+Deno.test("votação rejeitada com acusado espia → sobreviveu (não houve eliminação)", () => {
+  assertEquals(
+    classificarResultadoVotacao("rejeitado", /* acusadoEhEspia */ true),
+    "sobreviveu",
+  );
+});
+
+Deno.test("votação aprovada + acusado é espia → espia_pego", () => {
+  assertEquals(
+    classificarResultadoVotacao("aprovado", /* acusadoEhEspia */ true),
+    "espia_pego",
+  );
+});
+
+Deno.test("votação aprovada + acusado não é espia → eliminado", () => {
+  assertEquals(
+    classificarResultadoVotacao("aprovado", /* acusadoEhEspia */ false),
+    "eliminado",
+  );
 });

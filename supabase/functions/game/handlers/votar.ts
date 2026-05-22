@@ -1,9 +1,9 @@
 // supabase/functions/game/handlers/votar.ts
 import { getDb }                 from "../lib/db.ts";
 import { limiteEliminacoesErradas, numEspias } from "../lib/espias.ts";
-import { resolverVotacao, validarVoto } from "../lib/votacao.ts";
+import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
-import type { VotarPayload }     from "../lib/types.ts";
+import type { HistoricoVotacao, VotarPayload } from "../lib/types.ts";
 
 export async function votar(userId: string, payload: unknown) {
   const { rodada_id, aprovado } = payload as VotarPayload;
@@ -57,7 +57,7 @@ export async function votar(userId: string, payload: unknown) {
   // Verificar se todos os jogadores elegíveis já votaram
   const { data: jogadoresAtivos } = await db
     .from("jogadores")
-    .select("id")
+    .select("id, apelido")
     .eq("sala_id", rodada.sala_id)
     .eq("ativo", true);
 
@@ -65,7 +65,7 @@ export async function votar(userId: string, payload: unknown) {
 
   const { data: votos } = await db
     .from("votos")
-    .select("aprovado")
+    .select("votante_id, aprovado")
     .eq("rodada_id", rodada_id)
     .eq("acusado_id", estado.acusado_id);
 
@@ -75,24 +75,47 @@ export async function votar(userId: string, payload: unknown) {
     return { aguardando_votos: true, votos_recebidos: votos?.length ?? 0 };
   }
 
+  // Construir entrada de histórico para esta votação
+  const acusadoEhEspia = estado.espia_ids.includes(estado.acusado_id!);
+  const { data: acusadoRow } = await db
+    .from("jogadores")
+    .select("apelido")
+    .eq("id", estado.acusado_id)
+    .single();
+  const acusadoApelido = acusadoRow?.apelido ?? "?";
+
+  const apelidoPorId = new Map<string, string>(
+    (jogadoresAtivos ?? []).map((j) => [j.id, j.apelido]),
+  );
+
+  const historicoVotacao: HistoricoVotacao = {
+    tipo: "votacao",
+    acusado_apelido: acusadoApelido,
+    votos: (votos ?? []).map((v) => ({
+      votante_apelido: apelidoPorId.get(v.votante_id) ?? "?",
+      aprovado: v.aprovado,
+    })),
+    resultado: classificarResultadoVotacao(resultado, acusadoEhEspia),
+  };
+
+  const historicoComVotacao = [...(estado.historico ?? []), historicoVotacao];
+
   if (resultado === "rejeitado") {
     // Votação rejeitada: voltar para jogando
     const { error } = await db
       .from("rodadas")
-      .update({ estado: { ...estado, fase: "jogando", acusado_id: null } })
+      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, historico: historicoComVotacao } })
       .eq("id", rodada_id);
     if (error) throw new Error(error.message);
     return { resultado_votacao: "rejeitado" };
   }
 
-  // resultado === "aprovado": verificar se acusado é espia
-  const acusadoEhEspia = estado.espia_ids.includes(estado.acusado_id!);
-
   if (acusadoEhEspia) {
-    // Espia pego — dar chance de adivinhar
+    // Espia pego — remover do turno e dar chance de adivinhar
+    const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id!);
     const { error } = await db
       .from("rodadas")
-      .update({ estado: { ...estado, fase: "adivinhacao" } })
+      .update({ estado: { ...estado, fase: "adivinhacao", ordem_turnos: novaOrdem, historico: historicoComVotacao } })
       .eq("id", rodada_id);
     if (error) throw new Error(error.message);
     return { resultado_votacao: "aprovado", espia_pego: true, fase: "adivinhacao" };
@@ -109,7 +132,12 @@ export async function votar(userId: string, payload: unknown) {
   const n = numEspias(totalJogadores);
   const limite = limiteEliminacoesErradas(totalJogadores, n);
 
+  // Persistir histórico antes de eventualmente encerrar — encerrarRodada não toca historico
   if (novasElim > limite) {
+    await db
+      .from("rodadas")
+      .update({ estado: { ...estado, historico: historicoComVotacao } })
+      .eq("id", rodada_id);
     return encerrarRodada(userId, {
       rodada_id,
       espia_pego: false,
@@ -130,6 +158,7 @@ export async function votar(userId: string, payload: unknown) {
         acusado_id: null,
         eliminacoes_erradas: novasElim,
         ordem_turnos: novaOrdem,
+        historico: historicoComVotacao,
       },
     })
     .eq("id", rodada_id);

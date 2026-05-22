@@ -73,19 +73,20 @@ vi.mock("@/components/ui/design", () => {
   };
 });
 
-// ── Imports e helpers ──────────────────────────────────────────
+// ── Imports ────────────────────────────────────────────────────
 
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import JogoPage from "@/app/sala/[code]/jogo/page";
 
+// ── Fixtures ───────────────────────────────────────────────────
+
 const ALICE = { id: "jogador-1", user_id: "user-1", apelido: "Alice", ativo: true };
 const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: true };
-
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
+function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = false } = {}): RodadaAtual {
   return {
     id: "rodada-1",
     numero: 1,
@@ -93,9 +94,9 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", pri
     encerrada_em: null,
     estado: {
       fase: "jogando",
-      turno_atual: turnoAtual,
+      turno_atual: "jogador-1",
       ordem_turnos: ["jogador-1", "jogador-2"],
-      espia_ids: [],
+      espia_ids: isSpy ? ["jogador-1"] : [],
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: null,
@@ -119,17 +120,19 @@ function renderJogo() {
 
 async function passarRevealScreen() {
   const btn = screen.queryByText("Memorizei");
-  if (btn) await act(async () => { (btn as HTMLElement).click(); });
+  if (btn) await act(async () => { fireEvent.click(btn); });
 }
 
 async function abrirModalTurno() {
   await waitFor(() => screen.getByText("Sua vez"));
-  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
+  await act(async () => {
+    fireEvent.click(screen.getByText("Sua vez"));
+  });
 }
 
 // ── Tests ──────────────────────────────────────────────────────
 
-describe("Botão Acusar", () => {
+describe("Ações do turno ficam dentro do modal — não aparecem diretamente", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
@@ -138,89 +141,101 @@ describe("Botão Acusar", () => {
       linkGoogle: vi.fn(),
     });
     vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
+    vi.clearAllMocks();
   });
 
-  it("aparece quando é o turno do jogador e ainda não acusou", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
+  it("Fazer Pergunta não está visível antes de abrir o modal", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByText("Sua vez"));
+    expect(screen.queryByRole("button", { name: /fazer pergunta/i })).not.toBeInTheDocument();
+  });
+
+  it("Acusar não está visível antes de abrir o modal", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByText("Sua vez"));
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
+  });
+
+  it("Dizer Palavra não está visível antes de abrir o modal na primeira rodada", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada({ primeiraRodada: true }));
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByText("Sua vez"));
+    expect(screen.queryByRole("button", { name: /dizer palavra/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Modal de ações abre ao clicar em 'Sua vez'", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
+      loading: false,
+      isAnonymous: false,
+      linkGoogle: vi.fn(),
+    });
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
+    vi.clearAllMocks();
+  });
+
+  it("abre com Fazer Pergunta e Acusar na rodada normal", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada());
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
     await abrirModalTurno();
 
     await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^acusar$/i })).toBeInTheDocument();
     });
   });
 
-  it("não aparece quando o jogador já acusou neste turno", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
+  it("abre com Dizer Palavra na primeira rodada", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada({ primeiraRodada: true }));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-  });
-
-  it("não aparece quando não é o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-2" }),
-    );
-
-    await act(async () => { renderJogo(); });
-    await passarRevealScreen();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-  });
-
-  it("não aparece na primeira rodada mesmo sendo o turno do jogador", async () => {
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ primeiraRodada: true, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-
-    await act(async () => { renderJogo(); });
-    await passarRevealScreen();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-  });
-
-  it("reaparece quando o turno passa para o mesmo jogador novamente (acusou_neste_turno resetado)", async () => {
-    const { rerender } = renderJogo();
-
-    // Turno de Alice, já acusou
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: true, turnoAtual: "jogador-1" }),
-    );
-    await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
-    });
-    await passarRevealScreen();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Acusar")).not.toBeInTheDocument();
-    });
-
-    // Turno passa para Bob e volta para Alice com flag resetada
-    vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
-    );
-    await act(async () => {
-      rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
-    });
-
     await abrirModalTurno();
 
     await waitFor(() => {
-      expect(screen.getByText("Acusar")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /dizer palavra/i })).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: /fazer pergunta/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
+  });
+
+  it("abre com Adivinhar quando é espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada({ isSpy: true }));
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await abrirModalTurno();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /adivinhar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("não mostra Acusar no modal quando já acusou neste turno", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada({ acusouNesteTurno: true }));
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await abrirModalTurno();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
   });
 });
