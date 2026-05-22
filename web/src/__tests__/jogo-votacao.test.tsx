@@ -89,6 +89,7 @@ function rodadaVotacao(acusadoId: string): RodadaAtual {
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: acusadoId,
+      acusou_neste_turno: true,
       adivinhou_evento_id: null,
       pergunta_atual: null,
       historico: [],

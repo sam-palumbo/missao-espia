@@ -66,6 +66,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     timer_end,
     eliminacoes_erradas: 0,
     acusado_id: null,
+    acusou_neste_turno: false,
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],

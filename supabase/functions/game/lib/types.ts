@@ -48,6 +48,7 @@ export interface EstadoRodada {
   timer_end: string;
   eliminacoes_erradas: number;
   acusado_id: string | null;
+  acusou_neste_turno: boolean;
   adivinhou_evento_id: number | null;
   pergunta_atual: PerguntaAtual | null;
   historico: HistoricoItem[];

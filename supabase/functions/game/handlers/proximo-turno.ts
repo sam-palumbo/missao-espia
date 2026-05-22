@@ -35,7 +35,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
 
   const { error } = await db
     .from("rodadas")
-    .update({ estado: { ...estado, turno_atual: proximo } })
+    .update({ estado: { ...estado, turno_atual: proximo, acusou_neste_turno: false } })
     .eq("id", rodada_id);
 
   if (error) throw new Error("Falha ao avançar turno: " + error.message);

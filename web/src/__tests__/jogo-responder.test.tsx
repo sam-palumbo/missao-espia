@@ -83,6 +83,7 @@ function rodadaAguardandoResposta(destinatarioId: string): RodadaAtual {
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: null,
+      acusou_neste_turno: false,
       adivinhou_evento_id: null,
       pergunta_atual: {
         perguntador_id: "jogador-2",
@@ -112,6 +113,7 @@ function rodadaJogando(): RodadaAtual {
       timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 0,
       acusado_id: null,
+      acusou_neste_turno: false,
       adivinhou_evento_id: null,
       pergunta_atual: null,
       historico: [],

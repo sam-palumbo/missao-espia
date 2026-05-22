@@ -19,6 +19,7 @@ export async function acusar(userId: string, payload: unknown) {
 
   const estado = rodada.estado;
   if (estado.fase !== "jogando") throw new Error("Só é possível acusar na fase 'jogando'");
+  if (estado.acusou_neste_turno) throw Object.assign(new Error("Você já acusou neste turno"), { status: 403 });
 
   // Verificar que caller é o jogador do turno atual
   const { data: caller } = await db
@@ -45,7 +46,7 @@ export async function acusar(userId: string, payload: unknown) {
 
   const { error } = await db
     .from("rodadas")
-    .update({ estado: { ...estado, fase: "votacao", acusado_id } })
+    .update({ estado: { ...estado, fase: "votacao", acusado_id, acusou_neste_turno: true } })
     .eq("id", rodada_id);
 
   if (error) throw new Error("Falha ao iniciar votação: " + error.message);

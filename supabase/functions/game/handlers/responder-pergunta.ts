@@ -36,6 +36,7 @@ export async function responderPergunta(userId: string, payload: unknown) {
     ...estado,
     fase: "jogando",
     turno_atual: proximo,
+    acusou_neste_turno: false,
     pergunta_atual: null,
     historico: [
       ...(estado.historico ?? []),

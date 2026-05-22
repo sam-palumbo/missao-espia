@@ -10,6 +10,7 @@ export interface EstadoRodada {
   timer_end: string;
   eliminacoes_erradas: number;
   acusado_id: string | null;
+  acusou_neste_turno: boolean;
   adivinhou_evento_id: number | null;
   pergunta_atual: { perguntador_id: string; perguntador_apelido: string; destinatario_id: string; destinatario_apelido: string; texto: string } | null;
   historico: { perguntador_apelido: string; destinatario_apelido: string; pergunta: string; resposta: string }[];

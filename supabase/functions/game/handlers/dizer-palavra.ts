@@ -37,6 +37,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   const novoEstado = {
     ...estado,
     turno_atual: proximo,
+    acusou_neste_turno: false,
     palavras_primeira_rodada: [
       ...(estado.palavras_primeira_rodada ?? []),
       { jogador_id: jogador.id, apelido: jogador.apelido, palavra: palavraLimpa },

@@ -38,7 +38,8 @@ Na primeira rodada, **não há perguntas**. Em sentido horário, cada jogador ap
 
 ## Acusação
 
-- No início do seu turno (antes de perguntar), qualquer jogador pode propor uma acusação.
+- No início do seu turno (antes de perguntar), o jogador do turno pode propor uma acusação.
+- **Cada jogador pode fazer no máximo uma acusação por turno.**
 - O **acusado não vota**. Os demais votam simultaneamente: polegar para cima = acusa, polegar para baixo = inocente.
 - É necessária **maioria simples** dos votantes para eliminar o acusado. Maioria simples é **metade mais um** dos votantes — por exemplo, em um grupo de 6 jogadores, o acusado não vota, restam 5 votantes, e são necessários pelo menos 3 votos para eliminar.
   - Se a votação **não atingir maioria**, ninguém é eliminado e o jogo continua normalmente.
