@@ -19,7 +19,12 @@ export interface HistoricoVotacao {
   resultado: ResultadoVotacaoHistorico;
 }
 
-export type HistoricoItem = HistoricoPergunta | HistoricoVotacao;
+export interface HistoricoTurnoPresencial {
+  tipo: "turno_presencial";
+  jogador_apelido: string;
+}
+
+export type HistoricoItem = HistoricoPergunta | HistoricoVotacao | HistoricoTurnoPresencial;
 
 export interface EstadoRodada {
   fase: "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "resultado";

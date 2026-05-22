@@ -384,6 +384,15 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                     </div>
                   );
                 }
+                if (h.tipo === "turno_presencial") {
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", paddingBottom: 8, borderBottom }}>
+                      <MEAvatar size={18} initial={h.jogador_apelido.slice(0,1)} variant="light" />
+                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.jogador_apelido}</span>
+                      <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>— turno presencial</span>
+                    </div>
+                  );
+                }
                 return (
                   <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
