@@ -92,7 +92,7 @@ function headers(token) {
 
 async function getSala(token) {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/salas?codigo=eq.${codigo}&select=id,status,anfitriao`,
+    `${SUPABASE_URL}/rest/v1/salas?codigo=eq.${codigo}&select=id,status,anfitriao,modo`,
     { headers: headers(token) }
   );
   const data = await res.json();
@@ -215,6 +215,17 @@ async function playBot({ nome, token, salaId, jogadorId }) {
 
       const sou_espia = estado.espia_ids.includes(jogadorId);
 
+      // Modo presencial: tudo é verbal — só concluir o turno
+      if (sala.modo === "presencial") {
+        try {
+          await callGame(token, "proximo_turno", { rodada_id: rodada.id });
+          log(`Turno concluído (presencial, turno ${turnos})`);
+        } catch (e) {
+          log(`Erro ao concluir turno: ${e.message}`);
+        }
+        continue;
+      }
+
       // Primeira rodada: dizer uma palavra em vez de perguntar
       if (estado.primeira_rodada) {
         const palavra = PALAVRAS_PRIMEIRA_RODADA[Math.floor(Math.random() * PALAVRAS_PRIMEIRA_RODADA.length)];
@@ -283,6 +294,7 @@ async function playBot({ nome, token, salaId, jogadorId }) {
 
     // ── Fase: aguardando_resposta ─────────────────────────────────────────────
     else if (fase === "aguardando_resposta") {
+      if (sala.modo === "presencial") continue; // perguntas são verbais
       const pergunta_atual = estado.pergunta_atual;
       if (!pergunta_atual || pergunta_atual.destinatario_id !== jogadorId) continue;
 
