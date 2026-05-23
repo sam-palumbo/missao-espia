@@ -85,7 +85,7 @@ const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: tru
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false } = {}): RodadaAtual {
+function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false, comHistorico = false } = {}): RodadaAtual {
   return {
     id: "rodada-2",
     numero: 2,
@@ -102,7 +102,7 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", pri
       acusou_neste_turno: acusouNesteTurno,
       adivinhou_evento_id: null,
       pergunta_atual: null,
-      historico: [],
+      historico: comHistorico ? [{ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
       primeira_rodada: primeiraRodada,
       palavras_primeira_rodada: [],
     },
@@ -135,9 +135,9 @@ describe("Botão Acusar (online, ação no rodapé)", () => {
     vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
   });
 
-  it("aparece quando é o turno do jogador e ainda não acusou", async () => {
+  it("aparece quando é o turno do jogador e ainda não acusou (turno 2+)", async () => {
     vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
+      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1", comHistorico: true }),
     );
 
     await act(async () => { renderJogo(); });
@@ -174,9 +174,9 @@ describe("Botão Acusar (online, ação no rodapé)", () => {
     });
   });
 
-  it("não aparece na primeira rodada mesmo sendo o turno do jogador", async () => {
+  it("não aparece no primeiro turno da rodada", async () => {
     vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ primeiraRodada: true, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
+      rodadaJogando({ comHistorico: false, acusouNesteTurno: false, turnoAtual: "jogador-1" }),
     );
 
     await act(async () => { renderJogo(); });
@@ -205,13 +205,12 @@ describe("Botão Acusar (online, ação no rodapé)", () => {
 
     // Turno passa para Bob e volta para Alice com flag resetada
     vi.mocked(useGameState).mockReturnValue(
-      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1" }),
+      rodadaJogando({ acusouNesteTurno: false, turnoAtual: "jogador-1", comHistorico: true }),
     );
     await act(async () => {
       rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
     });
 
-    // Button is now directly visible, no modal
     await waitFor(() => {
       expect(screen.getByText("Acusar")).toBeInTheDocument();
     });

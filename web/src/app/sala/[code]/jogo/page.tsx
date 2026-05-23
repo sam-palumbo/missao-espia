@@ -171,6 +171,9 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
+  const primeiroTurno = primeiraRodada
+    ? (rodada?.estado.palavras_primeira_rodada?.length ?? 0) === 0
+    : (rodada?.estado.historico.length ?? 0) === 0;
   // Eliminado se: (a) ativo=false em jogadores, OU (b) ausente de ordem_turnos quando ordem está populada.
   // (b) cobre race condition entre usePlayers e useGameState (cada um com seu próprio polling/Realtime):
   // useGameState pode atualizar ordem_turnos antes de usePlayers refletir ativo=false.
@@ -455,7 +458,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
                 Fazer Pergunta
               </button>
             )}
-            {!primeiraRodada && !acusouNesteTurno && (rodada?.numero ?? 1) >= 2 && (
+            {!primeiroTurno && !acusouNesteTurno && (
               <button
                 disabled={acting}
                 onClick={() => setShowAccuse(true)}

@@ -86,7 +86,7 @@ const ALICE = { id: "jogador-1", user_id: "user-1", apelido: "Alice", ativo: tru
 const BOB   = { id: "jogador-2", user_id: "user-2", apelido: "Bob",   ativo: true };
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = false } = {}): RodadaAtual {
+function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = false, comHistorico = false } = {}): RodadaAtual {
   return {
     id: "rodada-1",
     numero: primeiraRodada ? 1 : 2,
@@ -103,7 +103,7 @@ function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = fals
       acusou_neste_turno: acusouNesteTurno,
       adivinhou_evento_id: null,
       pergunta_atual: null,
-      historico: [],
+      historico: comHistorico ? [{ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
       primeira_rodada: primeiraRodada,
       palavras_primeira_rodada: [],
     },
@@ -148,8 +148,8 @@ describe("Ações do turno aparecem diretamente no rodapé", () => {
     });
   });
 
-  it("Acusar aparece diretamente na rodada normal (numero >= 2)", async () => {
-    vi.mocked(useGameState).mockReturnValue(rodada());
+  it("Acusar aparece diretamente a partir do 2º turno da rodada", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodada({ comHistorico: true }));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();

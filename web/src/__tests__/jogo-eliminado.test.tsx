@@ -346,8 +346,9 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     });
   });
 
-  it("mostra botão Acusar para jogador ativo no seu turno", async () => {
+  it("mostra botão Acusar para jogador ativo no seu turno (turno 2+)", async () => {
     const rodada = rodadaBobTurno();
+    rodada.estado.historico.push({ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" });
     vi.mocked(useGameState).mockReturnValue({ ...rodada, numero: 2 });
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
@@ -595,8 +596,10 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
   });
 
   it("fecha o sheet de 'Acusar' quando o jogador é eliminado", async () => {
+    const rodadaComHistorico = rodadaAliceTurnoNumero2();
+    rodadaComHistorico.estado.historico.push({ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" });
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
-    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurnoNumero2());
+    vi.mocked(useGameState).mockReturnValue(rodadaComHistorico);
 
     const { rerender } = render(
       <Suspense fallback={null}>
