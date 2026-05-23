@@ -1,12 +1,22 @@
-import { getDb }            from "../lib/db.ts";
-import { verificarSenha }   from "../lib/senha.ts";
+import { getDb } from "../lib/db.ts";
+import { verificarSenha } from "../lib/senha.ts";
+import {
+  validarCodigo,
+  validarApelido,
+  normalizarCodigo,
+  validarStatusSalaParaEntrada,
+  validarSenhaRequerida,
+  resultadoValidacaoSenha,
+} from "../lib/entrar-sala.ts";
 import type { EntrarSalaPayload } from "../lib/types.ts";
 
 export async function entrarSala(userId: string, payload: unknown) {
   const { codigo, apelido, senha } = payload as EntrarSalaPayload;
 
-  if (!codigo?.trim())  throw new Error("Código obrigatório");
-  if (!apelido?.trim()) throw new Error("Apelido obrigatório");
+  // Validações puras (testáveis)
+  validarCodigo(codigo);
+  validarApelido(apelido);
+  const codigoNormalizado = normalizarCodigo(codigo);
 
   const db = getDb();
 
@@ -14,18 +24,21 @@ export async function entrarSala(userId: string, payload: unknown) {
   const { data: sala, error: salaErr } = await db
     .from("salas")
     .select("*")
-    .eq("codigo", codigo.toUpperCase())
+    .eq("codigo", codigoNormalizado)
     .single();
 
   if (salaErr || !sala) throw Object.assign(new Error("Sala não encontrada"), { status: 404 });
-  if (sala.status === "encerrada") throw Object.assign(new Error("Sala encerrada"), { status: 410 });
-  if (sala.status === "jogando")   throw Object.assign(new Error("Partida já em andamento"), { status: 409 });
 
-  // Verificar senha
-  if (sala.senha_hash) {
-    if (!senha) throw Object.assign(new Error("Senha obrigatória"), { status: 403 });
-    const ok = await verificarSenha(senha, sala.senha_hash);
-    if (!ok)   throw Object.assign(new Error("Senha incorreta"), { status: 403 });
+  // Validação de status (função pura)
+  validarStatusSalaParaEntrada(sala);
+
+  // Validação de senha
+  const salaTemSenha = !!sala.senha_hash;
+  validarSenhaRequerida(salaTemSenha, senha);
+
+  if (salaTemSenha) {
+    const senhaOk = await verificarSenha(senha!, sala.senha_hash!);
+    resultadoValidacaoSenha(senhaOk);
   }
 
   // Verificar se jogador já está na sala (reconexão)
