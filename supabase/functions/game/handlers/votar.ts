@@ -100,6 +100,9 @@ export async function votar(userId: string, payload: unknown) {
 
   const historicoComVotacao = [...(estado.historico ?? []), historicoVotacao];
 
+  // Limpar votos desta acusação para permitir nova acusação contra o mesmo jogador
+  await db.from("votos").delete().eq("rodada_id", rodada_id).eq("acusado_id", estado.acusado_id);
+
   if (resultado === "rejeitado") {
     // Votação rejeitada: voltar para jogando
     const { error } = await db
