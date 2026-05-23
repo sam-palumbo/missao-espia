@@ -155,8 +155,10 @@ async function passarRevealScreen() {
 }
 
 async function abrirModalTurno() {
-  await waitFor(() => screen.getByText("Sua vez"));
-  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
+  await waitFor(() => screen.getByText(/É sua vez/i));
+  await act(async () => {
+    // No modal anymore — button is directly at the bottom
+  });
 }
 
 // ── Tests ──────────────────────────────────────────────────────
@@ -339,17 +341,16 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
-    await abrirModalTurno();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /fazer pergunta/i })).toBeInTheDocument();
     });
   });
 
   it("mostra botão Acusar para jogador ativo no seu turno", async () => {
-    vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
+    const rodada = rodadaBobTurno();
+    vi.mocked(useGameState).mockReturnValue({ ...rodada, numero: 2 });
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
-    await abrirModalTurno();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /acusar/i })).toBeInTheDocument();
     });
@@ -360,7 +361,7 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
     await waitFor(() => {
-      expect(screen.getByText("Sua vez")).toBeInTheDocument();
+      expect(screen.getByText(/É sua vez/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/Você foi eliminado/i)).not.toBeInTheDocument();
   });
@@ -555,9 +556,14 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     vi.clearAllMocks();
   });
 
+  function rodadaAliceTurnoNumero2(): RodadaAtual {
+    const base = rodadaAliceTurno();
+    return { ...base, numero: 2 };
+  }
+
   it("fecha o sheet de 'Fazer Pergunta' quando o jogador é eliminado", async () => {
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
-    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurno());
+    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurnoNumero2());
 
     const { rerender } = render(
       <Suspense fallback={null}>
@@ -566,7 +572,6 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     );
     await act(async () => {});
     await passarRevealScreen();
-    await abrirModalTurno();
 
     await waitFor(() => screen.getByRole("button", { name: /fazer pergunta/i }));
     await act(async () => {
@@ -591,7 +596,7 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
 
   it("fecha o sheet de 'Acusar' quando o jogador é eliminado", async () => {
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
-    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurno());
+    vi.mocked(useGameState).mockReturnValue(rodadaAliceTurnoNumero2());
 
     const { rerender } = render(
       <Suspense fallback={null}>
@@ -600,11 +605,10 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     );
     await act(async () => {});
     await passarRevealScreen();
-    await abrirModalTurno();
 
-    await waitFor(() => screen.getByRole("button", { name: /^acusar$/i }));
+    await waitFor(() => screen.getByText("Acusar"));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /^acusar$/i }));
+      fireEvent.click(screen.getByText("Acusar"));
     });
     expect(screen.getByText(/Quem é o Espia/i)).toBeInTheDocument();
 

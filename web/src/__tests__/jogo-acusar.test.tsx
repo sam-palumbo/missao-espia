@@ -14,7 +14,7 @@ vi.mock("@/lib/supabase", () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          single: () => Promise.resolve({ data: { id: "sala-1" } }),
+          single: () => Promise.resolve({ data: { id: "sala-1", modo: "online" } }),
         }),
       }),
     }),
@@ -122,14 +122,9 @@ async function passarRevealScreen() {
   if (btn) await act(async () => { (btn as HTMLElement).click(); });
 }
 
-async function abrirModalTurno() {
-  await waitFor(() => screen.getByText("Sua vez"));
-  await act(async () => { fireEvent.click(screen.getByText("Sua vez")); });
-}
-
 // ── Tests ──────────────────────────────────────────────────────
 
-describe("Botão Acusar", () => {
+describe("Botão Acusar (online, ação no rodapé)", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
@@ -147,7 +142,6 @@ describe("Botão Acusar", () => {
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
-    await abrirModalTurno();
 
     await waitFor(() => {
       expect(screen.getByText("Acusar")).toBeInTheDocument();
@@ -217,8 +211,7 @@ describe("Botão Acusar", () => {
       rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
     });
 
-    await abrirModalTurno();
-
+    // Button is now directly visible, no modal
     await waitFor(() => {
       expect(screen.getByText("Acusar")).toBeInTheDocument();
     });

@@ -156,7 +156,7 @@ describe("Jogo presencial — TurnoPresencial integrado", () => {
     expect(screen.getByRole("button", { name: /Conclu[íi] turno/i })).toBeInTheDocument();
   });
 
-  it("não mostra input de texto (Dizer Palavra / Fazer Pergunta) em modo presencial", async () => {
+  it("não mostra input de texto (input sheets) em modo presencial", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaPresencial("jogador-1"));
 
     await act(async () => { renderJogo(); });
@@ -166,7 +166,6 @@ describe("Jogo presencial — TurnoPresencial integrado", () => {
       expect(screen.getByText(/É sua vez/i)).toBeInTheDocument();
     });
     // Sheets de texto não devem estar visíveis
-    expect(screen.queryByText(/Diga uma palavra/i)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/Uma palavra apenas/i)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/Sua pergunta/i)).not.toBeInTheDocument();
   });

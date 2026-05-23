@@ -58,3 +58,9 @@ Missão Espia é um jogo de dedução social com temática bíblica para 4 a 12 
 | Não pego e adivinha | 3 |
 
 Grupo vence: 1 ponto por membro ativo (eliminados não pontuam).
+
+---
+
+## Regras de Uso
+
+- **Sempre pedir autorização** antes de executar `git commit` ou `git push`. Nunca executar esses comandos sem confirmação explícita do usuário.

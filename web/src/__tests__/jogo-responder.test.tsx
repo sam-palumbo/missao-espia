@@ -158,7 +158,7 @@ describe("Não existe opção de passar turno", () => {
     passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.getByText("Sua vez")).toBeInTheDocument();
+      expect(screen.getByText(/É sua vez/i)).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: /passar/i })).not.toBeInTheDocument();
   });
