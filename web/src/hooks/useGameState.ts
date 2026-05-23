@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 import type { RodadaAtual } from "@/lib/types";
 
 export type { RodadaAtual } from "@/lib/types";
-export {
+export type {
   FaseJogo, ModoSala,
   HistoricoPergunta, HistoricoVotacao, HistoricoTurnoPresencial, HistoricoItem,
   EstadoRodada, PerguntaAtual, PalavraPrimeiraRodada,
