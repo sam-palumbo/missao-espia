@@ -1,4 +1,5 @@
 import { createClient } from "./supabase";
+import type { ModoSala } from "./types";
 
 async function callGame<T>(action: string, payload: unknown): Promise<T> {
   const supabase = createClient();
@@ -21,42 +22,80 @@ async function callGame<T>(action: string, payload: unknown): Promise<T> {
   return json as T;
 }
 
+// ============================================================
+// Responses tipados
+// ============================================================
+
 export interface SalaComJogador {
-  sala: { id: string; codigo: string; num_rodadas: number; status: string };
-  jogador: { id: string; apelido: string };
+  sala: {
+    id: string;
+    codigo: string;
+    num_rodadas: number;
+    status: string;
+    modo?: ModoSala;
+  };
+  jogador: {
+    id: string;
+    apelido: string;
+  };
 }
 
+// ============================================================
+// Actions
+// ============================================================
+
 export const gameActions = {
-  criarSala: (apelido: string, num_rodadas: number, opts?: { modo?: "online" | "presencial"; senha?: string }) =>
-    callGame<SalaComJogador>("criar_sala", { apelido, num_rodadas, modo: opts?.modo, senha: opts?.senha }),
+  criarSala: (
+    apelido: string,
+    num_rodadas: number,
+    opts?: { modo?: ModoSala; senha?: string }
+  ) =>
+    callGame<SalaComJogador>("criar_sala", {
+      apelido,
+      num_rodadas,
+      modo: opts?.modo,
+      senha: opts?.senha,
+    }),
 
   entrarSala: (codigo: string, apelido: string, senha?: string) =>
     callGame<SalaComJogador>("entrar_sala", { codigo, apelido, senha }),
 
-  definirModo: (sala_id: string, modo: "online" | "presencial") =>
-    callGame<{ ok: true; modo: "online" | "presencial" }>("definir_modo", { sala_id, modo }),
+  definirModo: (sala_id: string, modo: ModoSala) =>
+    callGame<{ ok: true; modo: ModoSala }>("definir_modo", { sala_id, modo }),
 
   iniciarRodada: (sala_id: string) =>
-    callGame("iniciar_rodada", { sala_id }),
+    callGame<{ rodada: { id: string } }>("iniciar_rodada", { sala_id }),
 
   proximoTurno: (rodada_id: string) =>
-    callGame("proximo_turno", { rodada_id }),
+    callGame<{ turno_atual: string; primeira_rodada?: boolean }>("proximo_turno", { rodada_id }),
 
   dizerPalavra: (rodada_id: string, palavra: string) =>
-    callGame("dizer_palavra", { rodada_id, palavra }),
+    callGame<{ ok: true; turno_atual: string; primeira_rodada_encerrada?: boolean }>(
+      "dizer_palavra",
+      { rodada_id, palavra }
+    ),
 
   fazerPergunta: (rodada_id: string, destinatario_id: string, texto: string) =>
-    callGame("fazer_pergunta", { rodada_id, destinatario_id, texto }),
+    callGame<{ ok: true }>("fazer_pergunta", { rodada_id, destinatario_id, texto }),
 
   responderPergunta: (rodada_id: string, resposta: string) =>
-    callGame("responder_pergunta", { rodada_id, resposta }),
+    callGame<{ ok: true; turno_atual: string }>("responder_pergunta", {
+      rodada_id,
+      resposta,
+    }),
 
   acusar: (rodada_id: string, acusado_id: string) =>
-    callGame("acusar", { rodada_id, acusado_id }),
+    callGame<{ fase: string; acusado_id: string }>("acusar", { rodada_id, acusado_id }),
 
   votar: (rodada_id: string, aprovado: boolean) =>
-    callGame("votar", { rodada_id, aprovado }),
+    callGame<
+      | { aguardando_votos: true; votos_recebidos: number }
+      | { resultado_votacao: string; espia_pego?: boolean; eliminacoes_erradas?: number; fase?: string }
+    >("votar", { rodada_id, aprovado }),
 
   adivinhar: (rodada_id: string, evento_id: number) =>
-    callGame("adivinhar", { rodada_id, evento_id }),
+    callGame<{ encerrada?: boolean; espia_pego?: boolean; espia_adivinhou?: boolean }>(
+      "adivinhar",
+      { rodada_id, evento_id }
+    ),
 };

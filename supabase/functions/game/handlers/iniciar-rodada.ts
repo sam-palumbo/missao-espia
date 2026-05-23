@@ -1,41 +1,23 @@
-import { getDb }       from "../lib/db.ts";
-import { numEspias }   from "../lib/espias.ts";
-import { EVENTOS }     from "../lib/eventos.ts";
+import { getDb }              from "../lib/db.ts";
+import { shuffle, addMinutesISO } from "../lib/utils.ts";
+import { numEspias }          from "../lib/espias.ts";
+import { EVENTOS }            from "../lib/eventos.ts";
+import { getSalaById, getJogadoresAtivos, assertIsAnfitriao } from "../lib/queries.ts";
 import type { IniciarRodadaPayload, EstadoRodada } from "../lib/types.ts";
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export async function iniciarRodada(userId: string, payload: unknown) {
   const { sala_id } = payload as IniciarRodadaPayload;
   if (!sala_id) throw new Error("sala_id obrigatório");
 
   const db = getDb();
+  const sala = await getSalaById(db, sala_id);
 
-  const { data: sala } = await db
-    .from("salas")
-    .select("*")
-    .eq("id", sala_id)
-    .single();
-
-  if (!sala) throw Object.assign(new Error("Sala não encontrada"), { status: 404 });
-  if (sala.anfitriao !== userId) throw Object.assign(new Error("Apenas o anfitrião pode iniciar"), { status: 403 });
+  assertIsAnfitriao(sala, userId);
   if (sala.status === "encerrada") throw new Error("Partida encerrada");
   if (sala.rodada_atual >= sala.num_rodadas) throw new Error("Todas as rodadas já foram jogadas");
 
-  const { data: jogadores } = await db
-    .from("jogadores")
-    .select("id")
-    .eq("sala_id", sala_id)
-    .eq("ativo", true);
-
-  if (!jogadores || jogadores.length < 4) throw new Error("Mínimo de 4 jogadores ativos");
+  const jogadoresAtivos = await getJogadoresAtivos(db, sala_id);
+  if (jogadoresAtivos.length < 4) throw new Error("Mínimo de 4 jogadores ativos");
 
   const { data: rodadasAnteriores } = await db
     .from("rodadas")
@@ -47,16 +29,15 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   if (disponiveis.length === 0) throw new Error("Todos os eventos já foram usados");
 
   const evento = disponiveis[Math.floor(Math.random() * disponiveis.length)];
-
   const novoNumero = sala.rodada_atual + 1;
 
-  const n = numEspias(jogadores.length);
-  const ids = jogadores.map((j: { id: string }) => j.id);
-  const shuffled = shuffle(ids) as string[];
-  const espia_ids = shuffled.slice(0, n) as string[];
+  const n = numEspias(jogadoresAtivos.length);
+  const ids = jogadoresAtivos.map((j) => j.id);
+  const shuffled = shuffle(ids);
+  const espia_ids = shuffled.slice(0, n);
 
-  const minutos = 5 + jogadores.length - n;
-  const timer_end = new Date(Date.now() + minutos * 60 * 1000).toISOString();
+  const minutos = 5 + jogadoresAtivos.length - n;
+  const timer_end = addMinutesISO(minutos);
 
   const estado: EstadoRodada = {
     fase: "jogando",
