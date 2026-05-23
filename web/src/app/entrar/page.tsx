@@ -10,7 +10,7 @@ import { ParchmentBg, InsetFrame, Eyebrow, PrimaryBtn, OutlineBtn, MEIcon, T, F 
 function EntrarForm() {
   const params = useSearchParams();
   const router = useRouter();
-  const [codigo] = useState((params.get("code") ?? "").toUpperCase());
+  const [codigo, setCodigo] = useState((params.get("code") ?? "").toUpperCase());
   const [apelido, setApelido] = useState("");
   const [senha, setSenha] = useState("");
   const [precisaSenha, setPrecisaSenha] = useState(false);
@@ -57,6 +57,30 @@ function EntrarForm() {
         {/* 4-char boxes */}
         <div style={{ position: "relative" }}>
           <Eyebrow color={T.inkSoft} size={10}>Código</Eyebrow>
+
+          {/* Input invisível que captura a digitação */}
+          <input
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            maxLength={4}
+            value={codigo}
+            onChange={(e) => {
+              setCodigo(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""));
+            }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              opacity: 0,
+              zIndex: 10,
+              cursor: "pointer",
+              fontSize: 1,
+            }}
+          />
+
           <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
             {[0,1,2,3].map(i => (
               <div key={i} style={{ aspectRatio: "1/1.15", background: T.cardWarm, border: `1px solid ${codigo[i] ? T.sienna : T.hairlineStrong}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink }}>
@@ -66,7 +90,7 @@ function EntrarForm() {
           </div>
           {!codigo && (
             <div style={{ marginTop: 6, fontFamily: F.sans, fontSize: 12, color: T.muted, fontStyle: "italic" }}>
-              Insira o código de 4 letras da sala
+              Toque acima para digitar o código de 4 letras
             </div>
           )}
         </div>
