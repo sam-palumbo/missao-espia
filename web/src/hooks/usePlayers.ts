@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Player } from "@/lib/types";
 
-export { Player } from "@/lib/types";
+export type { Player } from "@/lib/types";
 
 export function usePlayers(salaId: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
