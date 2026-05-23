@@ -116,9 +116,9 @@ async function getJogadoresAtivos(token, salaId) {
   return await res.json();
 }
 
-async function jaVotou(token, rodadaId, jogadorId) {
+async function jaVotou(token, rodadaId, jogadorId, acusadoId) {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/votos?rodada_id=eq.${rodadaId}&votante_id=eq.${jogadorId}&select=id`,
+    `${SUPABASE_URL}/rest/v1/votos?rodada_id=eq.${rodadaId}&votante_id=eq.${jogadorId}&acusado_id=eq.${acusadoId}&select=id`,
     { headers: headers(token) }
   );
   const data = await res.json();
@@ -320,16 +320,14 @@ async function playBot({ nome, token, salaId, jogadorId }) {
     // ── Fase: votacao ──────────────────────────────────────────────────────
     else if (fase === "votacao") {
       if (estado.acusado_id === jogadorId) continue; // acusado não vota
-      if (votouNestaRodada) continue;
 
-      const jáVotou = await jaVotou(token, rodada.id, jogadorId);
-      if (jáVotou) { votouNestaRodada = true; continue; }
+      const jáVotou = await jaVotou(token, rodada.id, jogadorId, estado.acusado_id);
+      if (jáVotou) continue;
 
       await sleep(800 + Math.random() * 1200);
       const aprovado = Math.random() < 0.6;
       try {
         await callGame(token, "votar", { rodada_id: rodada.id, aprovado });
-        votouNestaRodada = true;
         log(`Votei: ${aprovado ? "👍 sim" : "👎 não"}`);
       } catch (e) {
         log(`Erro ao votar: ${e.message}`);
