@@ -1,15 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
+import type { Player } from "@/lib/types";
 
-export interface Player {
-  id: string;
-  apelido: string;
-  pontuacao: number;
-  ativo: boolean;
-  conectado: boolean;
-  user_id: string | null;
-}
+export { Player } from "@/lib/types";
 
 export function usePlayers(salaId: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -23,7 +17,7 @@ export function usePlayers(salaId: string | null) {
         .from("jogadores")
         .select("id, apelido, pontuacao, ativo, conectado, user_id")
         .eq("sala_id", salaId!);
-      if (data) setPlayers(data);
+      if (data) setPlayers(data as Player[]);
     }
 
     fetch();

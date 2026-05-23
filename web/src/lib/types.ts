@@ -1,8 +1,8 @@
 // ============================================================
 // TIPOS COMPARTILHADOS do Missão Espia
 // ============================================================
-// Este arquivo é a FONTE DA VERDADE dos tipos.
-// Sincronizado manualmente com web/src/lib/types.ts
+// Este arquivo é sincronizado com:
+//   supabase/functions/game/lib/types.ts
 // ============================================================
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
@@ -114,7 +114,7 @@ export interface MensagemChat {
 }
 
 // ============================================================
-// Payloads das Actions (Edge Function)
+// Payloads das Actions
 // ============================================================
 
 export interface CriarSalaPayload {
@@ -130,54 +130,16 @@ export interface EntrarSalaPayload {
   senha?: string;
 }
 
-export interface DefinirModoPayload {
-  sala_id: string;
-  modo: ModoSala;
-}
+// ============================================================
+// Views/Hooks específicos
+// ============================================================
 
-export interface IniciarRodadaPayload {
-  sala_id: string;
-}
+export interface Player extends Jogador {}
 
-export interface ProximoTurnoPayload {
-  rodada_id: string;
-}
-
-export interface DizerPalavraPayload {
-  rodada_id: string;
-  palavra: string;
-}
-
-export interface FazerPerguntaPayload {
-  rodada_id: string;
-  destinatario_id: string;
-  texto: string;
-}
-
-export interface ResponderPerguntaPayload {
-  rodada_id: string;
-  resposta: string;
-}
-
-export interface AcusarPayload {
-  rodada_id: string;
-  acusado_id: string;
-}
-
-export interface VotarPayload {
-  rodada_id: string;
-  aprovado: boolean;
-}
-
-export interface AdivinharPayload {
-  rodada_id: string;
+export interface RodadaAtual {
+  id: string;
+  numero: number;
   evento_id: number;
+  estado: EstadoRodada;
+  encerrada_em: string | null;
 }
-
-// ============================================================
-// Tipos Utilitários
-// ============================================================
-
-export type GameResponse<T = Record<string, unknown>> =
-  | { data: T; error?: never }
-  | { error: string; data?: never };
