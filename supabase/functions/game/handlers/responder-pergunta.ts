@@ -30,18 +30,23 @@ export async function responderPergunta(userId: string, payload: unknown) {
     return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
   }
 
+  const turnoNumero = estado.turno_numero_atual ?? 1;
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
+  const isUltimoDoCiclo = idx === estado.ordem_turnos.length - 1;
+  const proximoTurnoNumero = isUltimoDoCiclo ? turnoNumero + 1 : turnoNumero;
   const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
 
   const novoEstado = {
     ...estado,
     fase: "jogando",
     turno_atual: proximo,
+    turno_numero_atual: proximoTurnoNumero,
     acusou_neste_turno: false,
     pergunta_atual: null,
     historico: [
       ...(estado.historico ?? []),
       {
+        turno_numero: turnoNumero,
         perguntador_apelido: perguntaAtual.perguntador_apelido,
         destinatario_apelido: perguntaAtual.destinatario_apelido,
         pergunta: perguntaAtual.texto,
