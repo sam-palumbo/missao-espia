@@ -25,6 +25,7 @@ export interface PerguntaAtual {
 
 export interface HistoricoPergunta {
   tipo?: "pergunta";
+  turno_numero: number;
   perguntador_apelido: string;
   destinatario_apelido: string;
   pergunta: string;
@@ -40,6 +41,7 @@ export interface HistoricoVotacao {
 
 export interface HistoricoTurnoPresencial {
   tipo: "turno_presencial";
+  turno_numero: number;
   jogador_apelido: string;
 }
 
@@ -92,6 +94,7 @@ export interface EstadoRodada {
   historico: HistoricoItem[];
   primeira_rodada: boolean;
   palavras_primeira_rodada: PalavraPrimeiraRodada[];
+  turno_numero_atual: number;
 }
 
 export interface Rodada {
