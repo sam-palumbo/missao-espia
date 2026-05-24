@@ -126,17 +126,33 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
 
   const [selectedTab, setSelectedTab] = useState<number>(0);
   const prevGroupCount = useRef(0);
+  const prevHistoricoLength = useRef(0);
 
   useEffect(() => {
+    if (historico.length <= prevHistoricoLength.current) return;
+    prevHistoricoLength.current = historico.length;
+
     if (groups.length > prevGroupCount.current) {
+      // New tab created — advance if user was on last tab
       const prevCount = prevGroupCount.current;
       prevGroupCount.current = groups.length;
       setSelectedTab((prev) => {
         const wasOnLast = prev === prevCount - 1 || prevCount === 0;
         return wasOnLast ? groups.length - 1 : prev;
       });
+    } else {
+      // Items added to existing group (e.g. post-votação mid-cycle) —
+      // if user is stuck on a votação tab, move them to the last turno group
+      setSelectedTab((prev) => {
+        if (groups[prev]?.kind !== "votacao") return prev;
+        for (let i = groups.length - 1; i >= 0; i--) {
+          if (groups[i].kind === "turno") return i;
+        }
+        return prev;
+      });
     }
-  }, [groups.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historico.length]);
 
   if (groups.length === 0 && palavrasPrimeiraRodada.length === 0) {
     return null;

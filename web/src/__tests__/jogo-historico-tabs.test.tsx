@@ -166,6 +166,28 @@ describe("HistoricoTabs", () => {
     expect(screen.getByText("Legacy")).toBeInTheDocument();
   });
 
+  it("user on votação tab, new item added to existing turno group → advances to that turno group", () => {
+    // Simulates votação happening mid-cycle: turno_numero_atual stays at 1
+    // so post-votação items also get turno_numero: 1
+    const historico1 = [makeP("Alice", 1), makeV()];
+    const { rerender } = render(
+      <HistoricoTabs historico={historico1} palavrasPrimeiraRodada={[]} primeiraRodada={false} />
+    );
+
+    // After votação is added, user lands on Votação tab (last tab at the time)
+    expect(screen.getByText(/Acusado: Ana/i)).toBeInTheDocument();
+
+    // New item arrives in turno 1 (mid-cycle, turno_numero_atual didn't increment)
+    const historico2 = [...historico1, makeP("Carlos", 1)];
+    rerender(
+      <HistoricoTabs historico={historico2} palavrasPrimeiraRodada={[]} primeiraRodada={false} />
+    );
+
+    // Should have moved to Turno 1 tab — Carlos visible, votação content not visible
+    expect(screen.getByText("Carlos")).toBeInTheDocument();
+    expect(screen.queryByText(/Acusado: Ana/i)).not.toBeInTheDocument();
+  });
+
   it("turno_presencial items → grouped by turno_numero like pergunta items", () => {
     const historico = [makeTP("Bruno", 1), makeTP("Carla", 2)];
     render(
