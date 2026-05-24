@@ -83,7 +83,7 @@ function EntrarForm() {
 
           <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
             {[0,1,2,3].map(i => (
-              <div key={i} style={{ aspectRatio: "1/1.15", background: T.cardWarm, border: `1px solid ${codigo[i] ? T.sienna : T.hairlineStrong}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink }}>
+              <div key={i} data-testid="codigo-box" style={{ aspectRatio: "1/1.15", background: T.cardWarm, border: `1px solid ${codigo[i] ? T.sienna : T.hairlineStrong}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink }}>
                 {codigo[i] ?? ""}
               </div>
             ))}

@@ -8,7 +8,7 @@ test.describe('Página Entrar — Digitar Código da Sala', () => {
     await expect(page.locator('text=Digite o código')).toBeVisible();
     await expect(page.locator('text=da sala.')).toBeVisible();
 
-    const caixas = page.locator('[style*="aspectRatio: 1/1.15"]');
+    const caixas = page.getByTestId("codigo-box");
     await expect(caixas).toHaveCount(4);
 
     for (let i = 0; i < 4; i++) {
@@ -19,7 +19,7 @@ test.describe('Página Entrar — Digitar Código da Sala', () => {
   test('deve capturar digitação e converter para MAIÚSCULAS', async ({ page }) => {
     await page.goto('/entrar');
 
-    const caixas = page.locator('[style*="aspectRatio: 1/1.15"]');
+    const caixas = page.getByTestId("codigo-box");
 
     await page.locator('input[maxLength="4"]').fill('abcd');
 
@@ -32,10 +32,10 @@ test.describe('Página Entrar — Digitar Código da Sala', () => {
   test('deve FILTRAR caracteres que NÃO são letras (apenas A-Z permitido)', async ({ page }) => {
     await page.goto('/entrar');
 
-    const caixas = page.locator('[style*="aspectRatio: 1/1.15"]');
+    const caixas = page.getByTestId("codigo-box");
 
-    // Tentar digitar números, símbolos, espaços
-    await page.locator('input[maxLength="4"]').fill('a1b@c 2');
+    // 4 chars dentro do maxLength: a, 1, b, c → apenas A, B, C passam pelo filtro
+    await page.locator('input[maxLength="4"]').fill('a1bc');
 
     // Apenas A, B, C devem aparecer (1, @, espaço, 2 filtrados)
     await expect(caixas.nth(0)).toHaveText('A');
@@ -47,7 +47,7 @@ test.describe('Página Entrar — Digitar Código da Sala', () => {
   test('deve aceitar no MÁXIMO 4 caracteres', async ({ page }) => {
     await page.goto('/entrar');
 
-    const caixas = page.locator('[style*="aspectRatio: 1/1.15"]');
+    const caixas = page.getByTestId("codigo-box");
 
     // Tentar digitar mais de 4 letras
     await page.locator('input[maxLength="4"]').fill('ABCDEFGH');
@@ -62,7 +62,7 @@ test.describe('Página Entrar — Digitar Código da Sala', () => {
   test('deve permitir digitar caractere por caractere (simulando usuário)', async ({ page }) => {
     await page.goto('/entrar');
 
-    const caixas = page.locator('[style*="aspectRatio: 1/1.15"]');
+    const caixas = page.getByTestId("codigo-box");
     const input = page.locator('input[maxLength="4"]');
 
     // Digitar letra por letra
