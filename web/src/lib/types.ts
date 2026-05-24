@@ -6,7 +6,7 @@
 // ============================================================
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
-export type FaseJogo = "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "resultado";
+export type FaseJogo = "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "adivinhacao_fim_tempo" | "resultado";
 export type ModoSala = "online" | "presencial";
 export type ResultadoVotacaoHistorico = "eliminado" | "sobreviveu" | "espia_pego";
 export type Testament = "AT" | "NT";
@@ -95,6 +95,8 @@ export interface EstadoRodada {
   primeira_rodada: boolean;
   palavras_primeira_rodada: PalavraPrimeiraRodada[];
   turno_numero_atual: number;
+  timer_adivinhacao_end?: string;
+  adivinhacoes_fim_tempo?: Record<string, number | null>;
 }
 
 export interface Rodada {
