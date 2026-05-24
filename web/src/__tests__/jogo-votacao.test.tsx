@@ -1,64 +1,26 @@
 import React, { Suspense } from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import type { RodadaAtual } from "@/hooks/useGameState";
+import { makeRodada, makePlayer } from "./helpers";
 
-// ── Mocks (idênticos ao jogo-responder.test.tsx) ───────────────
+// ── Mocks ──────────────────────────────────────────────────────
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@/lib/supabase", () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: () => Promise.resolve({ data: { id: "sala-1" } }),
-        }),
-      }),
-    }),
-  }),
-}));
+vi.mock("@/lib/supabase", async () => (await import("./helpers")).makeSupabaseMock({ id: "sala-1" }));
 
 vi.mock("@/hooks/usePlayers");
 vi.mock("@/hooks/useGameState");
 vi.mock("@/hooks/useAuth");
 
-vi.mock("@/lib/game-actions", () => ({
-  gameActions: {
-    votar: vi.fn(),
-    fazerPergunta: vi.fn(),
-    responderPergunta: vi.fn(),
-    dizerPalavra: vi.fn(),
-    acusar: vi.fn(),
-    adivinhar: vi.fn(),
-    proximoTurno: vi.fn(),
-  },
-}));
+vi.mock("@/lib/game-actions", async () => (await import("./helpers")).gameActionsMock);
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/eventos", () => ({ EVENTOS: [] }));
 
-vi.mock("@/components/ui/design", () => {
-  const T = new Proxy({}, { get: () => "" });
-  const F = new Proxy({}, { get: () => "" });
-  return {
-    ParchmentBg: () => null,
-    InsetFrame: () => null,
-    MEMedallion: () => null,
-    MEAvatar: ({ initial }: { initial: string }) =>
-      React.createElement("span", null, initial),
-    MERule: () => null,
-    MEIcon: () => null,
-    Eyebrow: ({ children }: { children: React.ReactNode }) =>
-      React.createElement("span", null, children),
-    PrimaryBtn: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) =>
-      React.createElement("button", { onClick }, children),
-    T,
-    F,
-  };
-});
+vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
 
 // ── Imports e helpers ──────────────────────────────────────────
 
@@ -69,34 +31,22 @@ import { gameActions } from "@/lib/game-actions";
 import { toast } from "sonner";
 import JogoPage from "@/app/sala/[code]/jogo/page";
 
-const ALICE  = { id: "jogador-1", user_id: "user-1", apelido: "Alice",  ativo: true };
-const BOB    = { id: "jogador-2", user_id: "user-2", apelido: "Bob",    ativo: true };
-const CARLOS = { id: "jogador-3", user_id: "user-3", apelido: "Carlos", ativo: true };
+const ALICE  = makePlayer({ id: "jogador-1", apelido: "Alice" });
+const BOB    = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
+const CARLOS = makePlayer({ id: "jogador-3", user_id: "user-3", apelido: "Carlos" });
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaVotacao(acusadoId: string): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
+function rodadaVotacao(acusadoId: string) {
+  return makeRodada(
+    {},
+    {
       fase: "votacao",
-      turno_atual: "jogador-1",
       ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-      espia_ids: [],
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
-      eliminacoes_erradas: 0,
       acusado_id: acusadoId,
       acusou_neste_turno: true,
-      adivinhou_evento_id: null,
-      pergunta_atual: null,
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+    }
+  );
 }
 
 function renderJogo() {

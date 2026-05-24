@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import type { RodadaAtual } from "@/hooks/useGameState";
+import { makeRodada, makePlayer } from "./helpers";
 
 // ── Mocks ──────────────────────────────────────────────────────
 
@@ -9,55 +9,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@/lib/supabase", () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: () => Promise.resolve({ data: { id: "sala-1" } }),
-        }),
-      }),
-    }),
-  }),
-}));
+vi.mock("@/lib/supabase", async () => (await import("./helpers")).makeSupabaseMock({ id: "sala-1" }));
 
 vi.mock("@/hooks/usePlayers");
 vi.mock("@/hooks/useGameState");
 vi.mock("@/hooks/useAuth");
 
-vi.mock("@/lib/game-actions", () => ({
-  gameActions: {
-    fazerPergunta: vi.fn(),
-    responderPergunta: vi.fn(),
-    dizerPalavra: vi.fn(),
-    acusar: vi.fn(),
-    votar: vi.fn(),
-    adivinhar: vi.fn(),
-    proximoTurno: vi.fn(),
-  },
-}));
+vi.mock("@/lib/game-actions", async () => (await import("./helpers")).gameActionsMock);
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/eventos", () => ({ EVENTOS: [] }));
 
-vi.mock("@/components/ui/design", () => {
-  const T = new Proxy({}, { get: () => "" });
-  const F = new Proxy({}, { get: () => "" });
-  return {
-    ParchmentBg: () => null,
-    InsetFrame: () => null,
-    MEMedallion: () => null,
-    MEAvatar: ({ initial }: { initial: string }) => React.createElement("span", null, initial),
-    MERule: () => null,
-    MEIcon: () => null,
-    Eyebrow: ({ children }: { children: React.ReactNode }) =>
-      React.createElement("span", null, children),
-    PrimaryBtn: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) =>
-      React.createElement("button", { onClick }, children),
-    T,
-    F,
-  };
-});
+vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -66,25 +29,15 @@ import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import JogoPage from "@/app/sala/[code]/jogo/page";
 
-const JOGADOR_1 = { id: "jogador-1", user_id: "user-1", apelido: "Alice", ativo: true };
-const JOGADOR_2 = { id: "jogador-2", user_id: "user-2", apelido: "Bob", ativo: true };
+const JOGADOR_1 = makePlayer({ id: "jogador-1", apelido: "Alice" });
+const JOGADOR_2 = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
 
-function rodadaAguardandoResposta(destinatarioId: string): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
+function rodadaAguardandoResposta(destinatarioId: string) {
+  return makeRodada(
+    {},
+    {
       fase: "aguardando_resposta",
       turno_atual: "jogador-2",
-      ordem_turnos: ["jogador-1", "jogador-2"],
-      espia_ids: [],
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
-      eliminacoes_erradas: 0,
-      acusado_id: null,
-      acusou_neste_turno: false,
-      adivinhou_evento_id: null,
       pergunta_atual: {
         perguntador_id: "jogador-2",
         perguntador_apelido: "Bob",
@@ -92,35 +45,12 @@ function rodadaAguardandoResposta(destinatarioId: string): RodadaAtual {
         destinatario_apelido: destinatarioId === "jogador-1" ? "Alice" : "Bob",
         texto: "Qual é sua relação com este lugar?",
       },
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+    }
+  );
 }
 
-function rodadaJogando(): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
-      fase: "jogando",
-      turno_atual: "jogador-1",
-      ordem_turnos: ["jogador-1", "jogador-2"],
-      espia_ids: [],
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
-      eliminacoes_erradas: 0,
-      acusado_id: null,
-      acusou_neste_turno: false,
-      adivinhou_evento_id: null,
-      pergunta_atual: null,
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+function rodadaJogando() {
+  return makeRodada({}, {});
 }
 
 const PARAMS = Promise.resolve({ code: "TEST" });

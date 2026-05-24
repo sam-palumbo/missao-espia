@@ -2,30 +2,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/components/ui/design", () => {
-  const T = new Proxy({}, { get: () => "" });
-  const F = new Proxy({}, { get: () => "" });
-  return {
-    InsetFrame: () => null,
-    MEAvatar: () => null,
-    MEIcon: () => null,
-    Eyebrow: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-    PrimaryBtn: ({ children, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...p}>{children}</button>,
-    T, F,
-  };
-});
+vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
 
-vi.mock("motion/react", async () => {
-  const { createElement } = await import("react");
-  return {
-    motion: new Proxy({} as Record<string, unknown>, {
-      get: (_, tag: string) => function Mo({ children, ...rest }: Record<string, unknown>) {
-        return createElement(tag as keyof JSX.IntrinsicElements, rest as React.HTMLAttributes<HTMLElement>, children as React.ReactNode);
-      },
-    }),
-    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
-  };
-});
+vi.mock("motion/react", async () => (await import("./helpers")).motionMock);
 
 import { TurnoPresencial } from "@/app/sala/[code]/jogo/turno-presencial";
 

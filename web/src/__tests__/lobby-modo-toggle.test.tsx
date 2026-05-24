@@ -27,31 +27,9 @@ vi.mock("@/lib/game-actions", () => ({
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
-vi.mock("motion/react", async () => {
-  const { createElement } = await import("react");
-  return {
-    motion: new Proxy({} as Record<string, unknown>, {
-      get: (_, tag: string) => function Mo({ children, ...rest }: Record<string, unknown>) {
-        return createElement(tag as keyof JSX.IntrinsicElements, rest as React.HTMLAttributes<HTMLElement>, children as React.ReactNode);
-      },
-    }),
-    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
-  };
-});
+vi.mock("motion/react", async () => (await import("./helpers")).motionMock);
 
-vi.mock("@/components/ui/design", () => {
-  const T = new Proxy({}, { get: () => "" });
-  const F = new Proxy({}, { get: () => "" });
-  return {
-    ParchmentBg: () => null,
-    InsetFrame: () => null,
-    MEAvatar: () => null,
-    MEIcon: () => null,
-    Eyebrow: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-    PrimaryBtn: ({ children, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...p}>{children}</button>,
-    T, F,
-  };
-});
+vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
 
 import LobbyPage from "@/app/sala/[code]/lobby/page";
 

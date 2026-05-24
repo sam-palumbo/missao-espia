@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import type { RodadaAtual } from "@/hooks/useGameState";
+import { makeRodada, makePlayer } from "./helpers";
 
 // ── Mocks ──────────────────────────────────────────────────────
 
@@ -9,75 +9,20 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@/lib/supabase", () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: () => Promise.resolve({ data: { id: "sala-1" } }),
-        }),
-      }),
-    }),
-  }),
-}));
+vi.mock("@/lib/supabase", async () => (await import("./helpers")).makeSupabaseMock({ id: "sala-1" }));
 
 vi.mock("@/hooks/usePlayers");
 vi.mock("@/hooks/useGameState");
 vi.mock("@/hooks/useAuth");
 
-vi.mock("@/lib/game-actions", () => ({
-  gameActions: {
-    votar: vi.fn(),
-    fazerPergunta: vi.fn(),
-    responderPergunta: vi.fn(),
-    dizerPalavra: vi.fn(),
-    acusar: vi.fn(),
-    adivinhar: vi.fn(),
-    proximoTurno: vi.fn(),
-  },
-}));
+vi.mock("@/lib/game-actions", async () => (await import("./helpers")).gameActionsMock);
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/eventos", () => ({ EVENTOS: [] }));
 
-vi.mock("motion/react", async () => {
-  const { createElement } = await import("react");
-  return {
-    motion: new Proxy({} as Record<string, unknown>, {
-      get: (_, tag: string) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        function MotionEl({ children, initial, animate, exit, transition, whileTap, whileHover, variants, ...rest }: Record<string, unknown>) {
-          return createElement(tag as keyof JSX.IntrinsicElements, rest as React.HTMLAttributes<HTMLElement>, children as React.ReactNode);
-        },
-    }),
-    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
-  };
-});
+vi.mock("motion/react", async () => (await import("./helpers")).motionMock);
 
-vi.mock("@/components/ui/design", () => {
-  const T = new Proxy({}, { get: () => "" });
-  const F = new Proxy({}, { get: () => "" });
-  return {
-    ParchmentBg: () => null,
-    InsetFrame: () => null,
-    MEMedallion: () => null,
-    MEAvatar: ({ initial }: { initial: string }) =>
-      React.createElement("span", null, initial),
-    MERule: () => null,
-    MEIcon: () => null,
-    Eyebrow: ({ children }: { children: React.ReactNode }) =>
-      React.createElement("span", null, children),
-    PrimaryBtn: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode;
-      onClick: () => void;
-    }) => React.createElement("button", { onClick }, children),
-    T,
-    F,
-  };
-});
+vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
 
 // ── Imports ────────────────────────────────────────────────────
 
@@ -88,57 +33,35 @@ import JogoPage from "@/app/sala/[code]/jogo/page";
 
 // ── Fixtures ───────────────────────────────────────────────────
 
-const ALICE_ELIMINADA = {
-  id: "jogador-1",
-  user_id: "user-1",
-  apelido: "Alice",
-  ativo: false,
-};
-const BOB = { id: "jogador-2", user_id: "user-2", apelido: "Bob", ativo: true };
-const CARLOS = {
-  id: "jogador-3",
-  user_id: "user-3",
-  apelido: "Carlos",
-  ativo: true,
-};
+const ALICE_ELIMINADA = makePlayer({ id: "jogador-1", apelido: "Alice", ativo: false });
+const BOB    = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
+const CARLOS = makePlayer({ id: "jogador-3", user_id: "user-3", apelido: "Carlos" });
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogandoComEliminada(): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
-      fase: "jogando",
+function rodadaJogandoComEliminada() {
+  return makeRodada(
+    {},
+    {
       turno_atual: "jogador-2",
       ordem_turnos: ["jogador-2", "jogador-3"],
-      espia_ids: [],
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
       eliminacoes_erradas: 1,
-      acusado_id: null,
-      acusou_neste_turno: false,
-      adivinhou_evento_id: null,
-      pergunta_atual: null,
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+    }
+  );
 }
 
-function rodadaVotacaoComEliminada(): RodadaAtual {
-  const base = rodadaJogandoComEliminada();
-  return {
-    ...base,
-    estado: {
-      ...base.estado,
+function rodadaVotacaoComEliminada() {
+  return makeRodada(
+    {},
+    {
+      turno_atual: "jogador-2",
+      ordem_turnos: ["jogador-2", "jogador-3"],
+      eliminacoes_erradas: 1,
       fase: "votacao",
       acusado_id: "jogador-2",
       acusou_neste_turno: true,
-    },
-  };
+    }
+  );
 }
 
 function renderJogo() {
@@ -152,13 +75,6 @@ function renderJogo() {
 async function passarRevealScreen() {
   const btn = screen.queryByText("Memorizei");
   if (btn) await act(async () => { fireEvent.click(btn); });
-}
-
-async function abrirModalTurno() {
-  await waitFor(() => screen.getByText(/É sua vez/i));
-  await act(async () => {
-    // No modal anymore — button is directly at the bottom
-  });
 }
 
 // ── Tests ──────────────────────────────────────────────────────
@@ -250,27 +166,14 @@ describe("Jogador eliminado — estado de observador", () => {
   });
 
   it("não mostra botão Dizer Palavra quando jogador está eliminado e é primeira rodada", async () => {
-    const rodadaPrimeiraRodada: RodadaAtual = {
-      id: "rodada-1",
-      numero: 1,
-      evento_id: 1,
-      encerrada_em: null,
-      estado: {
-        fase: "jogando",
+    const rodadaPrimeiraRodada = makeRodada(
+      {},
+      {
         turno_atual: "jogador-1",
         ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-        espia_ids: [],
-        timer_end: new Date(Date.now() + 300_000).toISOString(),
-        eliminacoes_erradas: 0,
-        acusado_id: null,
-        acusou_neste_turno: false,
-        adivinhou_evento_id: null,
-        pergunta_atual: null,
-        historico: [],
         primeira_rodada: true,
-        palavras_primeira_rodada: [],
-      },
-    };
+      }
+    );
 
     vi.mocked(useGameState).mockReturnValue(rodadaPrimeiraRodada);
 
@@ -287,40 +190,26 @@ describe("Jogador eliminado — estado de observador", () => {
 
 // ── Fixtures adicionais ────────────────────────────────────────
 
-const ALICE_ATIVA = {
-  id: "jogador-1",
-  user_id: "user-1",
-  apelido: "Alice",
-  ativo: true,
-};
+const ALICE_ATIVA = makePlayer({ id: "jogador-1", apelido: "Alice" });
 
-function rodadaAliceTurno(): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
-      fase: "jogando",
+function rodadaAliceTurno() {
+  return makeRodada(
+    {},
+    {
       turno_atual: "jogador-1",
       ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-      espia_ids: [],
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
-      eliminacoes_erradas: 0,
-      acusado_id: null,
-      acusou_neste_turno: false,
-      adivinhou_evento_id: null,
-      pergunta_atual: null,
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+    }
+  );
 }
 
-function rodadaBobTurno(): RodadaAtual {
-  const base = rodadaAliceTurno();
-  return { ...base, estado: { ...base.estado, turno_atual: "jogador-2" } };
+function rodadaBobTurno() {
+  return makeRodada(
+    {},
+    {
+      turno_atual: "jogador-2",
+      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
+    }
+  );
 }
 
 // ── Regressão: jogador ativo vê botões de ação ─────────────────
@@ -415,7 +304,7 @@ describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
 
   it("NÃO trata como eliminado quando ordem_turnos está vazia (edge case transitório)", async () => {
     const base = rodadaJogandoComEliminada();
-    const rodadaOrdemVazia: RodadaAtual = {
+    const rodadaOrdemVazia = {
       ...base,
       estado: { ...base.estado, ordem_turnos: [] },
     };
@@ -429,35 +318,20 @@ describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
 
 // ── Espia pego por votação — fase adivinhacao ──────────────────
 
-const ALICE_ESPIA_PEGA = {
-  id: "jogador-1",
-  user_id: "user-1",
-  apelido: "Alice",
-  ativo: true, // ainda ativa (só elimina ao errar o palpite)
-};
+const ALICE_ESPIA_PEGA = makePlayer({ id: "jogador-1", apelido: "Alice" });
 
-function rodadaAdivinhacaoEspiaPego(): RodadaAtual {
-  return {
-    id: "rodada-1",
-    numero: 1,
-    evento_id: 1,
-    encerrada_em: null,
-    estado: {
+function rodadaAdivinhacaoEspiaPego() {
+  return makeRodada(
+    {},
+    {
       fase: "adivinhacao",
       turno_atual: "jogador-2", // Bob acusou, turno continua dele
       ordem_turnos: ["jogador-2", "jogador-3"], // Alice (espia pega) removida da ordem
       espia_ids: ["jogador-1"], // Alice é espia
-      timer_end: new Date(Date.now() + 300_000).toISOString(),
-      eliminacoes_erradas: 0,
       acusado_id: "jogador-1", // Alice foi acusada
       acusou_neste_turno: true,
-      adivinhou_evento_id: null,
-      pergunta_atual: null,
-      historico: [],
-      primeira_rodada: false,
-      palavras_primeira_rodada: [],
-    },
-  };
+    }
+  );
 }
 
 describe("Espia pego por votação — fase adivinhacao", () => {
@@ -557,9 +431,8 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     vi.clearAllMocks();
   });
 
-  function rodadaAliceTurnoNumero2(): RodadaAtual {
-    const base = rodadaAliceTurno();
-    return { ...base, numero: 2 };
+  function rodadaAliceTurnoNumero2() {
+    return makeRodada({ numero: 2 }, { turno_atual: "jogador-1", ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"] });
   }
 
   it("fecha o sheet de 'Fazer Pergunta' quando o jogador é eliminado", async () => {
