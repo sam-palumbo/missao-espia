@@ -42,6 +42,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   const estado: EstadoRodada = {
     fase: "jogando",
     turno_atual: shuffled[0],
+    turno_numero_atual: 1,
     ordem_turnos: shuffled,
     espia_ids,
     timer_end,
