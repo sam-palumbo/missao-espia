@@ -96,7 +96,8 @@ describe("Página Resultado", () => {
     await act(async () => { renderResultado(); });
 
     await waitFor(() => {
-      expect(screen.getAllByText("Bob").length).toBeGreaterThan(0);
+      const spySection = screen.getByText("O espia era").closest("div");
+      expect(spySection).toHaveTextContent("Bob");
     });
   });
 
