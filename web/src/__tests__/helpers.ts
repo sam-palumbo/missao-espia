@@ -134,6 +134,7 @@ export function makeRodada(
       historico: [],
       primeira_rodada: false,
       palavras_primeira_rodada: [],
+      turno_numero_atual: 1,
       ...estado,
     },
   };

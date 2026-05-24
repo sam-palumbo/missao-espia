@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 import { TurnoPresencial } from "./turno-presencial";
+import HistoricoTabs from "./historico-tabs";
 
 const SHEET_SPRING = { type: "spring" as const, damping: 28, stiffness: 320 };
 
@@ -313,97 +314,11 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Histórico - Infinite scroll frame below names */}
-      <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: "16px 14px", boxShadow: "0 4px 16px -8px rgba(58,42,20,0.2)", flex: 1, minHeight: 200, maxHeight: 400, overflowY: "auto" }}>
-        <InsetFrame color={T.sienna} inset={4} radius={15} opacity={0.2} opacity2={0.1} />
-        
-        {primeiraRodada && rodada?.estado.palavras_primeira_rodada && rodada.estado.palavras_primeira_rodada.length > 0 && (
-          <>
-            <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginBottom: 16 }}>
-              {rodada.estado.palavras_primeira_rodada.map((p, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
-                  <MEAvatar size={20} initial={p.apelido.slice(0,1)} variant="light" />
-                  <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
-                  <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>"{p.palavra}"</span>
-                </div>
-              ))}
-            </div>
-            {rodada?.estado.historico && rodada.estado.historico.length > 0 && (
-              <div style={{ height: 1, background: T.hairline, margin: "12px 0" }} />
-            )}
-          </>
-        )}
-
-        {rodada?.estado.historico && rodada.estado.historico.length > 0 && (
-          <>
-            <Eyebrow color={T.inkSoft} size={8}>Histórico</Eyebrow>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-              {rodada.estado.historico.map((h, i) => {
-                const isLast = i === rodada.estado.historico.length - 1;
-                const borderBottom = isLast ? "none" : `1px solid ${T.hairline}`;
-                if (h.tipo === "votacao") {
-                  const labelResultado =
-                    h.resultado === "espia_pego" ? "Espia pego!" :
-                    h.resultado === "eliminado"  ? `${h.acusado_apelido} foi eliminado` :
-                                                   `${h.acusado_apelido} sobreviveu`;
-                  const corResultado =
-                    h.resultado === "espia_pego" ? T.gold :
-                    h.resultado === "eliminado"  ? T.brick :
-                                                   T.sienna;
-                  return (
-                    <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 8, borderBottom }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <MEIcon name="spy" size={14} color={T.brick} />
-                        <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.inkSoft }}>Votação</span>
-                        <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.ink, fontWeight: 600 }}>Acusado: {h.acusado_apelido}</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingLeft: 22 }}>
-                        {h.votos.map((v, vi) => (
-                          <div key={vi} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <MEAvatar size={16} initial={v.votante_apelido.slice(0,1)} variant="light" />
-                            <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: T.ink, minWidth: 64 }}>{v.votante_apelido}</span>
-                            <span style={{ fontFamily: F.bodySerif, fontSize: 12, fontWeight: 600, color: v.aprovado ? T.brick : T.inkSoft }}>
-                              {v.aprovado ? "👍 Sim" : "👎 Não"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ fontFamily: F.bodySerif, fontSize: 13, fontWeight: 600, color: corResultado, paddingLeft: 22, fontStyle: "italic" }}>
-                        {labelResultado}
-                      </div>
-                    </div>
-                  );
-                }
-                if (h.tipo === "turno_presencial") {
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: T.cardWarm, borderRadius: 999, alignSelf: "flex-start" }}>
-                      <MEAvatar size={18} initial={h.jogador_apelido.slice(0, 1)} variant="light" />
-                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.jogador_apelido}</span>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: 8, borderBottom }}>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <MEAvatar size={18} initial={h.perguntador_apelido.slice(0,1)} variant="light" />
-                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.perguntador_apelido}</span>
-                      <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
-                      <MEAvatar size={18} initial={h.destinatario_apelido.slice(0,1)} variant="light" />
-                      <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{h.destinatario_apelido}</span>
-                    </div>
-                    <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
-                      <span style={{ fontStyle: "italic", color: T.inkSoft }}>{h.pergunta}</span>
-                    </div>
-                    <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.sienna, paddingLeft: 24, fontWeight: 500 }}>
-                      {h.resposta}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+      <HistoricoTabs
+        historico={rodada?.estado.historico ?? []}
+        palavrasPrimeiraRodada={rodada?.estado.palavras_primeira_rodada ?? []}
+        primeiraRodada={primeiraRodada}
+      />
 
       <div style={{ flex: 1 }} />
 
