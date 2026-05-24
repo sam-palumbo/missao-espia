@@ -137,7 +137,12 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [acting, setActing] = useState(false);
   const [showMyCard, setShowMyCard] = useState(false);
 
-  const { display, pct } = useTimer(rodada?.estado.timer_end ?? null);
+  const { display, secs, pct } = useTimer(rodada?.estado.timer_end ?? null);
+  const adivTimer = useTimer(rodada?.estado.timer_adivinhacao_end ?? null);
+
+  const encerradoPorTempoRef = useRef(false);
+  const finalizadoFimTempoRef = useRef(false);
+  const lastRodadaIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -165,9 +170,44 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       setShowAnswerQuestion(false);
     }
   }, [rodada?.estado.fase, rodada?.estado.pergunta_atual, meuJogador?.id]);
+
   const isSpy = rodada ? (rodada.estado.espia_ids ?? []).includes(meuJogador?.id ?? "") : false;
   const ehMeuTurno = meuJogador?.id === rodada?.estado.turno_atual;
   const fase = rodada?.estado.fase ?? "jogando";
+
+  useEffect(() => {
+    if (rodada?.id && rodada.id !== lastRodadaIdRef.current) {
+      lastRodadaIdRef.current = rodada.id;
+      encerradoPorTempoRef.current = false;
+      finalizadoFimTempoRef.current = false;
+    }
+  }, [rodada?.id]);
+
+  useEffect(() => {
+    if (
+      secs === 0 &&
+      fase === "jogando" &&
+      rodada &&
+      !encerradoPorTempoRef.current &&
+      new Date() > new Date(rodada.estado.timer_end)
+    ) {
+      encerradoPorTempoRef.current = true;
+      gameActions.encerrarPorTempo(rodada.id).catch(() => {});
+    }
+  }, [secs, fase, rodada]);
+
+  useEffect(() => {
+    if (
+      adivTimer.secs === 0 &&
+      fase === "adivinhacao_fim_tempo" &&
+      rodada?.estado.timer_adivinhacao_end &&
+      !finalizadoFimTempoRef.current &&
+      new Date() > new Date(rodada.estado.timer_adivinhacao_end)
+    ) {
+      finalizadoFimTempoRef.current = true;
+      gameActions.finalizarAdivinhacaoFimTempo(rodada.id).catch(() => {});
+    }
+  }, [adivTimer.secs, fase, rodada]);
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
