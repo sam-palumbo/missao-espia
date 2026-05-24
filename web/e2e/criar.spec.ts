@@ -37,7 +37,7 @@ test.describe("Página Criar Sala", () => {
     await page.goto("/criar");
 
     for (const n of ["3", "5", "7", "10"]) {
-      await expect(page.locator(`button:has-text("${n}")`).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: n, exact: true }).first()).toBeVisible();
     }
   });
 
