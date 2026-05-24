@@ -98,4 +98,13 @@ export const gameActions = {
       "adivinhar",
       { rodada_id, evento_id }
     ),
+
+  encerrarPorTempo: (rodada_id: string) =>
+    callGame<{ ok: boolean; timer_adivinhacao_end?: string }>("encerrar_por_tempo", { rodada_id }),
+
+  adivinharFimTempo: (rodada_id: string, evento_id: number) =>
+    callGame<{ aguardando?: boolean; ok?: boolean }>("adivinhar_fim_tempo", { rodada_id, evento_id }),
+
+  finalizarAdivinhacaoFimTempo: (rodada_id: string) =>
+    callGame<{ ok: boolean }>("finalizar_adivinhacao_fim_tempo", { rodada_id }),
 };

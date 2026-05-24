@@ -77,6 +77,9 @@ export const gameActionsMock = {
     acusar: vi.fn(),
     votar: vi.fn(),
     adivinhar: vi.fn(),
+    encerrarPorTempo: vi.fn(),
+    adivinharFimTempo: vi.fn(),
+    finalizarAdivinhacaoFimTempo: vi.fn(),
   },
 };
 
