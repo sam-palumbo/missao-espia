@@ -419,10 +419,11 @@ Calculated per round by `calcularPontuacao()` in `lib/pontuacao.ts`.
 
 ### Frontend (Vitest + React Testing Library)
 
-12 test files in `web/src/__tests__/`:
+13 test files in `web/src/__tests__/`, plus a shared helpers module:
 
 | File | Tests |
 |------|-------|
+| `helpers.ts` | Shared mock objects (`motionMock`, `designMock`, `gameActionsMock`) and fixture builders (`makePlayer`, `makeRodada`, `makeSupabaseMock`) — not a test file, imported by all test files |
 | `jogo-acusar.test.tsx` | Accusation button visibility, disabled states, first-turn block, eliminated block |
 | `jogo-carta.test.tsx` | Card reveal for spy vs normal player |
 | `jogo-eliminado.test.tsx` | Eliminated banner, hidden action buttons, observer vote message |
@@ -433,8 +434,8 @@ Calculated per round by `calcularPontuacao()` in `lib/pontuacao.ts`.
 | `jogo-turno-modal.test.tsx` | My card modal, turn-based button visibility |
 | `jogo-votacao.test.tsx` | Vote overlay for non-accused vs accused |
 | `lobby-modo-toggle.test.tsx` | Mode toggle for host vs non-host |
-| `placar.test.tsx` | Final scoreboard rendering |
-| `resultado.test.tsx` | Victory banner, spy reveal, scores |
+| `placar.test.tsx` | Final scoreboard: ranking order, rank symbols, navigation buttons |
+| `resultado.test.tsx` | Victory banner, spy reveal, location reveal, score badges, navigation buttons |
 
 ### Backend (Deno test)
 
