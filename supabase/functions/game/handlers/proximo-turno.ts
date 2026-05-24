@@ -37,10 +37,15 @@ export async function proximoTurno(userId: string, payload: unknown) {
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
   const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
 
+  const turnoNumero = estado.turno_numero_atual ?? 1;
+  const isUltimoDoCiclo = idx === estado.ordem_turnos.length - 1;
+  const proximoTurnoNumero = isUltimoDoCiclo ? turnoNumero + 1 : turnoNumero;
+
   const novoHistorico = [...(estado.historico ?? [])];
   if (modo === "presencial" && jogadorAtual) {
     const item: HistoricoTurnoPresencial = {
       tipo: "turno_presencial",
+      turno_numero: turnoNumero,
       jogador_apelido: jogadorAtual.apelido,
     };
     novoHistorico.push(item);
@@ -69,6 +74,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
         acusou_neste_turno: false,
         historico: novoHistorico,
         primeira_rodada: novaPrimeiraRodada,
+        ...(modo === "presencial" ? { turno_numero_atual: proximoTurnoNumero } : {}),
       },
     })
     .eq("id", rodada_id);
