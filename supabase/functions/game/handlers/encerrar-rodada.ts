@@ -58,11 +58,11 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
     .single();
 
   if (sala) {
-    const novaRodada = sala.rodada_atual + 1;
-    if (novaRodada >= sala.num_rodadas) {
+    if (sala.rodada_atual >= sala.num_rodadas) {
       await db.from("salas").update({ status: "encerrada" }).eq("id", rodada.sala_id);
     } else {
-      await db.from("salas").update({ rodada_atual: novaRodada }).eq("id", rodada.sala_id);
+      // Back to aguardando so the lobby doesn't redirect players to jogo before the next round starts
+      await db.from("salas").update({ status: "aguardando" }).eq("id", rodada.sala_id);
     }
   }
 
