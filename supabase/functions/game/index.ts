@@ -11,6 +11,9 @@ import { dizerPalavra }    from "./handlers/dizer-palavra.ts";
 import { fazerPergunta }   from "./handlers/fazer-pergunta.ts";
 import { responderPergunta } from "./handlers/responder-pergunta.ts";
 import { definirModo }      from "./handlers/definir-modo.ts";
+import { encerrarPorTempo }              from "./handlers/encerrar-por-tempo.ts";
+import { adivinharFimTempo }             from "./handlers/adivinhar-fim-tempo.ts";
+import { finalizarAdivinhacaoFimTempo }  from "./handlers/finalizar-adivinhacao-fim-tempo.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +62,9 @@ Deno.serve(async (req) => {
       case "acusar":          return json(await acusar(user.id, payload));
       case "votar":           return json(await votar(user.id, payload));
       case "adivinhar":       return json(await adivinhar(user.id, payload));
+      case "encerrar_por_tempo":              return json(await encerrarPorTempo(user.id, payload));
+      case "adivinhar_fim_tempo":             return json(await adivinharFimTempo(user.id, payload));
+      case "finalizar_adivinhacao_fim_tempo": return json(await finalizarAdivinhacaoFimTempo(user.id, payload));
       case "encerrar_rodada": return json(await encerrarRodada(user.id, payload));
       case "dizer_palavra":   return json(await dizerPalavra(user.id, payload));
       case "definir_modo":    return json(await definirModo(user.id, payload));

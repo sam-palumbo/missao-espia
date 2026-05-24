@@ -1,5 +1,5 @@
 import { getDb } from "../lib/db.ts";
-import { encerrarRodada } from "./encerrar-rodada.ts";
+import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { DizerPalavraPayload } from "../lib/types.ts";
 
 export async function dizerPalavra(userId: string, payload: unknown) {
@@ -29,7 +29,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   if (palavraLimpa.includes(" ")) throw new Error("Na primeira rodada, só é permitido uma única palavra");
 
   if (new Date() > new Date(estado.timer_end)) {
-    return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
+    return encerrarPorTempo(userId, { rodada_id });
   }
 
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);

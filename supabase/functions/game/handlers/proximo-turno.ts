@@ -1,5 +1,5 @@
 import { getDb }                from "../lib/db.ts";
-import { encerrarRodada }       from "./encerrar-rodada.ts";
+import { encerrarPorTempo }     from "./encerrar-por-tempo.ts";
 import type { ProximoTurnoPayload, HistoricoTurnoPresencial } from "../lib/types.ts";
 
 export async function proximoTurno(userId: string, payload: unknown) {
@@ -21,7 +21,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
   if (estado.fase !== "jogando") throw new Error(`Não é possível avançar turno na fase '${estado.fase}'`);
 
   if (new Date() > new Date(estado.timer_end)) {
-    return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
+    return encerrarPorTempo(userId, { rodada_id });
   }
 
   // Buscar apelido do jogador do turno atual (para o histórico presencial)

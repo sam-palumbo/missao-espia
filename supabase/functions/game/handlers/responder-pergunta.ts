@@ -1,5 +1,5 @@
 import { getDb } from "../lib/db.ts";
-import { encerrarRodada } from "./encerrar-rodada.ts";
+import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { ResponderPerguntaPayload } from "../lib/types.ts";
 
 export async function responderPergunta(userId: string, payload: unknown) {
@@ -27,7 +27,7 @@ export async function responderPergunta(userId: string, payload: unknown) {
   if (jogador.id !== perguntaAtual.destinatario_id) throw Object.assign(new Error("Não é sua vez de responder"), { status: 403 });
 
   if (new Date() > new Date(estado.timer_end)) {
-    return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
+    return encerrarPorTempo(userId, { rodada_id });
   }
 
   const turnoNumero = estado.turno_numero_atual ?? 1;
