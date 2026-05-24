@@ -36,7 +36,7 @@ export async function adivinharFimTempo(userId: string, payload: unknown) {
   }
 
   const adivinhacoes: Record<string, number | null> = estado.adivinhacoes_fim_tempo ?? {};
-  if (adivinhacoes[jogador.id] !== null && adivinhacoes[jogador.id] !== undefined) {
+  if (adivinhacoes[jogador.id] != null) {
     throw new Error("Você já adivinhou nesta rodada");
   }
 
