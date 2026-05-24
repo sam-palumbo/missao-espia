@@ -81,6 +81,7 @@ describe("HistoricoTabs", () => {
     // Turno 2 is selected → Carlos visible, Alice not in content
     // (content shows only active group; both tabs exist but Alice is in turno 1)
     expect(screen.getByText("Carlos")).toBeInTheDocument();
+    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
   });
 
   it("votação between turnos → 3 tabs: Turno 1, Votação, Turno 2; last is selected; clicking Votação shows votação content", () => {

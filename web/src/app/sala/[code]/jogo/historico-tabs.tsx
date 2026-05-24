@@ -122,17 +122,19 @@ function renderVotacao(h: HistoricoVotacao) {
 
 export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, primeiraRodada }: Props) {
   const groups = groupHistorico(historico);
+  const firstTurnoNumero = groups.find((g) => g.kind === "turno")?.numero ?? 1;
 
   const [selectedTab, setSelectedTab] = useState<number>(0);
   const prevGroupCount = useRef(0);
 
   useEffect(() => {
     if (groups.length > prevGroupCount.current) {
-      const wasOnLast = selectedTab === prevGroupCount.current - 1;
-      if (wasOnLast || prevGroupCount.current === 0) {
-        setSelectedTab(groups.length - 1);
-      }
+      const prevCount = prevGroupCount.current;
       prevGroupCount.current = groups.length;
+      setSelectedTab((prev) => {
+        const wasOnLast = prev === prevCount - 1 || prevCount === 0;
+        return wasOnLast ? groups.length - 1 : prev;
+      });
     }
   }, [groups.length]);
 
@@ -198,7 +200,7 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
     primeiraRodada &&
     palavrasPrimeiraRodada.length > 0 &&
     activeGroup?.kind === "turno" &&
-    activeGroup.numero === (groups.find((g) => g.kind === "turno") as Extract<TabGroup, { kind: "turno" }> | undefined)?.numero;
+    activeGroup.numero === firstTurnoNumero;
 
   let content: React.ReactNode = null;
 
