@@ -136,6 +136,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
   const [showMyCard, setShowMyCard] = useState(false);
+  const [showFimTempoGuess, setShowFimTempoGuess] = useState(false);
+  const [adivinheiNaFimTempo, setAdivinheiNaFimTempo] = useState(false);
 
   const { display, secs, pct } = useTimer(rodada?.estado.timer_end ?? null);
   const adivTimer = useTimer(rodada?.estado.timer_adivinhacao_end ?? null);
@@ -180,6 +182,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       lastRodadaIdRef.current = rodada.id;
       encerradoPorTempoRef.current = false;
       finalizadoFimTempoRef.current = false;
+      setAdivinheiNaFimTempo(false);
+      setShowFimTempoGuess(false);
     }
   }, [rodada?.id]);
 
@@ -208,6 +212,12 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       gameActions.finalizarAdivinhacaoFimTempo(rodada.id).catch(() => {});
     }
   }, [adivTimer.secs, fase, rodada]);
+
+  useEffect(() => {
+    if (fase === "adivinhacao_fim_tempo" && isSpy && !adivinheiNaFimTempo) {
+      setShowFimTempoGuess(true);
+    }
+  }, [fase, isSpy, adivinheiNaFimTempo]);
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
@@ -258,6 +268,21 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     try { await gameActions.adivinhar(rodada.id, selectedGuessId); setShowGuess(false); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao adivinhar"); }
     finally { setActing(false); }
+  }
+
+  async function handleAdivinharFimTempo() {
+    if (!rodada || selectedGuessId === null) return;
+    setActing(true);
+    try {
+      await gameActions.adivinharFimTempo(rodada.id, selectedGuessId);
+      setAdivinheiNaFimTempo(true);
+      setShowFimTempoGuess(false);
+      setSelectedGuessId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao adivinhar");
+    } finally {
+      setActing(false);
+    }
   }
 
   async function handleDizerPalavra() {
@@ -670,7 +695,32 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         )}
       </AnimatePresence>
 
-
+      {/* FIM DE TEMPO — GUESS SHEET (espia) */}
+      <AnimatePresence>
+        {showFimTempoGuess && (
+          <motion.div key="fimtempo-guess" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={SHEET_SPRING} style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px 0", display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", maxHeight: "80dvh" }}>
+            <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
+            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />
+            <Eyebrow color={T.inkSoft}>Tempo Esgotado — Adivinha o Local</Eyebrow>
+            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Onde você está?</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>
+              {EVENTOS.map(e => (
+                <button key={e.id} onClick={() => setSelectedGuessId(e.id)} style={{ display: "flex", flexDirection: "column", padding: "12px 14px", borderRadius: 12, border: `2px solid ${selectedGuessId === e.id ? T.sienna : T.hairline}`, background: selectedGuessId === e.id ? T.siennaSoft : T.cardWarm, cursor: "pointer", textAlign: "left", transition: "all 150ms" }}>
+                  <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 14, color: T.ink }}>{e.evento}</span>
+                  <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft, marginTop: 2 }}>{e.local}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, padding: "14px 0", borderTop: `1px solid ${T.hairline}`, background: T.card, position: "sticky", bottom: 0 }}>
+              <button disabled={selectedGuessId === null || acting} onClick={handleAdivinharFimTempo} style={{ flex: 1, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "13px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, cursor: selectedGuessId !== null ? "pointer" : "not-allowed", opacity: selectedGuessId !== null ? 1 : 0.5, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Confirmar ✦
+              </button>
+            </div>
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MY CARD SHEET */}
       <AnimatePresence>

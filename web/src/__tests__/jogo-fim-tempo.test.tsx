@@ -78,4 +78,46 @@ describe("Fim de tempo — trigger e UI", () => {
     await new Promise(r => setTimeout(r, 100));
     expect(vi.mocked(gameActions.encerrarPorTempo)).not.toHaveBeenCalled();
   });
+
+  it("espia vê sheet de adivinhação na fase adivinhacao_fim_tempo", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({}, {
+        fase: "adivinhacao_fim_tempo",
+        espia_ids: ["jogador-1"],
+        timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
+        adivinhacoes_fim_tempo: { "jogador-1": null },
+      })
+    );
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Onde você está/i)).toBeInTheDocument();
+    });
+  });
+
+  it("espia submete adivinhação via adivinharFimTempo", async () => {
+    vi.mocked(gameActions.adivinharFimTempo).mockResolvedValue({ aguardando: true });
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({}, {
+        fase: "adivinhacao_fim_tempo",
+        espia_ids: ["jogador-1"],
+        timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
+        adivinhacoes_fim_tempo: { "jogador-1": null },
+      })
+    );
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    // Selecionar primeiro evento da lista e confirmar
+    await waitFor(() => screen.getByText("Criação"));
+    await act(async () => { (screen.getByText("Criação").closest("button") as HTMLElement).click(); });
+    await act(async () => { (screen.getByText(/Confirmar/i) as HTMLElement).click(); });
+
+    await waitFor(() => {
+      expect(vi.mocked(gameActions.adivinharFimTempo)).toHaveBeenCalledWith("rodada-1", 1);
+    });
+  });
 });
