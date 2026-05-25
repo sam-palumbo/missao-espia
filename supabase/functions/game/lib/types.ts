@@ -1,8 +1,9 @@
 // ============================================================
 // TIPOS COMPARTILHADOS do Missão Espia
 // ============================================================
-// Este arquivo é a FONTE DA VERDADE dos tipos.
-// Sincronizado manualmente com web/src/lib/types.ts
+// FONTE DA VERDADE dos tipos do jogo.
+// O lado web importa este arquivo via path alias @shared/*
+// configurado em web/tsconfig.json. Não há duplicação.
 // ============================================================
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
