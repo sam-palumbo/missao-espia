@@ -97,6 +97,24 @@ describe("Fim de tempo — trigger e UI", () => {
     });
   });
 
+  it("não-espia vê banner 'espias estão adivinhando' na fase adivinhacao_fim_tempo", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({}, {
+        fase: "adivinhacao_fim_tempo",
+        espia_ids: ["jogador-2"],
+        timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
+        adivinhacoes_fim_tempo: { "jogador-2": null },
+      })
+    );
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText(/espias estão adivinhando/i)).toBeInTheDocument();
+    });
+  });
+
   it("espia submete adivinhação via adivinharFimTempo", async () => {
     vi.mocked(gameActions.adivinharFimTempo).mockResolvedValue({ aguardando: true });
     vi.mocked(useGameState).mockReturnValue(
