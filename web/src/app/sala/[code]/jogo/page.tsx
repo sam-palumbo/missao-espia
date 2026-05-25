@@ -10,6 +10,7 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ParchmentBg, InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
+import { isPrimeiroTurno, isEspia, estaForaDoTurno, isMeuTurno } from "@shared/regras";
 import { TurnoPresencial } from "./turno-presencial";
 import HistoricoTabs from "./historico-tabs";
 import { RevealScreen } from "./reveal-screen";
@@ -79,8 +80,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     }
   }, [rodada?.estado.fase, rodada?.estado.pergunta_atual, meuJogador?.id]);
 
-  const isSpy = rodada ? (rodada.estado.espia_ids ?? []).includes(meuJogador?.id ?? "") : false;
-  const ehMeuTurno = meuJogador?.id === rodada?.estado.turno_atual;
+  const isSpy = rodada && meuJogador ? isEspia(rodada.estado, meuJogador.id) : false;
+  const ehMeuTurno = rodada && meuJogador ? isMeuTurno(rodada.estado, meuJogador.id) : false;
   const fase = rodada?.estado.fase ?? "jogando";
 
   useEffect(() => {
@@ -111,9 +112,11 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     if (fase === "adivinhacao_fim_tempo" && isSpy && !adivinheiNaFimTempo) setShowFimTempoGuess(true);
   }, [fase, isSpy, adivinheiNaFimTempo]);
 
+  // Combina dois sinais por causa da race condition entre usePlayers e useGameState:
+  // useGameState pode atualizar ordem_turnos antes de usePlayers refletir ativo=false (e vice-versa).
   const meuEliminado =
     meuJogador?.ativo === false ||
-    (!!meuJogador && !!rodada && rodada.estado.ordem_turnos.length > 0 && !rodada.estado.ordem_turnos.includes(meuJogador.id));
+    (!!meuJogador && !!rodada && estaForaDoTurno(rodada.estado, meuJogador.id));
 
   useEffect(() => {
     if (meuEliminado) {
@@ -213,9 +216,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido ?? null : null;
   const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
-  const primeiroTurno = primeiraRodada
-    ? (rodada?.estado.palavras_primeira_rodada?.length ?? 0) === 0
-    : (rodada?.estado.historico.length ?? 0) === 0;
+  const primeiroTurno = rodada ? isPrimeiroTurno(rodada.estado) : true;
 
   return (
     <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 14 }}>
