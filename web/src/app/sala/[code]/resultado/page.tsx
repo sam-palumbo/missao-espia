@@ -39,6 +39,15 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   const espiaAdivinhou = (rodada?.estado.adivinhou_evento_id ?? null) !== null;
   const groupWon = espiaPego && !espiaAdivinhou;
 
+  const adivinhacoesFimTempo = rodada?.estado.adivinhacoes_fim_tempo;
+  const isFimTempo = adivinhacoesFimTempo !== undefined && adivinhacoesFimTempo !== null;
+
+  const badgeFimTempo = (espiaId: string): string => {
+    if (!adivinhacoesFimTempo || !rodada) return "+2 pt";
+    const guess = adivinhacoesFimTempo[espiaId] ?? null;
+    return (guess !== null && guess === rodada.evento_id) ? "+3 pt" : "+2 pt";
+  };
+
   if (!rodada || players.length === 0) {
     return (
       <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
@@ -86,10 +95,12 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
               <MEAvatar size={52} initial={espias[0].apelido.slice(0,1)} variant="light" />
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, lineHeight: 1.05, color: T.ink }}>{espias[0].apelido}</div>
-                <Eyebrow color={T.brick} size={10}>{espiaAdivinhou ? "Adivinhou o local" : "Não adivinhou o local"}</Eyebrow>
+                <Eyebrow color={T.brick} size={10}>{isFimTempo
+                  ? (badgeFimTempo(espias[0].id) === "+3 pt" ? "Adivinhou o local" : "Não adivinhou o local")
+                  : (espiaAdivinhou ? "Adivinhou o local" : "Não adivinhou o local")}</Eyebrow>
               </div>
               <div style={{ background: espiaAdivinhou ? T.siennaSoft : T.brickSoft, color: espiaAdivinhou ? T.sienna : T.brick, padding: "5px 10px", borderRadius: 999, fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>
-                {espiaAdivinhou ? "+1 pt" : "0 pt"}
+                {isFimTempo ? badgeFimTempo(espias[0].id) : (espiaAdivinhou ? "+1 pt" : "0 pt")}
               </div>
             </div>
             {/* Event reveal */}

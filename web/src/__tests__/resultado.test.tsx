@@ -191,4 +191,52 @@ describe("Página Resultado", () => {
       expect(screen.getByText("Ver Placar Final")).toBeInTheDocument();
     });
   });
+
+  it("exibe '+3 pt' quando espia acertou no fim de tempo", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({ evento_id: 1 }, {
+        espia_ids: ["jogador-2"],
+        adivinhacoes_fim_tempo: { "jogador-2": 1 },
+      })
+    );
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB_LIVRE]);
+
+    await act(async () => { renderResultado(); });
+
+    await waitFor(() => {
+      expect(screen.getByText("+3 pt")).toBeInTheDocument();
+    });
+  });
+
+  it("exibe '+2 pt' quando espia errou no fim de tempo", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({ evento_id: 1 }, {
+        espia_ids: ["jogador-2"],
+        adivinhacoes_fim_tempo: { "jogador-2": 5 },
+      })
+    );
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB_LIVRE]);
+
+    await act(async () => { renderResultado(); });
+
+    await waitFor(() => {
+      expect(screen.getByText("+2 pt")).toBeInTheDocument();
+    });
+  });
+
+  it("exibe '+2 pt' quando espia não enviou adivinhação no fim de tempo", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({ evento_id: 1 }, {
+        espia_ids: ["jogador-2"],
+        adivinhacoes_fim_tempo: { "jogador-2": null },
+      })
+    );
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB_LIVRE]);
+
+    await act(async () => { renderResultado(); });
+
+    await waitFor(() => {
+      expect(screen.getByText("+2 pt")).toBeInTheDocument();
+    });
+  });
 });
