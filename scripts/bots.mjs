@@ -387,6 +387,22 @@ async function playBot({ nome, token, salaId, jogadorId }) {
         log(`Erro ao adivinhar: ${e.message}`);
       }
     }
+
+    // ── Fase: adivinhacao_fim_tempo ───────────────────────────────────────
+    else if (fase === "adivinhacao_fim_tempo") {
+      const sou_espia = estado.espia_ids.includes(jogadorId);
+      if (!sou_espia || adivinheiNestaRodada) continue;
+
+      await sleep(1000 + Math.random() * 2000);
+      const ev = eventoAleatorio();
+      try {
+        await callGame(token, "adivinhar_fim_tempo", { rodada_id: rodada.id, evento_id: ev.id });
+        adivinheiNestaRodada = true;
+        log(`Fim de tempo! Adivinhei: "${ev.evento}" (${ev.local})`);
+      } catch (e) {
+        log(`Erro ao adivinhar no fim de tempo: ${e.message}`);
+      }
+    }
   }
 }
 
