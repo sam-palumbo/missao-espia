@@ -58,8 +58,8 @@ function rodadaPresencial(turnoAtual: string) {
       turno_atual: turnoAtual,
       ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
       historico: [
-        { tipo: "turno_presencial" as const, jogador_apelido: "Bruno" },
-        { tipo: "turno_presencial" as const, jogador_apelido: "Carla" },
+        { tipo: "turno_presencial" as const, turno_numero: 1, jogador_apelido: "Bruno" },
+        { tipo: "turno_presencial" as const, turno_numero: 2, jogador_apelido: "Carla" },
       ],
     }
   );

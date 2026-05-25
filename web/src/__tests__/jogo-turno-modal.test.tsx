@@ -43,7 +43,7 @@ function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = fals
     {
       espia_ids: isSpy ? ["jogador-1"] : [],
       acusou_neste_turno: acusouNesteTurno,
-      historico: comHistorico ? [{ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
+      historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
       primeira_rodada: primeiraRodada,
     }
   );

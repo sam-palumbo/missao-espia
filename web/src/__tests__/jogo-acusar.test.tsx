@@ -43,7 +43,7 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", pri
       turno_atual: turnoAtual,
       acusou_neste_turno: acusouNesteTurno,
       primeira_rodada: primeiraRodada,
-      historico: comHistorico ? [{ tipo: "pergunta" as const, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
+      historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
     }
   );
 }

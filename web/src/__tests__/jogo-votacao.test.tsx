@@ -126,7 +126,7 @@ describe("Overlay de votação", () => {
 
   it("chama gameActions.votar com aprovado=true ao clicar Sim", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaVotacao("jogador-2"));
-    vi.mocked(gameActions.votar).mockResolvedValue(undefined);
+    vi.mocked(gameActions.votar).mockResolvedValue({ aguardando_votos: true, votos_recebidos: 1 });
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
@@ -141,7 +141,7 @@ describe("Overlay de votação", () => {
 
   it("chama gameActions.votar com aprovado=false ao clicar Não", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaVotacao("jogador-2"));
-    vi.mocked(gameActions.votar).mockResolvedValue(undefined);
+    vi.mocked(gameActions.votar).mockResolvedValue({ aguardando_votos: true, votos_recebidos: 1 });
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
