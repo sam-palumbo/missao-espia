@@ -243,6 +243,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       setShowGuess(false);
       setShowWordInput(false);
       setShowAskQuestion(false);
+      setShowFimTempoGuess(false);
     }
   }, [meuEliminado]);
 
