@@ -1,5 +1,5 @@
 "use client";
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   const [revealed, setRevealed] = useState(false);
   const [starting, setStarting] = useState(false);
   const [rodadaInicialId, setRodadaInicialId] = useState<string | null>(null);
+  const iniciouRef = useRef(false);
 
   const rodada = useGameState(salaId);
   const players = usePlayers(salaId);
@@ -58,12 +59,15 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   async function handleProxima() {
     if (!salaId) return;
     if (!isHost) { router.push(`/sala/${code}/lobby`); return; }
+    if (iniciouRef.current) return;
+    iniciouRef.current = true;
     setStarting(true);
     try {
       await gameActions.iniciarRodada(salaId);
       router.push(`/sala/${code}/jogo`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao iniciar");
+      iniciouRef.current = false;
       setStarting(false);
     }
   }
