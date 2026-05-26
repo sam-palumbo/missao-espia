@@ -21,7 +21,8 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 vi.mock("@/lib/eventos", () => ({
   EVENTOS: [
-    { id: 1, evento: "Criação", local: "Jardim do Éden", testament: "AT" },
+    { id: 1, evento: "Criação",  local: "Jardim do Éden", testament: "AT" },
+    { id: 2, evento: "Dilúvio", local: "Arca de Noé",    testament: "AT" },
   ],
 }));
 
@@ -148,5 +149,72 @@ describe("Rever minha carta", () => {
     await waitFor(() => {
       expect(screen.getByText(/espia/i)).toBeInTheDocument();
     });
+  });
+
+  it("sheet exibe seção 'Cenários possíveis' para o espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaEspia());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/cenários possíveis/i)).toBeInTheDocument();
+    });
+  });
+
+  it("sheet exibe todos os cenários para o espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaEspia());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Criação")).toBeInTheDocument();
+      expect(screen.getByText("Jardim do Éden")).toBeInTheDocument();
+      expect(screen.getByText("Dilúvio")).toBeInTheDocument();
+      expect(screen.getByText("Arca de Noé")).toBeInTheDocument();
+    });
+  });
+
+  it("sheet não exibe 'Cenários possíveis' para jogador não-espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaNaoEspia());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
+    });
+
+    await waitFor(() => screen.getByRole("button", { name: /fechar/i }));
+    expect(screen.queryByText(/cenários possíveis/i)).not.toBeInTheDocument();
+  });
+
+  it("sheet não exibe eventos de outros cenários para jogador não-espia", async () => {
+    vi.mocked(useGameState).mockReturnValue(rodadaNaoEspia());
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => screen.getByRole("button", { name: /minha carta/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /minha carta/i }));
+    });
+
+    await waitFor(() => screen.getByRole("button", { name: /fechar/i }));
+    // evento_id: 1 → Criação deve aparecer; Dilúvio (id 2) não deve aparecer
+    expect(screen.queryByText("Dilúvio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Arca de Noé")).not.toBeInTheDocument();
   });
 });
