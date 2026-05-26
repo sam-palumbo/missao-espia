@@ -3,23 +3,12 @@ import type { ModoSala } from "./types";
 
 async function callGame<T>(action: string, payload: unknown): Promise<T> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Sessão não encontrada");
-
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/game`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    },
-    body: JSON.stringify({ action, payload }),
+  const { data, error } = await supabase.functions.invoke("game", {
+    body: { action, payload },
   });
-
-  const json = await res.json();
-  if (json.error) throw new Error(json.error);
-  return json as T;
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data as T;
 }
 
 // ============================================================
