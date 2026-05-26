@@ -10,6 +10,10 @@ let mockSalaData: Record<string, unknown> = { id: "sala-1", status: "jogando" };
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/supabase", () => ({
   createClient: () => ({
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: { user: { id: "user-1" } } } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    },
     from: () => ({
       select: () => ({
         eq: () => ({ single: () => Promise.resolve({ data: mockSalaData }) }),
