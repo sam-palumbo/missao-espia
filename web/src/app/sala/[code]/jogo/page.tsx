@@ -46,6 +46,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [answerInput, setAnswerInput] = useState("");
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
+  const [jaVotei, setJaVotei] = useState(false);
   const [showMyCard, setShowMyCard] = useState(false);
   const [showFimTempoGuess, setShowFimTempoGuess] = useState(false);
   const [adivinheiNaFimTempo, setAdivinheiNaFimTempo] = useState(false);
@@ -68,6 +69,10 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   useEffect(() => {
     if (rodada?.estado.fase === "resultado") router.push(`/sala/${code}/resultado`);
   }, [rodada?.estado.fase, code, router]);
+
+  useEffect(() => {
+    setJaVotei(false);
+  }, [rodada?.estado.acusado_id]);
 
   const meuJogador = players.find(p => p.user_id === user?.id);
 
@@ -139,7 +144,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   async function handleVotar(aprovado: boolean) {
     if (!rodada) return;
     setActing(true);
-    try { await gameActions.votar(rodada.id, aprovado); }
+    try { await gameActions.votar(rodada.id, aprovado); setJaVotei(true); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao votar"); }
     finally { setActing(false); }
   }
@@ -298,6 +303,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
           meuId={meuJogador?.id}
           acusadoId={rodada?.estado.acusado_id ?? undefined}
           acting={acting}
+          jaVotei={jaVotei}
           onVotar={handleVotar}
         />
       )}

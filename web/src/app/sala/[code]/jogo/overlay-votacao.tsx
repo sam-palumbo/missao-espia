@@ -9,10 +9,11 @@ interface Props {
   meuId: string | undefined;
   acusadoId: string | undefined;
   acting: boolean;
+  jaVotei: boolean;
   onVotar: (aprovado: boolean) => void;
 }
 
-export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, acting, onVotar }: Props) {
+export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, acting, jaVotei, onVotar }: Props) {
   return (
     <AnimatePresence>
       {acusadoNome && (
@@ -36,7 +37,11 @@ export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, ac
             <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink, lineHeight: 1.1 }}>{acusadoNome} é o espia?</div>
             {meuEliminado ? (
               <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Você foi eliminado — apenas observe.</div>
-            ) : meuId !== acusadoId ? (
+            ) : meuId === acusadoId ? (
+              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Aguardando votação…</div>
+            ) : jaVotei ? (
+              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Voto registrado — aguardando os outros jogadores…</div>
+            ) : (
               <div style={{ display: "flex", gap: 10 }}>
                 <button disabled={acting} onClick={() => onVotar(true)} style={{ flex: 1, background: T.ink, color: T.cardWarm, border: "none", borderRadius: 999, padding: "15px", fontFamily: F.sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                   👍 Sim
@@ -45,8 +50,6 @@ export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, ac
                   👎 Não
                 </button>
               </div>
-            ) : (
-              <div style={{ textAlign: "center", fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, color: T.inkSoft, padding: "10px 0" }}>Aguardando votação…</div>
             )}
           </motion.div>
         </motion.div>
