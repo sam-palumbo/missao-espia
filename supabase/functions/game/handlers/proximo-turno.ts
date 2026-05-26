@@ -41,7 +41,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
   if (modo === "presencial" && jogadorAtual) {
     const item: HistoricoTurnoPresencial = {
       tipo: "turno_presencial",
-      turno_numero: turnoNumero,
+      turno_numero: estado.turno_numero_atual,
       jogador_apelido: jogadorAtual.apelido,
     };
     novoHistorico.push(item);

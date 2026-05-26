@@ -42,7 +42,7 @@ export async function responderPergunta(userId: string, payload: unknown) {
     historico: [
       ...(estado.historico ?? []),
       {
-        turno_numero: turnoNumero,
+        turno_numero: estado.turno_numero_atual,
         perguntador_apelido: perguntaAtual.perguntador_apelido,
         destinatario_apelido: perguntaAtual.destinatario_apelido,
         pergunta: perguntaAtual.texto,
