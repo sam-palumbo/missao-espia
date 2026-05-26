@@ -37,6 +37,14 @@ Missão Espia é um jogo de dedução social com temática bíblica para 4 a 12 
 
 ---
 
+## Glossário
+
+- **Rodada** (`rodada`): uma partida completa dentro de uma sessão de jogo — inclui fase de palavras, fase de perguntas, e encerramento. Uma sessão tem N rodadas (configurável). Cada rodada tem um evento sorteado, um(ou mais) espia(s) diferente(s), e um timer próprio. No banco, corresponde a uma linha na tabela `rodadas`.
+
+- **Turno** (`turno`): a vez de um jogador específico dentro de uma rodada. Em cada turno, o jogador faz uma pergunta (ou diz uma palavra, na primeira volta). O campo `turno_atual` indica quem está no turno; `turno_numero_atual` indica em qual volta do ciclo estamos (1 = todos ainda não agiram uma vez, 2 = segunda volta, etc.). Acusar só é permitido a partir do turno 2 (segunda volta do ciclo).
+
+---
+
 ## Mecânica Principal (resumo)
 
 1. Um evento é sorteado. Todos recebem a carta com evento + local, exceto o(s) espia(s).
