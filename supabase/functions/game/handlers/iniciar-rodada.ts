@@ -16,6 +16,8 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   if (sala.status === "encerrada") throw new Error("Partida encerrada");
   if (sala.rodada_atual >= sala.num_rodadas) throw new Error("Todas as rodadas já foram jogadas");
 
+  await db.from("jogadores").update({ ativo: true }).eq("sala_id", sala_id);
+
   const jogadoresAtivos = await getJogadoresAtivos(db, sala_id);
   if (jogadoresAtivos.length < 4) throw new Error("Mínimo de 4 jogadores ativos");
 
@@ -52,7 +54,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],
-    primeira_rodada: novoNumero === 1,
+    primeira_rodada: true,
     palavras_primeira_rodada: [],
   };
 
