@@ -34,9 +34,46 @@ export default function HomePage() {
         style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 32, flex: 1 }}
       >
         <Eyebrow color={T.sienna}>Um jogo de dedução</Eyebrow>
-        <div style={{ fontFamily: F.display, fontSize: 52, fontWeight: 500, lineHeight: 0.95, letterSpacing: "-0.01em", color: T.ink, textAlign: "center" }}>
-          Missão<br />
-          <span style={{ color: T.sienna, fontWeight: 700 }}>Espia</span>
+        <div style={{ position: "relative" }}>
+          {/* Walls of Jericho — bricks circle the title clockwise, then tumble outward */}
+          <div style={{ position: "absolute", top: "calc(50% + 40px)", left: "50%", width: 0, height: 0, pointerEvents: "none", zIndex: 0 }}>
+            {Array.from({ length: 18 }, (_, i) => {
+              const angle = (i * 360) / 18 - 90;
+              const rad = (angle * Math.PI) / 180;
+              const radius = 160;
+              const x = Math.cos(rad) * radius;
+              const y = Math.sin(rad) * radius;
+              const buildDelay = 0.6 + i * 0.09;
+              const tumbleX = Math.cos(rad) * 90;
+              const tumbleY = Math.sin(rad) * 90 + 70;
+              const tumbleRot = i % 2 === 0 ? 80 : -80;
+              return (
+                <motion.div
+                  key={i}
+                  animate={{
+                    opacity: [0, 0.5, 0.5, 0],
+                    scale: [0.3, 1, 1, 0.85],
+                    x: [x, x, x, x + tumbleX],
+                    y: [y, y, y, y + tumbleY],
+                    rotate: [angle + 90, angle + 90, angle + 90, angle + 90 + tumbleRot],
+                  }}
+                  transition={{
+                    duration: 6,
+                    delay: buildDelay,
+                    times: [0, 0.1, 0.72, 1],
+                    ease: ["easeOut", "linear", "easeIn"],
+                    repeat: Infinity,
+                    repeatDelay: 1.2,
+                  }}
+                  style={{ position: "absolute", top: 0, left: 0, width: 26, height: 9, marginLeft: -13, marginTop: -4.5, background: T.brick, borderRadius: 1.5 }}
+                />
+              );
+            })}
+          </div>
+          <div style={{ position: "relative", zIndex: 1, fontFamily: F.display, fontSize: 52, fontWeight: 500, lineHeight: 0.95, letterSpacing: "-0.01em", color: T.ink, textAlign: "center" }}>
+            Missão<br />
+            <span style={{ color: T.sienna, fontWeight: 700 }}>Espia</span>
+          </div>
         </div>
         <div style={{ width: "60%" }}><MERule color={T.sienna} /></div>
         <div style={{ fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 15, lineHeight: 1.4, color: T.inkSoft, textAlign: "center", maxWidth: 260 }}>
