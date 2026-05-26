@@ -2,9 +2,12 @@
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 import { EVENTOS } from "@/lib/eventos";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
+import { useAuth } from "@/hooks/useAuth";
+import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
@@ -17,20 +20,53 @@ const rowVariants = {
 export default function ResultadoPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const [salaId, setSalaId] = useState<string | null>(null);
+  const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
   const [salaEncerrada, setSalaEncerrada] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [rodadaInicialId, setRodadaInicialId] = useState<string | null>(null);
 
   const rodada = useGameState(salaId);
   const players = usePlayers(salaId);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, status").eq("codigo", code).single()
+    supabase.from("salas").select("id, status, anfitriao").eq("codigo", code).single()
       .then(({ data }) => {
-        if (data) { setSalaId(data.id); setSalaEncerrada(data.status === "encerrada"); }
+        if (data) {
+          setSalaId(data.id);
+          setSalaEncerrada(data.status === "encerrada");
+          setAnfitriaoId(data.anfitriao);
+        }
       });
   }, [code]);
+
+  useEffect(() => {
+    if (rodada && !rodadaInicialId) setRodadaInicialId(rodada.id);
+  }, [rodada, rodadaInicialId]);
+
+  useEffect(() => {
+    if (rodada && rodadaInicialId && rodada.id !== rodadaInicialId && rodada.estado.fase !== "resultado") {
+      router.push(`/sala/${code}/jogo`);
+    }
+  }, [rodada, rodadaInicialId, code, router]);
+
+  const isHost = user?.id === anfitriaoId;
+
+  async function handleProxima() {
+    if (!salaId) return;
+    if (!isHost) { router.push(`/sala/${code}/lobby`); return; }
+    setStarting(true);
+    try {
+      await gameActions.iniciarRodada(salaId);
+      router.push(`/sala/${code}/jogo`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao iniciar");
+      setStarting(false);
+    }
+  }
 
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const espiaIds = rodada?.estado.espia_ids ?? [];
@@ -155,7 +191,9 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
           {salaEncerrada ? (
             <PrimaryBtn accent={T.gold} onClick={() => router.push(`/sala/${code}/placar`)}>Ver Placar Final</PrimaryBtn>
           ) : (
-            <PrimaryBtn accent={T.gold} onClick={() => router.push(`/sala/${code}/lobby`)}>Próxima Rodada</PrimaryBtn>
+            <PrimaryBtn accent={T.gold} disabled={starting} onClick={handleProxima}>
+              {starting ? "Iniciando…" : "Próxima Rodada"}
+            </PrimaryBtn>
           )}
         </div>
       </div>
