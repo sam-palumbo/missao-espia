@@ -40,12 +40,12 @@ Deno.test("isPrimeiroTurno: primeira rodada sem palavras", () => {
   assertEquals(isPrimeiroTurno(estado), true);
 });
 
-Deno.test("isPrimeiroTurno: primeira rodada com palavras dita falso", () => {
+Deno.test("isPrimeiroTurno: primeira rodada com palavras ainda bloqueia acusação", () => {
   const estado = makeEstado({
     primeira_rodada: true,
     palavras_primeira_rodada: [{ jogador_id: "j1", apelido: "A", palavra: "luz" }],
   });
-  assertEquals(isPrimeiroTurno(estado), false);
+  assertEquals(isPrimeiroTurno(estado), true);
 });
 
 // ── isEspia ────────────────────────────────────────────────────

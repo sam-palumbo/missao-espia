@@ -15,9 +15,8 @@ import type { EstadoRodada } from "./types.ts";
  * - Em rodada normal: histórico vazio.
  */
 export function isPrimeiroTurno(estado: EstadoRodada): boolean {
-  return estado.primeira_rodada
-    ? (estado.palavras_primeira_rodada?.length ?? 0) === 0
-    : estado.historico.length === 0;
+  if (estado.primeira_rodada) return true;
+  return estado.historico.length === 0;
 }
 
 /** O jogador é espia nesta rodada? */
