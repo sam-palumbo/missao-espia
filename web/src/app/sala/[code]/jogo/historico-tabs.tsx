@@ -173,12 +173,9 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada }: Pro
     <div
       style={{
         display: "flex",
+        flexWrap: "wrap",
         gap: 6,
-        overflowX: "auto",
-        paddingBottom: 2,
         marginBottom: 12,
-        scrollbarWidth: "none",
-        msOverflowStyle: "none",
       }}
     >
       {groups.map((g, i) => {

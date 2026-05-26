@@ -225,6 +225,15 @@ describe("HistoricoTabs", () => {
     expect(screen.getByText(/fogo/)).toBeInTheDocument();
   });
 
+  it("tab bar usa flexWrap wrap; muitas abas quebram linha em vez de criar scroll horizontal", () => {
+    const historico = Array.from({ length: 6 }, (_, i) => makeP(`J${i}`, i + 1));
+    render(<HistoricoTabs historico={historico} palavrasPrimeiraRodada={[]} />);
+
+    const tabBar = screen.getByText("Turno 1").parentElement!;
+    expect(tabBar.style.flexWrap).toBe("wrap");
+    expect(tabBar.style.overflowX).toBe("");
+  });
+
   it("apenas palavras (sem histórico) → uma aba 'Turno 1' com as palavras", () => {
     const palavras = [{ jogador_id: "j1", apelido: "Ana", palavra: "luz" }];
     render(
