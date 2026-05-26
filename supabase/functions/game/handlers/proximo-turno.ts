@@ -1,4 +1,5 @@
 import { getDb }                from "../lib/db.ts";
+import { calcularProximoTurno } from "../lib/queries.ts";
 import { encerrarPorTempo }     from "./encerrar-por-tempo.ts";
 import type { ProximoTurnoPayload, HistoricoTurnoPresencial } from "../lib/types.ts";
 
@@ -34,12 +35,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
   const modo = rodada.salas?.modo ?? "online";
 
   // Avançar turno
-  const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
-  const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
-
-  const turnoNumero = estado.turno_numero_atual ?? 1;
-  const isUltimoDoCiclo = idx === estado.ordem_turnos.length - 1;
-  const proximoTurnoNumero = isUltimoDoCiclo ? turnoNumero + 1 : turnoNumero;
+  const { proximo, proximoTurnoNumero } = calcularProximoTurno(estado);
 
   const novoHistorico = [...(estado.historico ?? [])];
   if (modo === "presencial" && jogadorAtual) {

@@ -86,6 +86,10 @@ export const gameActionsMock = {
 export function makeSupabaseMock(data: Record<string, unknown>) {
   return {
     createClient: () => ({
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: { user: { id: "user-1" } } } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      },
       from: () => ({
         select: () => ({
           eq: () => ({

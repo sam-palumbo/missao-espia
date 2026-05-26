@@ -137,3 +137,11 @@ export function assertIsAnfitriao(sala: { anfitriao: string | null }, userId: st
 export function assertModoOnline(modo: ModoSala): void {
   if (modo === "presencial") throw new Error("Ação indisponível no modo presencial");
 }
+
+export function calcularProximoTurno(estado: EstadoRodada): { proximo: string; proximoTurnoNumero: number } {
+  const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
+  const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
+  const turnoNumero = estado.turno_numero_atual ?? 1;
+  const proximoTurnoNumero = idx === estado.ordem_turnos.length - 1 ? turnoNumero + 1 : turnoNumero;
+  return { proximo, proximoTurnoNumero };
+}

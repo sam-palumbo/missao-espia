@@ -1,4 +1,9 @@
 import { getDb } from "../lib/db.ts";
+import {
+  getRodadaWithSala, getJogadorByUserId,
+  assertRodadaNaoEncerrada, assertFase, assertModoOnline, forbidden,
+  calcularProximoTurno,
+} from "../lib/queries.ts";
 import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { ResponderPerguntaPayload } from "../lib/types.ts";
 
@@ -8,33 +13,24 @@ export async function responderPergunta(userId: string, payload: unknown) {
   if (resposta.trim().length > 200) throw new Error("Resposta muito longa");
 
   const db = getDb();
-
-  const { data: rodada } = await db.from("rodadas").select("*, salas(modo)").eq("id", rodada_id).single();
-  if (!rodada) throw Object.assign(new Error("Rodada não encontrada"), { status: 404 });
-  if (rodada.encerrada_em) throw new Error("Rodada já encerrada");
-  if (rodada.salas?.modo === "presencial") throw new Error("Ação indisponível no modo presencial");
+  const rodada = await getRodadaWithSala(db, rodada_id);
+  assertRodadaNaoEncerrada(rodada);
+  assertModoOnline(rodada.salas.modo);
 
   const estado = rodada.estado;
-  if (estado.fase !== "aguardando_resposta") throw new Error(`Não é possível responder na fase '${estado.fase}'`);
+  assertFase(estado, ["aguardando_resposta"]);
 
   const perguntaAtual = estado.pergunta_atual;
   if (!perguntaAtual) throw new Error("Nenhuma pergunta ativa");
 
-  const { data: jogador } = await db
-    .from("jogadores").select("id")
-    .eq("sala_id", rodada.sala_id).eq("user_id", userId).single();
-  if (!jogador) throw Object.assign(new Error("Jogador não encontrado"), { status: 404 });
-  if (jogador.id !== perguntaAtual.destinatario_id) throw Object.assign(new Error("Não é sua vez de responder"), { status: 403 });
+  const jogador = await getJogadorByUserId(db, rodada.sala_id, userId);
+  if (jogador.id !== perguntaAtual.destinatario_id) forbidden("Não é sua vez de responder");
 
   if (new Date() > new Date(estado.timer_end)) {
     return encerrarPorTempo(userId, { rodada_id });
   }
 
-  const turnoNumero = estado.turno_numero_atual ?? 1;
-  const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
-  const isUltimoDoCiclo = idx === estado.ordem_turnos.length - 1;
-  const proximoTurnoNumero = isUltimoDoCiclo ? turnoNumero + 1 : turnoNumero;
-  const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
+  const { proximo, proximoTurnoNumero } = calcularProximoTurno(estado);
 
   const novoEstado = {
     ...estado,
