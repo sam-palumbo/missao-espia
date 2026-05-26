@@ -12,19 +12,25 @@ import type {
 // ── Types ──────────────────────────────────────────────────────
 
 type TabGroup =
+  | { kind: "palavras"; palavras: PalavraPrimeiraRodada[] }
   | { kind: "turno"; numero: number; items: HistoricoItem[] }
   | { kind: "votacao"; item: HistoricoVotacao; index: number };
 
 interface Props {
   historico: HistoricoItem[];
   palavrasPrimeiraRodada: PalavraPrimeiraRodada[];
-  primeiraRodada: boolean;
 }
 
 // ── groupHistorico ─────────────────────────────────────────────
 
-export function groupHistorico(historico: HistoricoItem[]): TabGroup[] {
+export function groupHistorico(
+  historico: HistoricoItem[],
+  palavrasPrimeiraRodada: PalavraPrimeiraRodada[] = [],
+): TabGroup[] {
   const groups: TabGroup[] = [];
+  if (palavrasPrimeiraRodada.length > 0) {
+    groups.push({ kind: "palavras", palavras: palavrasPrimeiraRodada });
+  }
   const turnoMap = new Map<number, { kind: "turno"; numero: number; items: HistoricoItem[] }>();
   let votacaoCount = 0;
 
@@ -120,9 +126,9 @@ function renderVotacao(h: HistoricoVotacao) {
 
 // ── HistoricoTabs ──────────────────────────────────────────────
 
-export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, primeiraRodada }: Props) {
-  const groups = groupHistorico(historico);
-  const firstTurnoNumero = groups.find((g) => g.kind === "turno")?.numero ?? 1;
+export default function HistoricoTabs({ historico, palavrasPrimeiraRodada }: Props) {
+  const groups = groupHistorico(historico, palavrasPrimeiraRodada);
+  const hasPalavrasTab = groups[0]?.kind === "palavras";
 
   const [selectedTab, setSelectedTab] = useState<number>(0);
   const prevGroupCount = useRef(0);
@@ -154,11 +160,12 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historico.length]);
 
-  if (groups.length === 0 && palavrasPrimeiraRodada.length === 0) {
+  if (groups.length === 0) {
     return null;
   }
 
   const activeGroup = groups[selectedTab] ?? null;
+  const turnoLabelOffset = hasPalavrasTab ? 1 : 0;
 
   // ── Tab bar ──────────────────────────────────────────────────
 
@@ -177,12 +184,20 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
       {groups.map((g, i) => {
         const isActive = i === selectedTab;
         const label =
-          g.kind === "turno"
-            ? `Turno ${g.numero}`
-            : "Votação";
+          g.kind === "palavras"
+            ? "Turno 1"
+            : g.kind === "turno"
+              ? `Turno ${g.numero + turnoLabelOffset}`
+              : "Votação";
+        const key =
+          g.kind === "palavras"
+            ? "palavras"
+            : g.kind === "turno"
+              ? `turno-${g.numero}`
+              : `votacao-${g.index}`;
         return (
           <button
-            key={g.kind === "turno" ? `turno-${g.numero}` : `votacao-${g.index}`}
+            key={key}
             onClick={() => setSelectedTab(i)}
             style={{
               background: isActive ? T.sienna : T.cardWarm,
@@ -212,34 +227,26 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
 
   // ── Content ───────────────────────────────────────────────────
 
-  const showPrimeiraRodadaWords =
-    primeiraRodada &&
-    palavrasPrimeiraRodada.length > 0 &&
-    activeGroup?.kind === "turno" &&
-    activeGroup.numero === firstTurnoNumero;
-
   let content: React.ReactNode = null;
 
-  if (activeGroup?.kind === "turno") {
+  if (activeGroup?.kind === "palavras") {
     content = (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {showPrimeiraRodadaWords && (
-          <>
-            <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginBottom: 8 }}>
-              {palavrasPrimeiraRodada.map((p, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
-                  <MEAvatar size={20} initial={p.apelido.slice(0, 1)} variant="light" />
-                  <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
-                  <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>"{p.palavra}"</span>
-                </div>
-              ))}
+        <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          {activeGroup.palavras.map((p, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
+              <MEAvatar size={20} initial={p.apelido.slice(0, 1)} variant="light" />
+              <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
+              <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>&ldquo;{p.palavra}&rdquo;</span>
             </div>
-            {activeGroup.items.length > 0 && (
-              <div style={{ height: 1, background: T.hairline, margin: "4px 0 8px" }} />
-            )}
-          </>
-        )}
+          ))}
+        </div>
+      </div>
+    );
+  } else if (activeGroup?.kind === "turno") {
+    content = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {activeGroup.items.map((item, i) => {
           const isLast = i === activeGroup.items.length - 1;
           if (item.tipo === "turno_presencial") {
@@ -251,22 +258,6 @@ export default function HistoricoTabs({ historico, palavrasPrimeiraRodada, prime
     );
   } else if (activeGroup?.kind === "votacao") {
     content = renderVotacao(activeGroup.item);
-  } else if (groups.length === 0 && palavrasPrimeiraRodada.length > 0) {
-    // No groups yet but we have first-round words
-    content = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Eyebrow color={T.inkSoft} size={8}>Palavras da Primeira Rodada</Eyebrow>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-          {palavrasPrimeiraRodada.map((p, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: T.cardWarm, borderRadius: 999, padding: "6px 12px" }}>
-              <MEAvatar size={20} initial={p.apelido.slice(0, 1)} variant="light" />
-              <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>{p.apelido}:</span>
-              <span style={{ fontFamily: F.bodySerif, fontSize: 13, fontStyle: "italic", color: T.inkSoft }}>"{p.palavra}"</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   }
 
   return (

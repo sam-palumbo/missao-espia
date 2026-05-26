@@ -260,7 +260,6 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <HistoricoTabs
         historico={rodada?.estado.historico ?? []}
         palavrasPrimeiraRodada={rodada?.estado.palavras_primeira_rodada ?? []}
-        primeiraRodada={primeiraRodada}
       />
 
       <div style={{ flex: 1 }} />
