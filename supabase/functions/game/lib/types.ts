@@ -48,7 +48,7 @@ export interface HistoricoTurnoPresencial {
 
 export type HistoricoItem = HistoricoPergunta | HistoricoVotacao | HistoricoTurnoPresencial;
 
-export interface PalavraPrimeiraRodada {
+export interface PalavraTurno {
   jogador_id: string;
   apelido: string;
   palavra: string;
@@ -93,8 +93,8 @@ export interface EstadoRodada {
   adivinhou_evento_id: number | null;
   pergunta_atual: PerguntaAtual | null;
   historico: HistoricoItem[];
-  primeira_rodada: boolean;
-  palavras_primeira_rodada: PalavraPrimeiraRodada[];
+  turno_palavras: boolean;
+  palavras_turno: PalavraTurno[];
   turno_numero_atual: number;
   timer_adivinhacao_end?: string;
   adivinhacoes_fim_tempo?: Record<string, number | null>;

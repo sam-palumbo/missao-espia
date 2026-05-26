@@ -48,8 +48,8 @@ export async function proximoTurno(userId: string, payload: unknown) {
   }
 
   // Verificar se devemos encerrar a primeira rodada (presencial não usa palavras)
-  let novaPrimeiraRodada = estado.primeira_rodada;
-  if (modo === "presencial" && estado.primeira_rodada) {
+  let novoTurnoPalavras = estado.turno_palavras;
+  if (modo === "presencial" && estado.turno_palavras) {
     const { data: jogadoresAtivos } = await db
       .from("jogadores")
       .select("id")
@@ -57,7 +57,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
       .eq("ativo", true);
     const turnosPresenciais = novoHistorico.filter((h: { tipo?: string }) => h.tipo === "turno_presencial").length;
     if (jogadoresAtivos && turnosPresenciais >= jogadoresAtivos.length) {
-      novaPrimeiraRodada = false;
+      novoTurnoPalavras = false;
     }
   }
 
@@ -69,7 +69,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
         turno_atual: proximo,
         acusou_neste_turno: false,
         historico: novoHistorico,
-        primeira_rodada: novaPrimeiraRodada,
+        turno_palavras: novoTurnoPalavras,
         ...(modo === "presencial" ? { turno_numero_atual: proximoTurnoNumero } : {}),
       },
     })
@@ -77,5 +77,5 @@ export async function proximoTurno(userId: string, payload: unknown) {
 
   if (error) throw new Error("Falha ao avançar turno: " + error.message);
 
-  return { turno_atual: proximo, primeira_rodada: novaPrimeiraRodada };
+  return { turno_atual: proximo, turno_palavras: novoTurnoPalavras };
 }

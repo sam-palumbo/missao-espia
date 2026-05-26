@@ -37,14 +37,14 @@ const ALICE = makePlayer({ id: "jogador-1", apelido: "Alice" });
 const BOB   = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodada({ primeiraRodada = false, isSpy = false, acusouNesteTurno = false, comHistorico = false } = {}) {
+function rodada({ turnoPalavras = false, isSpy = false, acusouNesteTurno = false, comHistorico = false } = {}) {
   return makeRodada(
-    { numero: primeiraRodada ? 1 : 2 },
+    { numero: turnoPalavras ? 1 : 2 },
     {
       espia_ids: isSpy ? ["jogador-1"] : [],
       acusou_neste_turno: acusouNesteTurno,
       historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
-      primeira_rodada: primeiraRodada,
+      turno_palavras: turnoPalavras,
     }
   );
 }
@@ -99,7 +99,7 @@ describe("Ações do turno aparecem diretamente no rodapé", () => {
   });
 
   it("Dizer Palavra aparece na primeira rodada, mas não Acusar ou Fazer Pergunta", async () => {
-    vi.mocked(useGameState).mockReturnValue(rodada({ primeiraRodada: true }));
+    vi.mocked(useGameState).mockReturnValue(rodada({ turnoPalavras: true }));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();

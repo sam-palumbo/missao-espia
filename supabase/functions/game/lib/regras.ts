@@ -11,11 +11,11 @@ import type { EstadoRodada } from "./types.ts";
 
 /**
  * É o primeiro turno da rodada? (Ninguém agiu ainda.)
- * - Em primeira rodada: ninguém disse palavra.
- * - Em rodada normal: histórico vazio.
+ * - No turno de palavras: bloqueia acusação durante toda a fase.
+ * - Fase de perguntas: bloqueia enquanto o histórico estiver vazio.
  */
 export function isPrimeiroTurno(estado: EstadoRodada): boolean {
-  if (estado.primeira_rodada) return true;
+  if (estado.turno_palavras) return true;
   return estado.historico.length === 0;
 }
 

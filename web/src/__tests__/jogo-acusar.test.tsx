@@ -36,13 +36,13 @@ const BOB   = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" })
 
 const PARAMS = Promise.resolve({ code: "TEST" });
 
-function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", primeiraRodada = false, comHistorico = false } = {}) {
+function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", turnoPalavras = false, comHistorico = false } = {}) {
   return makeRodada(
     { id: "rodada-2", numero: 2 },
     {
       turno_atual: turnoAtual,
       acusou_neste_turno: acusouNesteTurno,
-      primeira_rodada: primeiraRodada,
+      turno_palavras: turnoPalavras,
       historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
     }
   );

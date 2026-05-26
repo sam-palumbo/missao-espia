@@ -54,8 +54,8 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],
-    primeira_rodada: true,
-    palavras_primeira_rodada: [],
+    turno_palavras: true,
+    palavras_turno: [],
   };
 
   const { data: rodada, error } = await db

@@ -21,8 +21,8 @@ export async function fazerPergunta(userId: string, payload: unknown) {
   assertModoOnline(modo);
   assertFase(rodada.estado, ["jogando"]);
 
-  if (rodada.estado.primeira_rodada) {
-    throw new Error("Na primeira rodada não há perguntas, apenas uma palavra por jogador");
+  if (rodada.estado.turno_palavras) {
+    throw new Error("No turno de palavras não há perguntas, apenas uma palavra por jogador");
   }
 
   const perguntador = await getJogadorByUserId(db, rodada.sala_id, userId);

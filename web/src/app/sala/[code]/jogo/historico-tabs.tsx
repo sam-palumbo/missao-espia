@@ -6,30 +6,30 @@ import type {
   HistoricoPergunta,
   HistoricoVotacao,
   HistoricoTurnoPresencial,
-  PalavraPrimeiraRodada,
+  PalavraTurno,
 } from "@/lib/types";
 
 // ── Types ──────────────────────────────────────────────────────
 
 type TabGroup =
-  | { kind: "palavras"; palavras: PalavraPrimeiraRodada[] }
+  | { kind: "palavras"; palavras: PalavraTurno[] }
   | { kind: "turno"; numero: number; items: HistoricoItem[] }
   | { kind: "votacao"; item: HistoricoVotacao; index: number };
 
 interface Props {
   historico: HistoricoItem[];
-  palavrasPrimeiraRodada: PalavraPrimeiraRodada[];
+  palavrasTurno: PalavraTurno[];
 }
 
 // ── groupHistorico ─────────────────────────────────────────────
 
 export function groupHistorico(
   historico: HistoricoItem[],
-  palavrasPrimeiraRodada: PalavraPrimeiraRodada[] = [],
+  palavrasTurno: PalavraTurno[] = [],
 ): TabGroup[] {
   const groups: TabGroup[] = [];
-  if (palavrasPrimeiraRodada.length > 0) {
-    groups.push({ kind: "palavras", palavras: palavrasPrimeiraRodada });
+  if (palavrasTurno.length > 0) {
+    groups.push({ kind: "palavras", palavras: palavrasTurno });
   }
   const turnoMap = new Map<number, { kind: "turno"; numero: number; items: HistoricoItem[] }>();
   let votacaoCount = 0;
@@ -126,8 +126,8 @@ function renderVotacao(h: HistoricoVotacao) {
 
 // ── HistoricoTabs ──────────────────────────────────────────────
 
-export default function HistoricoTabs({ historico, palavrasPrimeiraRodada }: Props) {
-  const groups = groupHistorico(historico, palavrasPrimeiraRodada);
+export default function HistoricoTabs({ historico, palavrasTurno }: Props) {
+  const groups = groupHistorico(historico, palavrasTurno);
   const hasPalavrasTab = groups[0]?.kind === "palavras";
 
   const [selectedTab, setSelectedTab] = useState<number>(0);

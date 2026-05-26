@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { EstadoRodada, PalavraPrimeiraRodada } from "@shared/types";
+import type { EstadoRodada, PalavraTurno } from "@shared/types";
 
 // ── Estado base ───────────────────────────────────────────────
 
@@ -19,8 +19,8 @@ function makeEstado(
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],
-    primeira_rodada: false,
-    palavras_primeira_rodada: [],
+    turno_palavras: false,
+    palavras_turno: [],
     turno_numero_atual: 1,
     ...overrides,
   };
@@ -43,15 +43,15 @@ function dizerPalavra(
   jogadoresAtivosIds: string[]
 ): EstadoRodada {
   if (estado.fase !== "jogando") throw new Error("Fase errada");
-  if (!estado.primeira_rodada) throw new Error("Só na primeira rodada");
+  if (!estado.turno_palavras) throw new Error("Só na primeira rodada");
   if (jogadorId !== estado.turno_atual) throw new Error("Não é seu turno");
   if (palavra.includes(" ")) throw new Error("Apenas uma palavra");
 
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
   const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
 
-  const novasPalavras: PalavraPrimeiraRodada[] = [
-    ...estado.palavras_primeira_rodada,
+  const novasPalavras: PalavraTurno[] = [
+    ...estado.palavras_turno,
     { jogador_id: jogadorId, apelido: jogadorId, palavra },
   ];
 
@@ -64,8 +64,8 @@ function dizerPalavra(
     ...estado,
     turno_atual: proximo,
     acusou_neste_turno: false,
-    palavras_primeira_rodada: novasPalavras,
-    primeira_rodada: todosFalaram ? false : estado.primeira_rodada,
+    palavras_turno: novasPalavras,
+    turno_palavras: todosFalaram ? false : estado.turno_palavras,
   };
 }
 
@@ -116,7 +116,7 @@ describe("ciclo de turnos — cada jogador ativo joga exatamente uma vez", () =>
 
   it("tentativa de jogar fora do turno é rejeitada", () => {
     const ids = ["j1", "j2", "j3"];
-    const estado = makeEstado(ids, { primeira_rodada: true });
+    const estado = makeEstado(ids, { turno_palavras: true });
 
     expect(() => dizerPalavra(estado, "j2", "fé", ids)).toThrow(
       "Não é seu turno"
@@ -128,20 +128,20 @@ describe("ciclo de turnos — cada jogador ativo joga exatamente uma vez", () =>
 
   it("primeira rodada: cada jogador diz exatamente 1 palavra, encerra ao completar", () => {
     const ids = ["j1", "j2", "j3", "j4"];
-    let estado = makeEstado(ids, { primeira_rodada: true });
+    let estado = makeEstado(ids, { turno_palavras: true });
 
     const palavras = ["fé", "graça", "paz", "amor"];
 
     ids.forEach((id, i) => {
       expect(estado.turno_atual).toBe(id);
-      expect(estado.primeira_rodada).toBe(true);
+      expect(estado.turno_palavras).toBe(true);
       estado = dizerPalavra(estado, id, palavras[i], ids);
     });
 
-    expect(estado.primeira_rodada).toBe(false);
-    expect(estado.palavras_primeira_rodada).toHaveLength(ids.length);
+    expect(estado.turno_palavras).toBe(false);
+    expect(estado.palavras_turno).toHaveLength(ids.length);
 
-    const ditos = estado.palavras_primeira_rodada.map((p) => p.jogador_id);
+    const ditos = estado.palavras_turno.map((p) => p.jogador_id);
     expect(new Set(ditos).size).toBe(ids.length);
     ids.forEach((id) => expect(ditos).toContain(id));
   });
@@ -149,7 +149,7 @@ describe("ciclo de turnos — cada jogador ativo joga exatamente uma vez", () =>
   it("primeira rodada: jogador eliminado (ausente de ordem_turnos) não é esperado nem aparece", () => {
     // j3 eliminado antes da primeira rodada — não está na lista de ativos
     const ativos = ["j1", "j2", "j4"];
-    let estado = makeEstado(ativos, { primeira_rodada: true });
+    let estado = makeEstado(ativos, { turno_palavras: true });
 
     const palavras: Record<string, string> = { j1: "fé", j2: "graça", j4: "paz" };
 
@@ -157,15 +157,15 @@ describe("ciclo de turnos — cada jogador ativo joga exatamente uma vez", () =>
       estado = dizerPalavra(estado, id, palavras[id], ativos);
     });
 
-    expect(estado.primeira_rodada).toBe(false);
-    const ditos = estado.palavras_primeira_rodada.map((p) => p.jogador_id);
+    expect(estado.turno_palavras).toBe(false);
+    const ditos = estado.palavras_turno.map((p) => p.jogador_id);
     expect(ditos).not.toContain("j3");
     expect(ditos).toHaveLength(ativos.length);
   });
 
   it("primeira rodada: segunda palavra pelo mesmo jogador é impossível (não é mais seu turno)", () => {
     const ids = ["j1", "j2"];
-    let estado = makeEstado(ids, { primeira_rodada: true });
+    let estado = makeEstado(ids, { turno_palavras: true });
 
     estado = dizerPalavra(estado, "j1", "fé", ids);
 

@@ -206,7 +206,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   function handleClickTurnoAction() {
     if (modo === "presencial") { handleProximoTurno(); return; }
-    if (primeiraRodada) setShowWordInput(true);
+    if (turnoPalavras) setShowWordInput(true);
     else setShowAskQuestion(true);
   }
 
@@ -219,7 +219,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const currentPlayer = players.find(p => p.id === rodada?.estado.turno_atual);
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido ?? null : null;
-  const primeiraRodada = rodada?.estado.primeira_rodada ?? false;
+  const turnoPalavras = rodada?.estado.turno_palavras ?? false;
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
   const primeiroTurno = rodada ? isPrimeiroTurno(rodada.estado) : true;
 
@@ -256,7 +256,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         <TurnoPresencial
           isMinhaVez={currentPlayer.id === meuJogador?.id}
           jogadorAtualApelido={currentPlayer.apelido}
-          primeiraRodada={primeiraRodada}
+          turnoPalavras={turnoPalavras}
         />
       )}
 
@@ -264,7 +264,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
       <HistoricoTabs
         historico={rodada?.estado.historico ?? []}
-        palavrasPrimeiraRodada={rodada?.estado.palavras_primeira_rodada ?? []}
+        palavrasTurno={rodada?.estado.palavras_turno ?? []}
       />
 
       <div style={{ flex: 1 }} />
@@ -274,7 +274,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         ehMeuTurno={ehMeuTurno}
         meuEliminado={meuEliminado}
         fase={fase}
-        primeiraRodada={primeiraRodada}
+        turnoPalavras={turnoPalavras}
         primeiroTurno={primeiroTurno}
         acusouNesteTurno={acusouNesteTurno}
         modo={modo}

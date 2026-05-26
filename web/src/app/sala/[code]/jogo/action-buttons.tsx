@@ -7,7 +7,7 @@ interface Props {
   ehMeuTurno: boolean;
   meuEliminado: boolean;
   fase: string;
-  primeiraRodada: boolean;
+  turnoPalavras: boolean;
   primeiroTurno: boolean;
   acusouNesteTurno: boolean;
   modo: "online" | "presencial";
@@ -21,7 +21,7 @@ interface Props {
 
 const tap = { whileTap: { scale: 0.94 } };
 
-export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, primeiraRodada, primeiroTurno, acusouNesteTurno, modo, acting, onMinhaCarta, onAdivinhar, onClickTurnoAction, onAcusar, onProximoTurno }: Props) {
+export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPalavras, primeiroTurno, acusouNesteTurno, modo, acting, onMinhaCarta, onAdivinhar, onClickTurnoAction, onAcusar, onProximoTurno }: Props) {
   return (
     <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", gap: 10 }}>
@@ -40,9 +40,9 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, primeiraR
             {...tap}
             disabled={acting}
             onClick={onClickTurnoAction}
-            style={{ flex: 1, minWidth: 160, background: primeiraRodada ? T.gold : T.sienna, color: primeiraRodada ? T.ink : "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}
+            style={{ flex: 1, minWidth: 160, background: turnoPalavras ? T.gold : T.sienna, color: turnoPalavras ? T.ink : "white", border: "none", borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}
           >
-            {primeiraRodada ? "Diga uma palavra" : "Fazer Pergunta"}
+            {turnoPalavras ? "Diga uma palavra" : "Fazer Pergunta"}
           </motion.button>
           {!primeiroTurno && !acusouNesteTurno && (
             <motion.button
@@ -55,7 +55,7 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, primeiraR
               Acusar
             </motion.button>
           )}
-          {isSpy && !primeiraRodada && (
+          {isSpy && !turnoPalavras && (
             <motion.button
               {...tap}
               disabled={acting}

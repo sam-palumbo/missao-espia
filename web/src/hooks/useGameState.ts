@@ -7,7 +7,7 @@ export type { RodadaAtual } from "@/lib/types";
 export type {
   FaseJogo, ModoSala,
   HistoricoPergunta, HistoricoVotacao, HistoricoTurnoPresencial, HistoricoItem,
-  EstadoRodada, PerguntaAtual, PalavraPrimeiraRodada,
+  EstadoRodada, PerguntaAtual, PalavraTurno,
   ResultadoVotacaoHistorico,
 } from "@/lib/types";
 

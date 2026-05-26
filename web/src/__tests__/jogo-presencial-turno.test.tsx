@@ -14,7 +14,7 @@ describe("<TurnoPresencial />", () => {
       <TurnoPresencial
         isMinhaVez
         jogadorAtualApelido="Ana"
-        primeiraRodada
+        turnoPalavras
       />,
     );
     expect(screen.getByText(/É sua vez/i)).toBeDefined();
@@ -26,7 +26,7 @@ describe("<TurnoPresencial />", () => {
       <TurnoPresencial
         isMinhaVez
         jogadorAtualApelido="Ana"
-        primeiraRodada={false}
+        turnoPalavras={false}
       />,
     );
     expect(screen.getByText(/Faça uma pergunta.+em voz alta/i)).toBeDefined();
@@ -37,7 +37,7 @@ describe("<TurnoPresencial />", () => {
       <TurnoPresencial
         isMinhaVez={false}
         jogadorAtualApelido="Bruno"
-        primeiraRodada={false}
+        turnoPalavras={false}
       />,
     );
     expect(screen.getByText(/Vez de\s*Bruno/i)).toBeDefined();

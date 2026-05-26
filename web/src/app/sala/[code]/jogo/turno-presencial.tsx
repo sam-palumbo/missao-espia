@@ -4,10 +4,10 @@ import { InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
 export interface TurnoPresencialProps {
   isMinhaVez: boolean;
   jogadorAtualApelido: string;
-  primeiraRodada: boolean;
+  turnoPalavras: boolean;
 }
 
-export function TurnoPresencial({ isMinhaVez, jogadorAtualApelido, primeiraRodada }: TurnoPresencialProps) {
+export function TurnoPresencial({ isMinhaVez, jogadorAtualApelido, turnoPalavras }: TurnoPresencialProps) {
   if (!isMinhaVez) {
     return (
       <div style={{ position: "relative", padding: "14px 16px", background: T.card, borderRadius: 16, textAlign: "center" }}>
@@ -19,7 +19,7 @@ export function TurnoPresencial({ isMinhaVez, jogadorAtualApelido, primeiraRodad
     );
   }
 
-  const instrucao = primeiraRodada
+  const instrucao = turnoPalavras
     ? "Diga uma palavra em voz alta relacionada ao evento ou local."
     : "Faça uma pergunta a alguém em voz alta.";
 
