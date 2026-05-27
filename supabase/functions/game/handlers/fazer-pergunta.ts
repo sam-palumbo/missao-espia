@@ -21,10 +21,6 @@ export async function fazerPergunta(userId: string, payload: unknown) {
   assertModoOnline(modo);
   assertFase(rodada.estado, ["jogando"]);
 
-  if (rodada.estado.turno_palavras) {
-    throw Object.assign(new Error("No turno de palavras não há perguntas, apenas uma palavra por jogador"), { status: 400 });
-  }
-
   const perguntador = await getJogadorByUserId(db, rodada.sala_id, userId);
   assertJogadorAtivo(perguntador);
   assertIsTurno(rodada.estado, perguntador.id);

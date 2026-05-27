@@ -56,7 +56,7 @@ export const gameActions = {
     callGame<{ rodada: { id: string } }>("iniciar_rodada", { sala_id }),
 
   proximoTurno: (rodada_id: string) =>
-    callGame<{ turno_atual: string; turno_palavras?: boolean }>("proximo_turno", { rodada_id }),
+    callGame<{ turno_atual: string }>("proximo_turno", { rodada_id }),
 
   dizerPalavra: (rodada_id: string, palavra: string) =>
     callGame<{ ok: true; turno_atual: string; turno_palavras_encerrado?: boolean }>(

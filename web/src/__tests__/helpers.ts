@@ -139,7 +139,6 @@ export function makeRodada(
       adivinhou_evento_id: null,
       pergunta_atual: null,
       historico: [],
-      turno_palavras: false,
       palavras_turno: [],
       turno_numero_atual: 1,
       ...estado,

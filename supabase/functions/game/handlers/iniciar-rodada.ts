@@ -42,7 +42,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   const timer_end = addMinutesISO(minutos);
 
   const estado: EstadoRodada = {
-    fase: "jogando",
+    fase: "turno_palavras",
     turno_atual: shuffled[0],
     turno_numero_atual: 1,
     ordem_turnos: shuffled,
@@ -54,7 +54,6 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],
-    turno_palavras: true,
     palavras_turno: [],
   };
 

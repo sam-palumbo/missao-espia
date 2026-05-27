@@ -170,8 +170,8 @@ describe("Jogador eliminado — estado de observador", () => {
       {},
       {
         turno_atual: "jogador-1",
+        fase: "turno_palavras" as const,
         ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-        turno_palavras: true,
       }
     );
 

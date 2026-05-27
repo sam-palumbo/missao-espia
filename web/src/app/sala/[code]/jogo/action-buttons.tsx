@@ -34,7 +34,7 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPala
           </motion.button>
         )}
       </div>
-      {ehMeuTurno && !meuEliminado && fase === "jogando" && (
+      {ehMeuTurno && !meuEliminado && (fase === "jogando" || fase === "turno_palavras") && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           <motion.button
             {...tap}

@@ -7,7 +7,7 @@
 // ============================================================
 
 export type SalaStatus = "aguardando" | "jogando" | "encerrada";
-export type FaseJogo = "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "adivinhacao_fim_tempo" | "resultado";
+export type FaseJogo = "turno_palavras" | "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "adivinhacao_fim_tempo" | "resultado";
 export type ModoSala = "online" | "presencial";
 export type ResultadoVotacaoHistorico = "eliminado" | "sobreviveu" | "espia_pego";
 export type Testament = "AT" | "NT";
@@ -93,7 +93,6 @@ export interface EstadoRodada {
   adivinhou_evento_id: number | null;
   pergunta_atual: PerguntaAtual | null;
   historico: HistoricoItem[];
-  turno_palavras: boolean;
   palavras_turno: PalavraTurno[];
   turno_numero_atual: number;
   timer_adivinhacao_end?: string;

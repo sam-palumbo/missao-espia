@@ -19,8 +19,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   assertModoOnline(rodada.salas.modo);
 
   const estado = rodada.estado;
-  assertFase(estado, ["jogando"]);
-  if (!estado.turno_palavras) throw new Error("Só é possível dizer palavra no turno de palavras");
+  assertFase(estado, ["turno_palavras"]);
 
   const jogador = await getJogadorByUserId(db, rodada.sala_id, userId);
   assertIsTurno(estado, jogador.id);
@@ -44,11 +43,10 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     ],
   };
 
-  const todosFalaram = todosFalaramNaOrdem(novoEstado.palavras_turno ?? [], estado.ordem_turnos);
+  const todosFalaram = todosFalaramNaOrdem(novoEstado.palavras_turno, estado.ordem_turnos);
 
-  // Se todos falaram, encerrar a primeira rodada
   if (todosFalaram) {
-    novoEstado.turno_palavras = false;
+    novoEstado.fase = "jogando";
   }
 
   const { error } = await db.from("rodadas").update({ estado: novoEstado }).eq("id", rodada_id);

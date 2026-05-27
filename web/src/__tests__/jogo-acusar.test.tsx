@@ -40,9 +40,9 @@ function rodadaJogando({ acusouNesteTurno = false, turnoAtual = "jogador-1", tur
   return makeRodada(
     { id: "rodada-2", numero: 2 },
     {
+      fase: (turnoPalavras ? "turno_palavras" : "jogando") as "turno_palavras" | "jogando",
       turno_atual: turnoAtual,
       acusou_neste_turno: acusouNesteTurno,
-      turno_palavras: turnoPalavras,
       historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
     }
   );

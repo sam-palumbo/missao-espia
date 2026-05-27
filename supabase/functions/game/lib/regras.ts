@@ -15,7 +15,7 @@ import type { EstadoRodada } from "./types.ts";
  * - Fase de perguntas: bloqueia enquanto o histórico estiver vazio.
  */
 export function isPrimeiroTurno(estado: EstadoRodada): boolean {
-  if (estado.turno_palavras) return true;
+  if (estado.fase === "turno_palavras") return true;
   return estado.historico.length === 0;
 }
 

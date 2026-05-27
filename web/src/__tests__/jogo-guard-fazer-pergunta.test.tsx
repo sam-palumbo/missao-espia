@@ -1,7 +1,7 @@
 /**
  * Testa o guard em handleFazerPergunta que previne chamar a API durante
  * o turno de palavras — situação que ocorre em race condition quando uma
- * nova rodada começa (turno_palavras: true) enquanto o sheet de perguntas
+ * nova rodada começa (fase "turno_palavras") enquanto o sheet de perguntas
  * ainda está aberto da rodada anterior.
  */
 import React, { Suspense } from "react";
@@ -48,17 +48,16 @@ function rodadaPerguntas() {
   return makeRodada(
     { id: "rodada-1" },
     {
-      turno_palavras: false,
       historico: [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }],
     }
   );
 }
 
 function rodadaNovaComPalavras() {
-  // Nova rodada — turno_palavras: true
+  // Nova rodada — fase "turno_palavras"
   return makeRodada(
     { id: "rodada-2", numero: 2 },
-    { turno_palavras: true, palavras_turno: [] }
+    { fase: "turno_palavras" as const, palavras_turno: [] }
   );
 }
 
@@ -77,7 +76,7 @@ async function passarRevealScreen() {
 
 // ── Tests ──────────────────────────────────────────────────────
 
-describe("handleFazerPergunta — guard contra turno_palavras", () => {
+describe("handleFazerPergunta — guard contra fase turno_palavras", () => {
   beforeEach(() => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
@@ -89,8 +88,8 @@ describe("handleFazerPergunta — guard contra turno_palavras", () => {
     vi.clearAllMocks();
   });
 
-  it("não chama fazerPergunta se turno_palavras virou true antes do submit", async () => {
-    // Passo 1: rodada normal (turno_palavras=false) — sheet de pergunta pode abrir
+  it("não chama fazerPergunta se fase virou turno_palavras antes do submit", async () => {
+    // Passo 1: rodada normal (fase=jogando) — sheet de pergunta pode abrir
     vi.mocked(useGameState).mockReturnValue(rodadaPerguntas());
 
     let rerender: ReturnType<typeof render>["rerender"];
@@ -115,7 +114,7 @@ describe("handleFazerPergunta — guard contra turno_palavras", () => {
     const sheetContainer = screen.getByText("Para quem perguntar?").parentElement!;
     await act(async () => { fireEvent.click(within(sheetContainer).getByText("Bob")); });
 
-    // Passo 4: estado muda para nova rodada com turno_palavras=true (race condition)
+    // Passo 4: estado muda para nova rodada com fase=turno_palavras (race condition)
     vi.mocked(useGameState).mockReturnValue(rodadaNovaComPalavras());
     await act(async () => {
       rerender(<Suspense fallback={null}><JogoPage params={PARAMS} /></Suspense>);
@@ -130,7 +129,7 @@ describe("handleFazerPergunta — guard contra turno_palavras", () => {
     expect(gameActions.fazerPergunta).not.toHaveBeenCalled();
   });
 
-  it("chama fazerPergunta normalmente quando turno_palavras=false e dados válidos", async () => {
+  it("chama fazerPergunta normalmente quando fase=jogando e dados válidos", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaPerguntas());
     vi.mocked(gameActions.fazerPergunta as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
 

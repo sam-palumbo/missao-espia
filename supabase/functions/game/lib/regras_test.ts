@@ -15,7 +15,6 @@ function makeEstado(over: Partial<EstadoRodada> = {}): EstadoRodada {
     adivinhou_evento_id: null,
     pergunta_atual: null,
     historico: [],
-    turno_palavras: false,
     palavras_turno: [],
     turno_numero_atual: 1,
     ...over,
@@ -36,13 +35,13 @@ Deno.test("isPrimeiroTurno: rodada normal com histórico falso", () => {
 });
 
 Deno.test("isPrimeiroTurno: turno de palavras sem palavras", () => {
-  const estado = makeEstado({ turno_palavras: true });
+  const estado = makeEstado({ fase: "turno_palavras" });
   assertEquals(isPrimeiroTurno(estado), true);
 });
 
 Deno.test("isPrimeiroTurno: turno de palavras com palavras ainda bloqueia acusação", () => {
   const estado = makeEstado({
-    turno_palavras: true,
+    fase: "turno_palavras",
     palavras_turno: [{ jogador_id: "j1", apelido: "A", palavra: "luz" }],
   });
   assertEquals(isPrimeiroTurno(estado), true);

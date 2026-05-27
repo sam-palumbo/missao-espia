@@ -184,8 +184,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   async function handleFazerPergunta() {
     if (!rodada || !selectedRecipientId || !questionInput.trim()) return;
-    // Guard: se uma nova rodada começou enquanto o sheet estava aberto, turno_palavras
-    // já estará true no estado atual mesmo antes do useEffect fechar o sheet.
+    // Guard: se uma nova rodada começou enquanto o sheet estava aberto, o estado já
+    // estará em fase "turno_palavras" mesmo antes do useEffect fechar o sheet.
     if (turnoPalavras) { setShowAskQuestion(false); return; }
     setActing(true);
     try { await gameActions.fazerPergunta(rodada.id, selectedRecipientId, questionInput.trim()); setQuestionInput(""); setSelectedRecipientId(null); setShowAskQuestion(false); }
@@ -224,7 +224,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const currentPlayer = players.find(p => p.id === rodada?.estado.turno_atual);
   const evento = EVENTOS.find(e => e.id === rodada?.evento_id);
   const acusadoNome = rodada?.estado.acusado_id ? players.find(p => p.id === rodada.estado.acusado_id)?.apelido ?? null : null;
-  const turnoPalavras = rodada?.estado.turno_palavras ?? false;
+  const turnoPalavras = rodada?.estado.fase === "turno_palavras";
   const acusouNesteTurno = rodada?.estado.acusou_neste_turno ?? false;
   const primeiroTurno = rodada ? isPrimeiroTurno(rodada.estado) : true;
 

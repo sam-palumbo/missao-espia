@@ -41,10 +41,10 @@ function rodada({ turnoPalavras = false, isSpy = false, acusouNesteTurno = false
   return makeRodada(
     { numero: turnoPalavras ? 1 : 2 },
     {
+      fase: (turnoPalavras ? "turno_palavras" : "jogando") as "turno_palavras" | "jogando",
       espia_ids: isSpy ? ["jogador-1"] : [],
       acusou_neste_turno: acusouNesteTurno,
       historico: comHistorico ? [{ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" }] : [],
-      turno_palavras: turnoPalavras,
     }
   );
 }

@@ -19,6 +19,7 @@ Social deduction game with a biblical theme for 4–12 players. Web-based adapta
 11. [Victory Conditions](#11-victory-conditions)
 12. [Testing](#12-testing)
 13. [Setup & Deployment](#13-setup--deployment)
+14. [Game Flow Diagrams](#14-game-flow-diagrams)
 
 ---
 
@@ -325,36 +326,44 @@ interface AdivinharPayload { rodada_id: string; evento_id: number }
 Stored as JSONB in `rodadas.estado`.
 
 ```typescript
+type FaseJogo =
+  | "turno_palavras"        // first cycle: each player says one word (online) or passes (presencial)
+  | "jogando"               // main game: question/answer turns
+  | "aguardando_resposta"   // waiting for the questioned player to answer
+  | "votacao"               // accusation vote in progress
+  | "adivinhacao"           // spy was caught, has one chance to guess the event
+  | "adivinhacao_fim_tempo" // timer expired; all spies have 30s to submit a guess
+  | "resultado";            // round ended, scores calculated
+
 interface EstadoRodada {
-  fase: "jogando" | "aguardando_resposta" | "votacao" | "adivinhacao" | "resultado";
+  fase: FaseJogo;
   turno_atual: string;           // jogador_id of current turn
-  ordem_turnos: string[];        // ordered list of jogador_id
+  turno_numero_atual: number;    // cycle count (1 = first cycle, 2 = second, ...)
+  ordem_turnos: string[];        // ordered list of active jogador_id
   espia_ids: string[];           // spy player IDs
-  timer_end: string;             // ISO 8601 timestamp
+  timer_end: string;             // ISO 8601 — main round timer
   eliminacoes_erradas: number;
   acusado_id: string | null;
   acusou_neste_turno: boolean;
   adivinhou_evento_id: number | null;
-  pergunta_atual: {
-    perguntador_id: string;
-    perguntador_apelido: string;
-    destinatario_id: string;
-    destinatario_apelido: string;
-    texto: string;
-  } | null;
+  pergunta_atual: PerguntaAtual | null;
   historico: HistoricoItem[];
-  primeira_rodada: boolean;
-  palavras_primeira_rodada: {
-    jogador_id: string;
-    apelido: string;
-    palavra: string;
-  }[];
+  palavras_turno: PalavraTurno[];           // words said during turno_palavras
+  timer_adivinhacao_end?: string;           // 30s timer set when fase = adivinhacao_fim_tempo
+  adivinhacoes_fim_tempo?: Record<string, number | null>; // espia_id → evento_id guessed
+}
+
+interface PalavraTurno  { jogador_id: string; apelido: string; palavra: string }
+interface PerguntaAtual {
+  perguntador_id: string; perguntador_apelido: string;
+  destinatario_id: string; destinatario_apelido: string;
+  texto: string;
 }
 
 type HistoricoItem =
-  | { tipo?: "pergunta"; perguntador_apelido: string; destinatario_apelido: string; pergunta: string; resposta: string }
+  | { tipo?: "pergunta"; turno_numero: number; perguntador_apelido: string; destinatario_apelido: string; pergunta: string; resposta: string }
   | { tipo: "votacao"; acusado_apelido: string; votos: { votante_apelido: string; aprovado: boolean }[]; resultado: "eliminado" | "sobreviveu" | "espia_pego" }
-  | { tipo: "turno_presencial"; jogador_apelido: string };
+  | { tipo: "turno_presencial"; turno_numero: number; jogador_apelido: string };
 ```
 
 ---
@@ -506,6 +515,123 @@ npx vercel --prod --yes
 | `20260521000004_mensagens_chat.sql` | `mensagens` table |
 | `20260522000005_fix_votos_unique.sql` | Fix votes unique constraint |
 | `20260522000006_modo_presencial.sql` | `modo` column on `salas` |
+
+---
+
+## 14. Game Flow Diagrams
+
+### 14.1 Room Lifecycle
+
+```mermaid
+flowchart LR
+    CR([criar_sala / entrar_sala]) --> AG
+
+    AG["🏠 aguardando\nLobby"]
+    JO["⚔️ jogando\nEm jogo"]
+    EN["🔒 encerrada\nFim da partida"]
+
+    AG -->|"iniciar_rodada\n(anfitrião)"| JO
+    JO -->|"encerrar_rodada\n+ rodadas restantes"| AG
+    JO -->|"encerrar_rodada\núltima rodada"| EN
+    EN --> PL(["🏆 /placar"])
+```
+
+Players can join the lobby at any time while `status = aguardando`. The host starts each round. After the last round the room is sealed and the final scoreboard shows.
+
+---
+
+### 14.2 Round Phase State Machine
+
+Each round starts at **turno_palavras** and ends at **resultado**. Every transition is triggered by a named Edge Function action.
+
+```mermaid
+flowchart TD
+    START([iniciar_rodada]) --> TP
+
+    TP["🔤 turno_palavras\nCada jogador diz uma palavra"]
+    JO["⚔️ jogando\nTurnos de pergunta / resposta"]
+    AR["⏳ aguardando_resposta\nDestinatário deve responder"]
+    VO["🗳️ votacao\nAcusação em andamento"]
+    AD["🔍 adivinhacao\nEspia pego — última chance"]
+    AFT["⏰ adivinhacao_fim_tempo\n30s para todos os espias"]
+    RES(["✅ resultado\nPontuação calculada"])
+
+    %% ── turno_palavras ────────────────────────────────────────
+    TP -->|"dizer_palavra (online)\nnão todos falaram"| TP
+    TP -->|"dizer_palavra (online)\ntodos falaram"| JO
+    TP -->|"proximo_turno (presencial)\nnão todos passaram"| TP
+    TP -->|"proximo_turno (presencial)\ntodos passaram"| JO
+
+    %% ── jogando ───────────────────────────────────────────────
+    JO -->|"fazer_pergunta (online)"| AR
+    JO -->|"proximo_turno (presencial)\navança vez"| JO
+    JO -->|"acusar"| VO
+    JO -->|"adivinhar ✓\nespia acerta"| RES
+    JO -->|"adivinhar ✗\nespia erra → eliminado\nainda há espias"| JO
+    JO -->|"adivinhar ✗\nespia erra → eliminado\nnenhum espia restante"| RES
+    JO -->|"timer expirado\n(detectado em qualquer ação)"| AFT
+
+    %% ── aguardando_resposta ───────────────────────────────────
+    AR -->|"responder_pergunta"| JO
+    AR -->|"timer expirado"| AFT
+
+    %% ── votacao ───────────────────────────────────────────────
+    VO -->|"votar\nainda faltam votos"| VO
+    VO -->|"votar\nrejeitado ✗"| JO
+    VO -->|"votar aprovado ✓\nnão-espia eliminado\ndentro do limite"| JO
+    VO -->|"votar aprovado ✓\nnão-espia eliminado\nacima do limite de erros"| RES
+    VO -->|"votar aprovado ✓\nespia pego"| AD
+
+    %% ── adivinhacao ───────────────────────────────────────────
+    AD -->|"adivinhar ✓\nespia_pego + acertou = 1 pt"| RES
+    AD -->|"adivinhar ✗\ngrupo vence = 1 pt cada"| RES
+
+    %% ── adivinhacao_fim_tempo ─────────────────────────────────
+    AFT -->|"adivinhar_fim_tempo\nnão todos enviaram"| AFT
+    AFT -->|"adivinhar_fim_tempo\ntodos enviaram"| RES
+    AFT -->|"finalizar_adivinhacao_fim_tempo\n(timer 30s expirado)"| RES
+
+    %% ── resultado → próxima rodada ────────────────────────────
+    RES -->|"encerrar_rodada\n(via /resultado)"| END([fim da rodada\n→ volta ao lobby])
+```
+
+---
+
+### 14.3 Voting Detail
+
+```mermaid
+flowchart TD
+    A([acusar]) --> VO["votacao\nacusado_id definido"]
+
+    VO -->|"votar\ncada jogador ativo exceto acusado"| CHECK{todos votaram?}
+    CHECK -->|não| VO
+
+    CHECK -->|sim| RES{resultado}
+    RES -->|"maioria ✗\nou empate"| REJEIT["rejeitado\n→ jogando\nturno continua"]
+    RES -->|"maioria ✓\nacusado é espia"| ESPIA["adivinhacao\nespia tem chance de adivinhar"]
+    RES -->|"maioria ✓\nacusado não é espia\neliminações ≤ limite"| CONT["jogando\neliminacoes_erradas +1"]
+    RES -->|"maioria ✓\nacusado não é espia\neliminações > limite"| FIM["resultado\nespias vencem"]
+```
+
+---
+
+### 14.4 Time Expiry Detail
+
+```mermaid
+flowchart TD
+    T([timer_end atingido\ndetectado em qualquer ação]) --> CHK{espias vivos?}
+    CHK -->|não| DIR["resultado\ngrupo vence"]
+    CHK -->|sim| AFT["adivinhacao_fim_tempo\ntimer_adivinhacao_end = now + 30s"]
+
+    AFT --> EACH["cada espia envia\nadivinhar_fim_tempo"]
+    EACH --> ALL{todos enviaram?}
+    ALL -->|não| EACH
+    ALL -->|sim| SCORE["pontuação:\nacertou → 3 pts\nerrou → 2 pts\n→ resultado"]
+
+    AFT -->|"timer 30s expirado\nfinalizar_adivinhacao_fim_tempo"| SCORE
+```
+
+---
 
 ### Known Issues & Solutions
 

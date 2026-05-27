@@ -1,7 +1,7 @@
 import { getDb }                from "../lib/db.ts";
 import { calcularProximoTurno } from "../lib/queries.ts";
 import { encerrarPorTempo }     from "./encerrar-por-tempo.ts";
-import type { ProximoTurnoPayload, HistoricoTurnoPresencial } from "../lib/types.ts";
+import type { ProximoTurnoPayload, HistoricoTurnoPresencial, FaseJogo } from "../lib/types.ts";
 
 export async function proximoTurno(userId: string, payload: unknown) {
   const { rodada_id } = payload as ProximoTurnoPayload;
@@ -19,7 +19,13 @@ export async function proximoTurno(userId: string, payload: unknown) {
   if (rodada.encerrada_em) throw new Error("Rodada já encerrada");
 
   const estado = rodada.estado;
-  if (estado.fase !== "jogando") throw new Error(`Não é possível avançar turno na fase '${estado.fase}'`);
+  const modo = rodada.salas?.modo ?? "online";
+
+  if (estado.fase === "turno_palavras") {
+    if (modo !== "presencial") throw new Error("No modo online, use dizer_palavra para avançar o turno de palavras");
+  } else if (estado.fase !== "jogando") {
+    throw new Error(`Não é possível avançar turno na fase '${estado.fase}'`);
+  }
 
   if (new Date() > new Date(estado.timer_end)) {
     return encerrarPorTempo(userId, { rodada_id });
@@ -31,8 +37,6 @@ export async function proximoTurno(userId: string, payload: unknown) {
     .select("id, apelido")
     .eq("id", estado.turno_atual)
     .single();
-
-  const modo = rodada.salas?.modo ?? "online";
 
   // Avançar turno
   const { proximo, proximoTurnoNumero } = calcularProximoTurno(estado);
@@ -47,9 +51,9 @@ export async function proximoTurno(userId: string, payload: unknown) {
     novoHistorico.push(item);
   }
 
-  // Verificar se devemos encerrar a primeira rodada (presencial não usa palavras)
-  let novoTurnoPalavras = estado.turno_palavras;
-  if (modo === "presencial" && estado.turno_palavras) {
+  // Se estamos no turno de palavras presencial, verificar se todos passaram
+  let novaFase: FaseJogo = estado.fase;
+  if (estado.fase === "turno_palavras") {
     const { data: jogadoresAtivos } = await db
       .from("jogadores")
       .select("id")
@@ -57,7 +61,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
       .eq("ativo", true);
     const turnosPresenciais = novoHistorico.filter((h: { tipo?: string }) => h.tipo === "turno_presencial").length;
     if (jogadoresAtivos && turnosPresenciais >= jogadoresAtivos.length) {
-      novoTurnoPalavras = false;
+      novaFase = "jogando";
     }
   }
 
@@ -66,10 +70,10 @@ export async function proximoTurno(userId: string, payload: unknown) {
     .update({
       estado: {
         ...estado,
+        fase: novaFase,
         turno_atual: proximo,
         acusou_neste_turno: false,
         historico: novoHistorico,
-        turno_palavras: novoTurnoPalavras,
         ...(modo === "presencial" ? { turno_numero_atual: proximoTurnoNumero } : {}),
       },
     })
@@ -77,5 +81,5 @@ export async function proximoTurno(userId: string, payload: unknown) {
 
   if (error) throw new Error("Falha ao avançar turno: " + error.message);
 
-  return { turno_atual: proximo, turno_palavras: novoTurnoPalavras };
+  return { turno_atual: proximo };
 }
