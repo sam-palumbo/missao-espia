@@ -255,7 +255,7 @@ async function playBot({ nome, token, salaId, jogadorId }) {
 
       // Primeira rodada: dizer uma palavra em vez de perguntar
       // No presencial a palavra é dita em voz alta — só concluir o turno
-      if (estado.primeira_rodada) {
+      if (estado.turno_palavras) {
         if (sala.modo === "presencial") {
           try {
             await callGame(token, "proximo_turno", { rodada_id: rodada.id });

@@ -43,15 +43,12 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     ],
   };
 
-  // Verificar se todos os jogadores ativos já disseram suas palavras
-  const { data: todosJogadores } = await db
-    .from("jogadores")
-    .select("id")
-    .eq("sala_id", rodada.sala_id)
-    .eq("ativo", true);
-  
+  // Verificar se todos os jogadores em ordem_turnos já disseram suas palavras.
+  // Usamos ordem_turnos (definido no início da rodada) e não todos os jogadores ativos,
+  // pois um jogador que entrou na sala após o início da rodada não está em ordem_turnos
+  // e nunca poderia dizer uma palavra — o que travaria a fase indefinidamente.
   const palavrasPorJogador = new Set(novoEstado.palavras_turno?.map((p: { jogador_id: string }) => p.jogador_id) ?? []);
-  const todosFalaram = todosJogadores && todosJogadores.length > 0 && todosJogadores.every(j => palavrasPorJogador.has(j.id));
+  const todosFalaram = estado.ordem_turnos.length > 0 && estado.ordem_turnos.every(id => palavrasPorJogador.has(id));
 
   // Se todos falaram, encerrar a primeira rodada
   if (todosFalaram) {

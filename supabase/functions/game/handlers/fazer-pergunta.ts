@@ -22,7 +22,7 @@ export async function fazerPergunta(userId: string, payload: unknown) {
   assertFase(rodada.estado, ["jogando"]);
 
   if (rodada.estado.turno_palavras) {
-    throw new Error("No turno de palavras não há perguntas, apenas uma palavra por jogador");
+    throw Object.assign(new Error("No turno de palavras não há perguntas, apenas uma palavra por jogador"), { status: 400 });
   }
 
   const perguntador = await getJogadorByUserId(db, rodada.sala_id, userId);
