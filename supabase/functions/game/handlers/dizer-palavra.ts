@@ -4,6 +4,7 @@ import {
   assertRodadaNaoEncerrada, assertFase, assertIsTurno, assertModoOnline,
   calcularProximoTurno,
 } from "../lib/queries.ts";
+import { todosFalaramNaOrdem } from "../lib/regras.ts";
 import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { DizerPalavraPayload } from "../lib/types.ts";
 
@@ -43,12 +44,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     ],
   };
 
-  // Verificar se todos os jogadores em ordem_turnos já disseram suas palavras.
-  // Usamos ordem_turnos (definido no início da rodada) e não todos os jogadores ativos,
-  // pois um jogador que entrou na sala após o início da rodada não está em ordem_turnos
-  // e nunca poderia dizer uma palavra — o que travaria a fase indefinidamente.
-  const palavrasPorJogador = new Set(novoEstado.palavras_turno?.map((p: { jogador_id: string }) => p.jogador_id) ?? []);
-  const todosFalaram = estado.ordem_turnos.length > 0 && estado.ordem_turnos.every(id => palavrasPorJogador.has(id));
+  const todosFalaram = todosFalaramNaOrdem(novoEstado.palavras_turno ?? [], estado.ordem_turnos);
 
   // Se todos falaram, encerrar a primeira rodada
   if (todosFalaram) {

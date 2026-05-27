@@ -1,5 +1,5 @@
 import { assertEquals } from "std/assert";
-import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno } from "./regras.ts";
+import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno, todosFalaramNaOrdem } from "./regras.ts";
 import type { EstadoRodada } from "./types.ts";
 
 function makeEstado(over: Partial<EstadoRodada> = {}): EstadoRodada {
@@ -84,4 +84,40 @@ Deno.test("isMeuTurno: jogador é o turno atual", () => {
 
 Deno.test("isMeuTurno: jogador não é o turno atual", () => {
   assertEquals(isMeuTurno(makeEstado(), "j2"), false);
+});
+
+// ── todosFalaramNaOrdem ───────────────────────────────────────
+
+Deno.test("todosFalaramNaOrdem: ninguém falou ainda", () => {
+  assertEquals(todosFalaramNaOrdem([], ["j1", "j2", "j3"]), false);
+});
+
+Deno.test("todosFalaramNaOrdem: apenas alguns falaram", () => {
+  const palavras = [{ jogador_id: "j1" }, { jogador_id: "j2" }];
+  assertEquals(todosFalaramNaOrdem(palavras, ["j1", "j2", "j3"]), false);
+});
+
+Deno.test("todosFalaramNaOrdem: todos de ordem_turnos falaram", () => {
+  const palavras = [
+    { jogador_id: "j1" },
+    { jogador_id: "j2" },
+    { jogador_id: "j3" },
+  ];
+  assertEquals(todosFalaramNaOrdem(palavras, ["j1", "j2", "j3"]), true);
+});
+
+Deno.test("todosFalaramNaOrdem: jogador extra (entrou após início) não impede encerramento", () => {
+  // j4 entrou depois da rodada começar — está em jogadores.ativo=true
+  // mas NÃO está em ordem_turnos, então não deve bloquear a fase de palavras
+  const palavras = [
+    { jogador_id: "j1" },
+    { jogador_id: "j2" },
+    { jogador_id: "j3" },
+    { jogador_id: "j4" }, // não está em ordem_turnos
+  ];
+  assertEquals(todosFalaramNaOrdem(palavras, ["j1", "j2", "j3"]), true);
+});
+
+Deno.test("todosFalaramNaOrdem: ordem_turnos vazia retorna false", () => {
+  assertEquals(todosFalaramNaOrdem([{ jogador_id: "j1" }], []), false);
 });

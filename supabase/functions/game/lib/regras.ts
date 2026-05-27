@@ -39,3 +39,20 @@ export function estaForaDoTurno(estado: EstadoRodada, jogadorId: string): boolea
 export function isMeuTurno(estado: EstadoRodada, jogadorId: string): boolean {
   return estado.turno_atual === jogadorId;
 }
+
+/**
+ * Todos os jogadores em ordem_turnos já disseram sua palavra?
+ *
+ * Usa ordem_turnos (definida no início da rodada) em vez de todos os
+ * jogadores ativos: se um jogador entrar na sala depois que a rodada
+ * começou ele não está em ordem_turnos e nunca poderia dizer a
+ * palavra — o que travaria a fase indefinidamente.
+ */
+export function todosFalaramNaOrdem(
+  palavrasTurno: { jogador_id: string }[],
+  ordemTurnos: string[],
+): boolean {
+  if (ordemTurnos.length === 0) return false;
+  const falaram = new Set(palavrasTurno.map((p) => p.jogador_id));
+  return ordemTurnos.every((id) => falaram.has(id));
+}
