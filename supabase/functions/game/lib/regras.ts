@@ -41,6 +41,25 @@ export function isMeuTurno(estado: EstadoRodada, jogadorId: string): boolean {
 }
 
 /**
+ * Calcula o próximo turno após um jogador ser eliminado no meio de
+ * uma rodada (ex: espia adivinha errado na fase jogando).
+ *
+ * - Se o eliminado NÃO é o jogador do turno atual, o turno não muda.
+ * - Se o eliminado É o jogador do turno atual, avança para o próximo
+ *   jogador na nova ordem (sem o eliminado).
+ */
+export function proximoTurnoAposEliminacao(
+  ordemTurnos: string[],
+  eliminadoId: string,
+  turnoAtual: string,
+): string {
+  const novaOrdem = ordemTurnos.filter((id) => id !== eliminadoId);
+  if (turnoAtual !== eliminadoId) return turnoAtual;
+  const idx = ordemTurnos.indexOf(eliminadoId);
+  return novaOrdem[idx % novaOrdem.length];
+}
+
+/**
  * Todos os jogadores em ordem_turnos já disseram sua palavra?
  *
  * Usa ordem_turnos (definida no início da rodada) em vez de todos os

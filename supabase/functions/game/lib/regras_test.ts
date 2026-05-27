@@ -1,5 +1,5 @@
 import { assertEquals } from "std/assert";
-import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno, todosFalaramNaOrdem } from "./regras.ts";
+import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno, proximoTurnoAposEliminacao, todosFalaramNaOrdem } from "./regras.ts";
 import type { EstadoRodada } from "./types.ts";
 
 function makeEstado(over: Partial<EstadoRodada> = {}): EstadoRodada {
@@ -119,4 +119,25 @@ Deno.test("todosFalaramNaOrdem: jogador extra (entrou após início) não impede
 
 Deno.test("todosFalaramNaOrdem: ordem_turnos vazia retorna false", () => {
   assertEquals(todosFalaramNaOrdem([{ jogador_id: "j1" }], []), false);
+});
+
+// ── proximoTurnoAposEliminacao ─────────────────────────────────
+
+Deno.test("proximoTurnoAposEliminacao: eliminado não é o turno atual → turno não muda", () => {
+  // j3 (espia) adivinha errado fora do seu turno; j1 continua jogando
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j1"), "j1");
+});
+
+Deno.test("proximoTurnoAposEliminacao: eliminado É o turno atual → avança para o próximo", () => {
+  // j2 (espia) adivinha errado durante seu próprio turno → passa para j3
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j2", "j2"), "j3");
+});
+
+Deno.test("proximoTurnoAposEliminacao: eliminado é o último na ordem → avança para o primeiro", () => {
+  // j3 (espia) é o último e adivinha errado no seu turno → passa para j1
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j3"), "j1");
+});
+
+Deno.test("proximoTurnoAposEliminacao: eliminado é o primeiro, turno era do segundo → turno não muda", () => {
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j1", "j2"), "j2");
 });

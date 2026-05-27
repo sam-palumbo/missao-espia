@@ -2,6 +2,7 @@
 import { getDb }          from "../lib/db.ts";
 import { encerrarRodada } from "./encerrar-rodada.ts";
 import { EVENTOS }        from "../lib/eventos.ts";
+import { proximoTurnoAposEliminacao } from "../lib/regras.ts";
 import type { AdivinharPayload } from "../lib/types.ts";
 
 export async function adivinhar(userId: string, payload: unknown) {
@@ -43,6 +44,49 @@ export async function adivinhar(userId: string, payload: unknown) {
 
   if (!acertou) {
     await db.from("jogadores").update({ ativo: false }).eq("id", jogador.id);
+
+    // In adivinhacao phase (spy was caught by vote), the round always ends on a wrong guess.
+    // In jogando phase, check whether partner spies are still alive — if so, game continues.
+    if (estado.fase === "jogando") {
+      const espiasRestantes = estado.espia_ids.filter((id: string) => id !== jogador.id);
+      const { data: espiasAtivos } = espiasRestantes.length > 0
+        ? await db
+            .from("jogadores")
+            .select("id")
+            .eq("sala_id", rodada.sala_id)
+            .eq("ativo", true)
+            .in("id", espiasRestantes)
+        : { data: [] };
+
+      if ((espiasAtivos ?? []).length > 0) {
+        // Partner spy still alive — remove eliminated spy from turn order and continue.
+        const novaOrdem = estado.ordem_turnos.filter((id: string) => id !== jogador.id);
+
+        // If it was this spy's turn, advance to the next player in the new order.
+        const proximoTurno = proximoTurnoAposEliminacao(
+          estado.ordem_turnos,
+          jogador.id,
+          estado.turno_atual,
+        );
+
+        const { error } = await db
+          .from("rodadas")
+          .update({
+            estado: {
+              ...estado,
+              fase: "jogando",
+              ordem_turnos: novaOrdem,
+              turno_atual: proximoTurno,
+              acusou_neste_turno: false,
+            },
+          })
+          .eq("id", rodada_id);
+
+        if (error) throw new Error("Falha ao continuar rodada: " + error.message);
+        return { espia_eliminado: true, game_continues: true, turno_atual: proximoTurno };
+      }
+    }
+
     return encerrarRodada(userId, {
       rodada_id,
       espia_pego: true,
