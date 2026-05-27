@@ -21,7 +21,12 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
   const estado = rodada.estado;
 
   if (estado.fase === "adivinhacao_fim_tempo") return { ok: true };
-  if (estado.fase !== "jogando") {
+
+  // Permite encerrar por tempo nas fases ativas do jogo.
+  // "aguardando_resposta" pode estar ativa quando o timer expirar no meio de uma pergunta.
+  // "turno_palavras" pode estar ativa se o timer expirar antes de todos dizerem sua palavra.
+  const fasesPermitidas = ["jogando", "aguardando_resposta", "turno_palavras"];
+  if (!fasesPermitidas.includes(estado.fase)) {
     throw new Error(`Não é possível encerrar por tempo na fase '${estado.fase}'`);
   }
 
@@ -41,6 +46,8 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
         fase: "adivinhacao_fim_tempo",
         timer_adivinhacao_end: timerAdivinhacaoEnd,
         adivinhacoes_fim_tempo: adivinhacoesFimTempo,
+        // Limpa pergunta ativa caso o timer expire no meio de uma pergunta
+        pergunta_atual: null,
       },
     })
     .eq("id", rodada_id);

@@ -36,7 +36,7 @@ export async function proximoTurno(userId: string, payload: unknown) {
     .from("jogadores")
     .select("id, apelido")
     .eq("id", estado.turno_atual)
-    .single();
+    .maybeSingle();
 
   // Avançar turno
   const { proximo, proximoTurnoNumero } = calcularProximoTurno(estado);

@@ -107,7 +107,10 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   }, [rodada?.id]);
 
   useEffect(() => {
-    if (secs === 0 && fase === "jogando" && rodada && !encerradoPorTempoRef.current && new Date() > new Date(rodada.estado.timer_end)) {
+    // Inclui "aguardando_resposta" e "turno_palavras" para cobrir o caso em que o timer
+    // expira enquanto uma pergunta está pendente de resposta ou na fase de palavras.
+    const faseAtiva = fase === "jogando" || fase === "aguardando_resposta" || fase === "turno_palavras";
+    if (secs === 0 && faseAtiva && rodada && !encerradoPorTempoRef.current && new Date() > new Date(rodada.estado.timer_end)) {
       encerradoPorTempoRef.current = true;
       gameActions.encerrarPorTempo(rodada.id).catch(() => {});
     }

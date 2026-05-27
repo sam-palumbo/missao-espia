@@ -65,6 +65,31 @@ describe("Fim de tempo — trigger e UI", () => {
     });
   });
 
+  it("chama encerrarPorTempo quando timer expirou e fase é aguardando_resposta", async () => {
+    const pastTimer = new Date(Date.now() - 1000).toISOString();
+    vi.mocked(gameActions.encerrarPorTempo).mockResolvedValue({ ok: true });
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({}, {
+        fase: "aguardando_resposta",
+        timer_end: pastTimer,
+        pergunta_atual: {
+          perguntador_id: "jogador-2",
+          perguntador_apelido: "Bob",
+          destinatario_id: "jogador-1",
+          destinatario_apelido: "Alice",
+          texto: "O que você vê?",
+        },
+      })
+    );
+
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+
+    await waitFor(() => {
+      expect(vi.mocked(gameActions.encerrarPorTempo)).toHaveBeenCalledWith("rodada-1");
+    });
+  });
+
   it("não chama encerrarPorTempo quando timer ainda não expirou", async () => {
     const futureTimer = new Date(Date.now() + 300_000).toISOString();
     vi.mocked(gameActions.encerrarPorTempo).mockResolvedValue({ ok: true });
