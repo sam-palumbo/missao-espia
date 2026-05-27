@@ -243,8 +243,8 @@ async function playBot({ nome, token, salaId, jogadorId }) {
     const sou_espia_eliminado = eliminado && estado.espia_ids.includes(jogadorId) && fase === "adivinhacao";
     if (eliminado && !sou_espia_eliminado) continue;
 
-    // ── Fase: jogando ──────────────────────────────────────────────────────
-    if (fase === "jogando") {
+    // ── Fase: jogando (inclui turno_palavras) ─────────────────────────────
+    if (fase === "jogando" || fase === "turno_palavras") {
       const ehMeuTurno = estado.turno_atual === jogadorId;
       if (!ehMeuTurno) continue;
 
