@@ -27,7 +27,8 @@ export async function iniciarRodada(userId: string, payload: unknown) {
     .eq("sala_id", sala_id);
 
   const usados = new Set((rodadasAnteriores ?? []).map((r: { evento_id: number }) => r.evento_id));
-  const disponiveis = EVENTOS.filter((e) => !usados.has(e.id));
+  const testamentos: string[] = sala.testamentos ?? ["AT", "NT"];
+  const disponiveis = EVENTOS.filter((e) => !usados.has(e.id) && testamentos.includes(e.testament));
   if (disponiveis.length === 0) throw new Error("Todos os eventos já foram usados");
 
   const evento = disponiveis[Math.floor(Math.random() * disponiveis.length)];

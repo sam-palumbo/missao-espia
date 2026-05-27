@@ -42,7 +42,8 @@ export default function CriarPage() {
     if (!canCreate) return;
     setLoading(true);
     try {
-      const { sala } = await gameActions.criarSala(apelido.trim(), numRodadas, { senha: senha || undefined });
+      const testamentos = ([atSel && "AT", ntSel && "NT"] as const).filter(Boolean) as string[];
+      const { sala } = await gameActions.criarSala(apelido.trim(), numRodadas, { senha: senha || undefined, testamentos });
       router.push(`/sala/${sala.codigo}/lobby`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao criar sala");

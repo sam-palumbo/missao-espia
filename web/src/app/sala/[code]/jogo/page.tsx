@@ -33,7 +33,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const players = usePlayers(salaId);
   const rodada = useGameState(salaId);
 
-  const [modo, setModo] = useState<"online" | "presencial">("online");
+  const [modo, setModo] = useState<"online" | "presencial">("online")
+  const [testamentos, setTestamentos] = useState<string[]>(["AT", "NT"]);
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
@@ -60,9 +61,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, modo").eq("codigo", code).single()
+    supabase.from("salas").select("id, modo, testamentos").eq("codigo", code).single()
       .then(({ data }) => {
-        if (data) { setSalaId(data.id); setModo(data.modo ?? "online"); }
+        if (data) {
+          setSalaId(data.id);
+          setModo(data.modo ?? "online");
+          setTestamentos(data.testamentos ?? ["AT", "NT"]);
+        }
       });
   }, [code]);
 
@@ -317,10 +322,10 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <SheetFazerPergunta open={showAskQuestion} onClose={() => setShowAskQuestion(false)} players={players} meuId={meuJogador?.id} selectedRecipientId={selectedRecipientId} setSelectedRecipientId={setSelectedRecipientId} questionInput={questionInput} setQuestionInput={setQuestionInput} acting={acting} onSubmit={handleFazerPergunta} />
       <SheetResponderPergunta open={showAnswerQuestion} perguntaAtual={rodada?.estado.pergunta_atual} answerInput={answerInput} setAnswerInput={setAnswerInput} acting={acting} onSubmit={handleResponderPergunta} onClose={() => { setShowAnswerQuestion(false); setAnswerInput(""); }} />
       <SheetDizerPalavra open={showWordInput} onClose={() => setShowWordInput(false)} wordInput={wordInput} setWordInput={setWordInput} acting={acting} onSubmit={handleDizerPalavra} />
-      <SheetAdivinhar open={showGuess} onClose={() => setShowGuess(false)} title="Adivinhar Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinhar} />
-      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} />
+      <SheetAdivinhar open={showGuess} onClose={() => setShowGuess(false)} title="Adivinhar Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinhar} testamentos={testamentos} />
+      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} />
       {fase === "adivinhacao_fim_tempo" && !isSpy && <BannerFimTempo adivTimerDisplay={adivTimer.display} />}
-      <SheetMinhaCarta open={showMyCard} onClose={() => setShowMyCard(false)} isSpy={isSpy} evento={evento} />
+      <SheetMinhaCarta open={showMyCard} onClose={() => setShowMyCard(false)} isSpy={isSpy} evento={evento} testamentos={testamentos} />
     </main>
   );
 }

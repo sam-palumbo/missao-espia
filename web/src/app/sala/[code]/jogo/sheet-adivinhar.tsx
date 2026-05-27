@@ -11,15 +11,17 @@ interface Props {
   setSelectedGuessId: (id: number | null) => void;
   acting: boolean;
   onConfirm: () => void;
+  testamentos?: string[];
 }
 
-export function SheetAdivinhar({ open, onClose, title, selectedGuessId, setSelectedGuessId, acting, onConfirm }: Props) {
+export function SheetAdivinhar({ open, onClose, title, selectedGuessId, setSelectedGuessId, acting, onConfirm, testamentos = ["AT", "NT"] }: Props) {
+  const eventosFiltrados = EVENTOS.filter(e => testamentos.includes(e.testament));
   return (
     <BottomSheet open={open} onBackdropClick={onClose} motionKey="guess" maxHeight="80dvh" paddingBottom={0}>
       <Eyebrow color={T.inkSoft}>{title}</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Onde você está?</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>
-        {EVENTOS.map(e => (
+        {eventosFiltrados.map(e => (
           <button key={e.id} onClick={() => setSelectedGuessId(e.id)} style={{ display: "flex", flexDirection: "column", padding: "12px 14px", borderRadius: 12, border: `2px solid ${selectedGuessId === e.id ? T.sienna : T.hairline}`, background: selectedGuessId === e.id ? T.siennaSoft : T.cardWarm, cursor: "pointer", textAlign: "left", transition: "all 150ms" }}>
             <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 14, color: T.ink }}>{e.evento}</span>
             <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft, marginTop: 2 }}>{e.local}</span>

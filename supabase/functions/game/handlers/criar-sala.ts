@@ -5,12 +5,19 @@ import { isModoValido, normalizarModo } from "../lib/modo.ts";
 import type { CriarSalaPayload } from "../lib/types.ts";
 
 export async function criarSala(userId: string, payload: unknown) {
-  const { apelido, num_rodadas, modo, senha } = payload as CriarSalaPayload;
+  const { apelido, num_rodadas, modo, senha, testamentos } = payload as CriarSalaPayload;
 
   if (!apelido?.trim())        throw new Error("Apelido obrigatório");
   if (!num_rodadas || num_rodadas < 1) throw new Error("Número de rodadas inválido");
   const modoFinal = normalizarModo(modo);
   if (modo !== undefined && !isModoValido(modo)) throw new Error(`Modo inválido: ${modo}`);
+
+  // Valida e normaliza testamentos — default: ambos
+  const testamentosFinal: string[] =
+    Array.isArray(testamentos) && testamentos.length > 0
+      ? testamentos.filter((t) => t === "AT" || t === "NT")
+      : ["AT", "NT"];
+  if (testamentosFinal.length === 0) throw new Error("Selecione ao menos um testamento");
 
   const db = getDb();
   const codigo = await gerarCodigoUnico(db);
@@ -18,7 +25,7 @@ export async function criarSala(userId: string, payload: unknown) {
 
   const { data: sala, error: salaErr } = await db
     .from("salas")
-    .insert({ codigo, anfitriao: userId, num_rodadas, modo: modoFinal, senha_hash })
+    .insert({ codigo, anfitriao: userId, num_rodadas, modo: modoFinal, senha_hash, testamentos: testamentosFinal })
     .select()
     .single();
 
