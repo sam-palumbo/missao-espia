@@ -33,11 +33,14 @@ import JogoPage from "@/app/sala/[code]/jogo/page";
 
 // ── Fixtures ───────────────────────────────────────────────────
 
+const ALICE_ATIVA     = makePlayer({ id: "jogador-1", apelido: "Alice" });
 const ALICE_ELIMINADA = makePlayer({ id: "jogador-1", apelido: "Alice", ativo: false });
-const BOB    = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
-const CARLOS = makePlayer({ id: "jogador-3", user_id: "user-3", apelido: "Carlos" });
+const BOB             = makePlayer({ id: "jogador-2", user_id: "user-2", apelido: "Bob" });
+const CARLOS          = makePlayer({ id: "jogador-3", user_id: "user-3", apelido: "Carlos" });
 
 const PARAMS = Promise.resolve({ code: "TEST" });
+
+// ── Factories de rodada ────────────────────────────────────────
 
 function rodadaJogandoComEliminada() {
   return makeRodada(
@@ -64,6 +67,41 @@ function rodadaVotacaoComEliminada() {
   );
 }
 
+function rodadaBobTurno() {
+  return makeRodada(
+    {},
+    {
+      turno_atual: "jogador-2",
+      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
+    }
+  );
+}
+
+function rodadaAdivinhacaoEspiaPego() {
+  return makeRodada(
+    {},
+    {
+      fase: "adivinhacao",
+      turno_atual: "jogador-2", // Bob acusou, turno continua dele
+      ordem_turnos: ["jogador-2", "jogador-3"], // Alice (espia pega) removida da ordem
+      espia_ids: ["jogador-1"], // Alice é espia
+      acusado_id: "jogador-1", // Alice foi acusada
+      acusou_neste_turno: true,
+    }
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+
+function mockAuth(userId: string) {
+  vi.mocked(useAuth).mockReturnValue({
+    user: { id: userId } as ReturnType<typeof useAuth>["user"],
+    loading: false,
+    isAnonymous: false,
+    linkGoogle: vi.fn(),
+  });
+}
+
 function renderJogo() {
   return render(
     <Suspense fallback={null}>
@@ -81,14 +119,9 @@ async function passarRevealScreen() {
 
 describe("Jogador eliminado — estado de observador", () => {
   beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
-    vi.mocked(usePlayers).mockReturnValue([ALICE_ELIMINADA, BOB, CARLOS]);
     vi.clearAllMocks();
+    mockAuth("user-1");
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ELIMINADA, BOB, CARLOS]);
   });
 
   it("mostra banner de observador quando jogador está eliminado", async () => {
@@ -109,10 +142,9 @@ describe("Jogador eliminado — estado de observador", () => {
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: /^acusar$/i })
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
   });
 
   it("não mostra botão Fazer Pergunta quando jogador está eliminado", async () => {
@@ -122,10 +154,9 @@ describe("Jogador eliminado — estado de observador", () => {
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: /fazer pergunta/i })
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: /fazer pergunta/i })).not.toBeInTheDocument();
   });
 
   it("mostra Alice eliminada na lista de jogadores", async () => {
@@ -153,7 +184,7 @@ describe("Jogador eliminado — estado de observador", () => {
     });
   });
 
-  it("não mostra botões Adivinhar/Acusar (fase votacao mostra só overlay)", async () => {
+  it("não mostra botão Acusar durante votação (overlay cobre a tela)", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaVotacaoComEliminada());
 
     await act(async () => { renderJogo(); });
@@ -165,8 +196,8 @@ describe("Jogador eliminado — estado de observador", () => {
     expect(screen.queryByRole("button", { name: /^acusar$/i })).not.toBeInTheDocument();
   });
 
-  it("não mostra botão Dizer Palavra quando jogador está eliminado e é primeira rodada", async () => {
-    const rodadaPrimeiraRodada = makeRodada(
+  it("não mostra botão Diga uma palavra quando jogador está eliminado na fase turno_palavras", async () => {
+    const rodadaTurnoPalavras = makeRodada(
       {},
       {
         turno_atual: "jogador-1",
@@ -175,55 +206,25 @@ describe("Jogador eliminado — estado de observador", () => {
       }
     );
 
-    vi.mocked(useGameState).mockReturnValue(rodadaPrimeiraRodada);
+    vi.mocked(useGameState).mockReturnValue(rodadaTurnoPalavras);
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: /dizer palavra/i })
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Você foi eliminado/i)).toBeInTheDocument();
     });
+    expect(screen.queryByRole("button", { name: /diga uma palavra/i })).not.toBeInTheDocument();
   });
 });
-
-// ── Fixtures adicionais ────────────────────────────────────────
-
-const ALICE_ATIVA = makePlayer({ id: "jogador-1", apelido: "Alice" });
-
-function rodadaAliceTurno() {
-  return makeRodada(
-    {},
-    {
-      turno_atual: "jogador-1",
-      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-    }
-  );
-}
-
-function rodadaBobTurno() {
-  return makeRodada(
-    {},
-    {
-      turno_atual: "jogador-2",
-      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
-    }
-  );
-}
 
 // ── Regressão: jogador ativo vê botões de ação ─────────────────
 
 describe("Regressão — jogador ativo vê botões de ação", () => {
   beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-2" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
-    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
     vi.clearAllMocks();
+    mockAuth("user-2");
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
   });
 
   it("mostra botão Fazer Pergunta para jogador ativo no seu turno", async () => {
@@ -235,14 +236,28 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
     });
   });
 
-  it("mostra botão Acusar para jogador ativo no seu turno (turno 2+)", async () => {
+  it("mostra botão Acusar para jogador ativo quando há histórico (não é primeiro turno)", async () => {
     const rodada = rodadaBobTurno();
     rodada.estado.historico.push({ tipo: "pergunta" as const, turno_numero: 1, perguntador_apelido: "Alice", destinatario_apelido: "Bob", pergunta: "?", resposta: "!" });
-    vi.mocked(useGameState).mockReturnValue({ ...rodada, numero: 2 });
+    vi.mocked(useGameState).mockReturnValue(rodada);
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /acusar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("mostra botão Diga uma palavra para jogador ativo em turno_palavras", async () => {
+    const rodada = makeRodada({}, {
+      fase: "turno_palavras" as const,
+      turno_atual: "jogador-2",
+      ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"],
+    });
+    vi.mocked(useGameState).mockReturnValue(rodada);
+    await act(async () => { renderJogo(); });
+    await passarRevealScreen();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /diga uma palavra/i })).toBeInTheDocument();
     });
   });
 
@@ -261,15 +276,10 @@ describe("Regressão — jogador ativo vê botões de ação", () => {
 
 describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
   beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    vi.clearAllMocks();
+    mockAuth("user-1");
     // Alice ainda ativa em usePlayers (stale)
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
-    vi.clearAllMocks();
   });
 
   it("mostra banner de observador quando ativo=true mas ausente de ordem_turnos", async () => {
@@ -318,32 +328,11 @@ describe("meuEliminado — race: ativo=true mas fora de ordem_turnos", () => {
 
 // ── Espia pego por votação — fase adivinhacao ──────────────────
 
-const ALICE_ESPIA_PEGA = makePlayer({ id: "jogador-1", apelido: "Alice" });
-
-function rodadaAdivinhacaoEspiaPego() {
-  return makeRodada(
-    {},
-    {
-      fase: "adivinhacao",
-      turno_atual: "jogador-2", // Bob acusou, turno continua dele
-      ordem_turnos: ["jogador-2", "jogador-3"], // Alice (espia pega) removida da ordem
-      espia_ids: ["jogador-1"], // Alice é espia
-      acusado_id: "jogador-1", // Alice foi acusada
-      acusou_neste_turno: true,
-    }
-  );
-}
-
 describe("Espia pego por votação — fase adivinhacao", () => {
   beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
-    vi.mocked(usePlayers).mockReturnValue([ALICE_ESPIA_PEGA, BOB, CARLOS]);
     vi.clearAllMocks();
+    mockAuth("user-1");
+    vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
   });
 
   it("espia pego ainda vê o botão Adivinhar", async () => {
@@ -402,12 +391,7 @@ describe("meuJogador ausente — sem crash nem banner", () => {
   });
 
   it("não mostra banner de observador quando usuário não está na lista de jogadores", async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-999" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    mockAuth("user-999");
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
     vi.mocked(useGameState).mockReturnValue(rodadaBobTurno());
 
@@ -421,29 +405,20 @@ describe("meuJogador ausente — sem crash nem banner", () => {
 // ── Sheet fecha quando jogador é eliminado ─────────────────────
 
 describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
-  beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
-      loading: false,
-      isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
-    vi.clearAllMocks();
-  });
-
   function rodadaAliceTurnoNumero2() {
     return makeRodada({ numero: 2 }, { turno_atual: "jogador-1", ordem_turnos: ["jogador-1", "jogador-2", "jogador-3"] });
   }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth("user-1");
+  });
 
   it("fecha o sheet de 'Fazer Pergunta' quando o jogador é eliminado", async () => {
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
     vi.mocked(useGameState).mockReturnValue(rodadaAliceTurnoNumero2());
 
-    const { rerender } = render(
-      <Suspense fallback={null}>
-        <JogoPage params={PARAMS} />
-      </Suspense>
-    );
+    const { rerender } = renderJogo();
     await act(async () => {});
     await passarRevealScreen();
 
@@ -474,11 +449,7 @@ describe("Sheets fecham automaticamente quando jogador é eliminado", () => {
     vi.mocked(usePlayers).mockReturnValue([ALICE_ATIVA, BOB, CARLOS]);
     vi.mocked(useGameState).mockReturnValue(rodadaComHistorico);
 
-    const { rerender } = render(
-      <Suspense fallback={null}>
-        <JogoPage params={PARAMS} />
-      </Suspense>
-    );
+    const { rerender } = renderJogo();
     await act(async () => {});
     await passarRevealScreen();
 
