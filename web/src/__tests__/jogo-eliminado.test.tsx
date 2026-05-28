@@ -98,8 +98,7 @@ function mockAuth(userId: string) {
     user: { id: userId } as ReturnType<typeof useAuth>["user"],
     loading: false,
     isAnonymous: false,
-    linkGoogle: vi.fn(),
-  });
+  } as ReturnType<typeof useAuth>);
 }
 
 function renderJogo() {

@@ -69,8 +69,7 @@ describe("Botão Acusar (online, ação no rodapé)", () => {
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
       loading: false,
       isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    } as ReturnType<typeof useAuth>);
     vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
   });
 

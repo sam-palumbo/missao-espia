@@ -4,7 +4,7 @@ test.describe("Página Inicial (Home)", () => {
   test("exibe o título do jogo", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("text=Missão")).toBeVisible();
-    await expect(page.locator("text=Espia")).toBeVisible();
+    await expect(page.getByText("Espia", { exact: true })).toBeVisible();
   });
 
   test("exibe campo de e-mail e senha", async ({ page }) => {
@@ -15,14 +15,14 @@ test.describe("Página Inicial (Home)", () => {
 
   test("botão Entrar desabilitado sem e-mail e senha", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator('button:has-text("Entrar")')).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Entrar", exact: true })).toBeDisabled();
   });
 
   test("botão Entrar habilita com e-mail e senha preenchidos", async ({ page }) => {
     await page.goto("/");
     await page.locator('input[type="email"]').fill("joao@exemplo.com");
     await page.locator('input[type="password"]').fill("senha123");
-    await expect(page.locator('button:has-text("Entrar")')).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Entrar", exact: true })).toBeEnabled();
   });
 
   test("link 'Entrar como Visitante' navega para /entrar", async ({ page }) => {
@@ -31,10 +31,10 @@ test.describe("Página Inicial (Home)", () => {
     await expect(page).toHaveURL(/\/entrar/);
   });
 
-  test("link 'Crie sua conta' navega para /criar", async ({ page }) => {
+  test("link 'Crie sua conta' navega para /conta/criar", async ({ page }) => {
     await page.goto("/");
     await page.locator('text=Crie sua conta').click();
-    await expect(page).toHaveURL(/\/criar/);
+    await expect(page).toHaveURL(/\/conta\/criar/);
   });
 
   test("Mostrar/Ocultar alterna visibilidade da senha", async ({ page }) => {

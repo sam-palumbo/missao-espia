@@ -82,8 +82,7 @@ describe("handleFazerPergunta — guard contra fase turno_palavras", () => {
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
       loading: false,
       isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    } as ReturnType<typeof useAuth>);
     vi.mocked(usePlayers).mockReturnValue([ALICE, BOB]);
     vi.clearAllMocks();
   });

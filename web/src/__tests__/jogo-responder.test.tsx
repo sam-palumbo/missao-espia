@@ -76,8 +76,7 @@ describe("Não existe opção de passar turno", () => {
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
       loading: false,
       isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    } as ReturnType<typeof useAuth>);
     vi.mocked(usePlayers).mockReturnValue([JOGADOR_1, JOGADOR_2]);
   });
 
@@ -100,8 +99,7 @@ describe("Sheet de responder pergunta", () => {
       user: { id: "user-1" } as ReturnType<typeof useAuth>["user"],
       loading: false,
       isAnonymous: false,
-      linkGoogle: vi.fn(),
-    });
+    } as ReturnType<typeof useAuth>);
     vi.mocked(usePlayers).mockReturnValue([JOGADOR_1, JOGADOR_2]);
   });
 

@@ -1,13 +1,38 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { validarEmail } from "@/lib/auth-validation";
 import { ParchmentBg, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { entrar, entrarComGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleEntrar() {
+    if (!validarEmail(email) || !password) return;
+    setLoading(true);
+    const { error } = await entrar(email.trim(), password);
+    setLoading(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    router.push("/entrar");
+  }
+
+  async function handleGoogle() {
+    const { error } = await entrarComGoogle();
+    if (error) toast.error(error);
+    // Em sucesso, o provedor redireciona para /auth/callback.
+  }
 
   return (
     <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, width: "100%", maxWidth: 860, margin: "0 auto" }}>
@@ -122,14 +147,30 @@ export default function HomePage() {
           </div>
 
           <div style={{ textAlign: "right", marginTop: -6 }}>
-            <button type="button" style={{ background: "none", border: "none", fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: T.muted, cursor: "pointer", padding: 0 }}>
+            <Link href="/conta/recuperar" style={{ background: "none", border: "none", fontFamily: F.sans, fontSize: 12, fontWeight: 500, color: T.muted, cursor: "pointer", padding: 0, textDecoration: "none" }}>
               Esqueci a senha
-            </button>
+            </Link>
           </div>
 
           <div style={{ position: "relative" }}>
-            <PrimaryBtn accent={T.gold} disabled={!email.trim() || !password}>Entrar</PrimaryBtn>
+            <PrimaryBtn accent={T.gold} disabled={!email.trim() || !password || loading} onClick={handleEntrar}>
+              {loading ? "Entrando…" : "Entrar"}
+            </PrimaryBtn>
           </div>
+        </div>
+
+        {/* Google CTA */}
+        <div style={{ marginTop: 14 }}>
+          <OutlineBtn onClick={handleGoogle} icon={
+            <svg viewBox="0 0 24 24" width={16} height={16}>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+            </svg>
+          }>
+            Entrar com Google
+          </OutlineBtn>
         </div>
 
         {/* Divider */}
@@ -159,7 +200,7 @@ export default function HomePage() {
         style={{ position: "relative", zIndex: 1, marginTop: 20, textAlign: "center" }}
       >
         <span style={{ fontFamily: F.bodySerif, fontStyle: "italic", fontSize: 13, color: T.inkSoft }}>Novo por aqui? </span>
-        <Link href="/criar" style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.sienna, textDecoration: "none", letterSpacing: "0.02em" }}>
+        <Link href="/conta/criar" style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: T.sienna, textDecoration: "none", letterSpacing: "0.02em" }}>
           Crie sua conta
         </Link>
       </motion.div>
