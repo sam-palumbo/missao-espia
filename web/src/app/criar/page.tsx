@@ -29,13 +29,25 @@ function ConfigSlider({ label, value, min, max, onChange, unit, badge }: {
   label: string; value: number; min: number; max: number;
   onChange: (v: number) => void; unit?: string; badge?: string;
 }) {
-  const pct = ((value - min) / (max - min)) * 100;
+  const count = max - min + 1;
+  const dotSize = count > 10 ? 5 : 7;
+  const thumbSize = count > 10 ? 16 : 20;
+  const fillPct = ((value - min) / (max - min)) * 100;
+
   return (
-    <div style={{ position: "relative" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <Eyebrow color={T.inkSoft} size={10}>{label}</Eyebrow>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink, lineHeight: 1 }}>{value}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+          <motion.span
+            key={value}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.sienna, lineHeight: 1 }}
+          >
+            {value}
+          </motion.span>
           {unit && <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{unit}</span>}
           {badge && (
             <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: T.sienna, background: T.siennaSoft, borderRadius: 5, padding: "2px 7px", letterSpacing: "0.06em" }}>
@@ -44,16 +56,45 @@ function ConfigSlider({ label, value, min, max, onChange, unit, badge }: {
           )}
         </div>
       </div>
-      <input
-        type="range"
-        className="me-slider"
-        min={min}
-        max={max}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{ background: `linear-gradient(to right, ${T.sienna} 0%, ${T.sienna} ${pct}%, rgba(138,90,30,0.25) ${pct}%, rgba(138,90,30,0.25) 100%)` }}
-      />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+
+      <div style={{ position: "relative", height: 36, display: "flex", alignItems: "center" }}>
+        {/* track bg */}
+        <div style={{ position: "absolute", left: 0, right: 0, height: 2, borderRadius: 1, background: "rgba(138,90,30,0.18)" }} />
+        {/* track fill */}
+        <div style={{ position: "absolute", left: 0, width: `${fillPct}%`, height: 2, borderRadius: 1, background: T.sienna, transition: "width 0.08s" }} />
+
+        {/* step dots */}
+        {Array.from({ length: count }, (_, i) => {
+          const v = min + i;
+          const pct = count === 1 ? 50 : (i / (count - 1)) * 100;
+          const isActive = v === value;
+          const isFilled = v <= value;
+          const sz = isActive ? thumbSize : dotSize;
+          return (
+            <div key={v} style={{
+              position: "absolute",
+              left: `calc(${pct}% - ${sz / 2}px)`,
+              width: sz, height: sz,
+              borderRadius: "50%",
+              background: isActive ? T.sienna : isFilled ? T.sienna : "rgba(138,90,30,0.22)",
+              border: isActive ? `2.5px solid ${T.card}` : "none",
+              boxShadow: isActive ? `0 0 0 2px ${T.sienna}, 0 3px 10px rgba(138,90,30,0.38)` : "none",
+              transition: "all 0.12s",
+              zIndex: isActive ? 2 : 1,
+              pointerEvents: "none",
+            }} />
+          );
+        })}
+
+        {/* invisible native input for interaction */}
+        <input
+          type="range" min={min} max={max} value={value} step={1}
+          onChange={e => onChange(Number(e.target.value))}
+          style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", margin: 0, zIndex: 3 }}
+        />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
         <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{min}</span>
         <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{max}</span>
       </div>
