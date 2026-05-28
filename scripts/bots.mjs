@@ -98,7 +98,7 @@ const RESPOSTAS_GENERICAS = [
   "Não tenho certeza sobre isso.",
 ];
 
-const codigo = process.argv[2];
+const codigo = (process.argv[2] ?? "").toUpperCase().trim();
 const numBots = Math.min(parseInt(process.argv[3] ?? "3", 10), NOMES.length);
 
 if (!codigo) {
