@@ -39,7 +39,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   const shuffled = shuffle(ids);
   const espia_ids = shuffled.slice(0, n);
 
-  const minutos = 5 + jogadoresAtivos.length - n;
+  const minutos = sala.duracao_minutos ?? (5 + jogadoresAtivos.length - n);
   const timer_end = addMinutesISO(minutos);
 
   const estado: EstadoRodada = {

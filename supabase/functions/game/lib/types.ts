@@ -66,6 +66,8 @@ export interface Sala {
   modo: ModoSala;
   num_rodadas: number;
   rodada_atual: number;
+  max_jogadores: number;
+  duracao_minutos: number | null;
   senha_hash: string | null;
   criada_em: string;
   testamentos: Testament[];
@@ -129,6 +131,8 @@ export interface CriarSalaPayload {
   modo?: ModoSala;
   senha?: string;
   testamentos?: Testament[];
+  max_jogadores?: number;
+  duracao_minutos?: number;
 }
 
 export interface EntrarSalaPayload {

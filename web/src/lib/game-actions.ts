@@ -37,7 +37,7 @@ export const gameActions = {
   criarSala: (
     apelido: string,
     num_rodadas: number,
-    opts?: { modo?: ModoSala; senha?: string; testamentos?: string[] }
+    opts?: { modo?: ModoSala; senha?: string; testamentos?: string[]; max_jogadores?: number; duracao_minutos?: number }
   ) =>
     callGame<SalaComJogador>("criar_sala", {
       apelido,
@@ -45,6 +45,8 @@ export const gameActions = {
       modo: opts?.modo,
       senha: opts?.senha,
       testamentos: opts?.testamentos,
+      max_jogadores: opts?.max_jogadores,
+      duracao_minutos: opts?.duracao_minutos,
     }),
 
   entrarSala: (codigo: string, apelido: string, senha?: string) =>

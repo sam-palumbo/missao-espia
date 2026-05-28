@@ -16,7 +16,50 @@ const atMax = Math.max(...atEvents.map(e => e.id));
 const ntMin = Math.min(...ntEvents.map(e => e.id));
 const ntMax = Math.max(...ntEvents.map(e => e.id));
 
-const ROUNDS = [3, 5, 7, 10];
+function numEspias(n: number) {
+  if (n <= 6) return 1;
+  if (n <= 9) return 2;
+  return 3;
+}
+function duracaoRecomendada(maxJog: number) {
+  return 5 + maxJog - numEspias(maxJog);
+}
+
+function ConfigSlider({ label, value, min, max, onChange, unit, badge }: {
+  label: string; value: number; min: number; max: number;
+  onChange: (v: number) => void; unit?: string; badge?: string;
+}) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <Eyebrow color={T.inkSoft} size={10}>{label}</Eyebrow>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink, lineHeight: 1 }}>{value}</span>
+          {unit && <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{unit}</span>}
+          {badge && (
+            <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: T.sienna, background: T.siennaSoft, borderRadius: 5, padding: "2px 7px", letterSpacing: "0.06em" }}>
+              {badge}
+            </span>
+          )}
+        </div>
+      </div>
+      <input
+        type="range"
+        className="me-slider"
+        min={min}
+        max={max}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{ background: `linear-gradient(to right, ${T.sienna} 0%, ${T.sienna} ${pct}%, rgba(138,90,30,0.25) ${pct}%, rgba(138,90,30,0.25) 100%)` }}
+      />
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+        <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{min}</span>
+        <span style={{ fontFamily: F.mono, fontSize: 10, color: T.muted }}>{max}</span>
+      </div>
+    </div>
+  );
+}
 
 const listVariants = {
   show: { transition: { staggerChildren: 0.08 } },
@@ -30,10 +73,22 @@ export default function CriarPage() {
   const router = useRouter();
   const [apelido, setApelido] = useState("");
   const [numRodadas, setNumRodadas] = useState(5);
+  const [maxJogadores, setMaxJogadores] = useState(12);
+  const [duracaoMinutos, setDuracaoMinutos] = useState(() => duracaoRecomendada(12));
+  const [duracaoTocada, setDuracaoTocada] = useState(false);
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [atSel, setAtSel] = useState(true);
   const [ntSel, setNtSel] = useState(true);
+
+  function handleMaxJogadoresChange(v: number) {
+    setMaxJogadores(v);
+    if (!duracaoTocada) setDuracaoMinutos(duracaoRecomendada(v));
+  }
+  function handleDuracaoChange(v: number) {
+    setDuracaoMinutos(v);
+    setDuracaoTocada(true);
+  }
 
   const totalLocais = (atSel ? atEvents.length : 0) + (ntSel ? ntEvents.length : 0);
   const canCreate = (atSel || ntSel) && apelido.trim();
@@ -43,7 +98,7 @@ export default function CriarPage() {
     setLoading(true);
     try {
       const testamentos = ([atSel && "AT", ntSel && "NT"] as const).filter(Boolean) as string[];
-      const { sala } = await gameActions.criarSala(apelido.trim(), numRodadas, { senha: senha || undefined, testamentos });
+      const { sala } = await gameActions.criarSala(apelido.trim(), numRodadas, { senha: senha || undefined, testamentos, max_jogadores: maxJogadores, duracao_minutos: duracaoMinutos });
       router.push(`/sala/${sala.codigo}/lobby`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao criar sala");
@@ -197,8 +252,8 @@ export default function CriarPage() {
         >
           {[
             { label: "Total", value: <><motion.span key={totalLocais} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>{totalLocais}</motion.span></>, unit: "locais" },
-            { label: "Jogadores", value: "4 – 12", unit: "" },
-            { label: "Duração", value: "~8", unit: "min/rodada" },
+            { label: "Jogadores", value: <motion.span key={maxJogadores} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>4 – {maxJogadores}</motion.span>, unit: "" },
+            { label: "Duração", value: <motion.span key={duracaoMinutos} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>~{duracaoMinutos}</motion.span>, unit: "min/rodada" },
           ].map((s, i) => (
             <div key={i} style={{ flex: 1, background: T.card, borderRadius: 14, padding: "10px 12px", textAlign: "center", position: "relative" }}>
               <InsetFrame color={T.sienna} inset={4} radius={11} opacity={0.18} opacity2={0.08} />
@@ -223,24 +278,19 @@ export default function CriarPage() {
             <Input id="apelido" label="Seu Apelido" placeholder="Ex: Davi, Ester..." value={apelido} onChange={e => setApelido(e.target.value)} maxLength={20} />
           </div>
 
-          <div style={{ position: "relative" }}>
-            <Eyebrow color={T.inkSoft} size={10}>Número de Rodadas</Eyebrow>
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              {ROUNDS.map(n => {
-                const sel = numRodadas === n;
-                return (
-                  <motion.button
-                    key={n}
-                    onClick={() => setNumRodadas(n)}
-                    whileTap={{ scale: 0.95 }}
-                    style={{ flex: 1, height: 52, borderRadius: 14, border: `1.5px solid ${sel ? T.sienna : T.hairlineStrong}`, background: sel ? T.siennaSoft : T.cardWarm, color: sel ? T.sienna : T.inkSoft, fontFamily: F.serif, fontSize: 22, fontWeight: 600, cursor: "pointer", transition: "all 160ms" }}
-                  >
-                    {n}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
+          <ConfigSlider label="Número de Rodadas" value={numRodadas} min={1} max={7} onChange={setNumRodadas} />
+
+          <ConfigSlider label="Máx. de Jogadores" value={maxJogadores} min={4} max={12} onChange={handleMaxJogadoresChange} />
+
+          <ConfigSlider
+            label="Duração por Rodada"
+            value={duracaoMinutos}
+            min={3}
+            max={20}
+            onChange={handleDuracaoChange}
+            unit="min"
+            badge={!duracaoTocada ? "recomendado" : undefined}
+          />
 
           <div style={{ position: "relative" }}>
             <Input id="senha" label="Senha (opcional)" placeholder="Sala pública se vazia" value={senha} onChange={e => setSenha(e.target.value)} maxLength={20} type="password" />

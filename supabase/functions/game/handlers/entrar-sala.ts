@@ -59,6 +59,13 @@ export async function entrarSala(userId: string, payload: unknown) {
     return { sala, jogador };
   }
 
+  // Verificar limite de jogadores
+  const { count } = await db
+    .from("jogadores")
+    .select("*", { count: "exact", head: true })
+    .eq("sala_id", sala.id);
+  if (count !== null && count >= (sala.max_jogadores ?? 12)) throw new Error("Sala cheia");
+
   // Inserir novo jogador
   const { data: jogador, error: jogErr } = await db
     .from("jogadores")
