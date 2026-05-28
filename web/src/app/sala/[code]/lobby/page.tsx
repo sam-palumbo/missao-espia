@@ -31,6 +31,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const [salaId, setSalaId] = useState<string | null>(null);
   const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
   const [numRodadas, setNumRodadas] = useState<number | null>(null);
+  const [maxJogadores, setMaxJogadores] = useState<number>(12);
   const [modo, setModo] = useState<"online" | "presencial">("online");
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -38,13 +39,14 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, anfitriao, status, num_rodadas, modo").eq("codigo", code).single()
+    supabase.from("salas").select("id, anfitriao, status, num_rodadas, modo, max_jogadores").eq("codigo", code).single()
       .then(({ data }) => {
         if (!data) { toast.error("Sala não encontrada"); router.push("/"); return; }
         if (data.status === "jogando") { router.push(`/sala/${code}/jogo`); return; }
         setSalaId(data.id);
         setAnfitriaoId(data.anfitriao);
         setNumRodadas(data.num_rodadas);
+        setMaxJogadores(data.max_jogadores ?? 12);
         setModo(data.modo ?? "online");
       });
   }, [code, router]);
@@ -154,7 +156,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, padding: "0 4px" }}>
             <div style={{ fontFamily: F.serif, fontSize: 22, fontWeight: 600, color: T.ink }}>Jogadores</div>
             <div style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: T.sienna, background: T.siennaSoft, padding: "4px 10px", borderRadius: 999, letterSpacing: "0.1em" }}>
-              {String(players.length).padStart(2,"0")} / 12
+              {String(players.length).padStart(2,"0")} / {maxJogadores}
             </div>
           </div>
 
