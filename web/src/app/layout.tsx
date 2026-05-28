@@ -44,6 +44,11 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Missão Espia",
   description: "Jogo de dedução social com temática bíblica",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Missão Espia",
+  },
 };
 
 export const viewport: Viewport = {
