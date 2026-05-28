@@ -1,5 +1,5 @@
 import { getDb }              from "../lib/db.ts";
-import { shuffle, addMinutesISO } from "../lib/utils.ts";
+import { shuffle, addMinutesISO, calcularMinutosRodada } from "../lib/utils.ts";
 import { numEspias }          from "../lib/espias.ts";
 import { EVENTOS }            from "../lib/eventos.ts";
 import { getSalaById, getJogadoresAtivos, assertIsAnfitriao } from "../lib/queries.ts";
@@ -39,7 +39,7 @@ export async function iniciarRodada(userId: string, payload: unknown) {
   const shuffled = shuffle(ids);
   const espia_ids = shuffled.slice(0, n);
 
-  const minutos = sala.duracao_minutos ?? (5 + jogadoresAtivos.length - n);
+  const minutos = calcularMinutosRodada(sala.duracao_minutos, jogadoresAtivos.length, n);
   const timer_end = addMinutesISO(minutos);
 
   const estado: EstadoRodada = {

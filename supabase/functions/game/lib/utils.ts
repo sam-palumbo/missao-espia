@@ -29,3 +29,11 @@ export function addMinutesISO(minutes: number): string {
 export function isExpired(isoString: string): boolean {
   return new Date() > new Date(isoString);
 }
+
+export function calcularMinutosRodada(
+  duracaoMinutos: number | null | undefined,
+  numJogadoresAtivos: number,
+  numEspiasCalculado: number,
+): number {
+  return duracaoMinutos ?? (5 + numJogadoresAtivos - numEspiasCalculado);
+}
