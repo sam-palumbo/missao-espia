@@ -158,6 +158,7 @@ export function PrimaryBtn({ children, accent = T.gold, dark = false, onClick, d
     <motion.button
       onClick={onClick}
       disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.015 }}
       whileTap={{ scale: disabled ? 1 : 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 22 }}
       style={{
@@ -190,6 +191,7 @@ export function OutlineBtn({ children, onClick, disabled, icon }: OutlineBtnProp
     <motion.button
       onClick={onClick}
       disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.01 }}
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 22 }}
       style={{

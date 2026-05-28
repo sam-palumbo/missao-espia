@@ -201,27 +201,41 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
         {isHost ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
             <Eyebrow color={T.inkSoft}>Modo</Eyebrow>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ position: "relative", display: "flex", background: T.cardWarm, borderRadius: 999, padding: 4 }}>
+              {/* Sliding pill — CSS transform, no layoutId to keep tests clean */}
+              <div style={{
+                position: "absolute",
+                top: 4, bottom: 4,
+                left: 4,
+                width: "calc(50% - 4px)",
+                background: T.ink,
+                borderRadius: 999,
+                transform: modo === "presencial" ? "translateX(100%)" : "translateX(0)",
+                transition: "transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                pointerEvents: "none",
+              }} />
               <button
                 onClick={() => handleModoChange("online")}
                 aria-pressed={modo === "online"}
                 style={{
+                  position: "relative", zIndex: 1,
                   flex: 1, padding: "10px 14px", borderRadius: 999,
-                  border: "none", cursor: "pointer",
-                  background: modo === "online" ? T.ink : T.cardWarm,
+                  border: "none", cursor: "pointer", background: "transparent",
                   color: modo === "online" ? T.cardWarm : T.ink,
                   fontFamily: F.sans, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 12,
+                  transition: "color 0.2s",
                 }}
               >Online</button>
               <button
                 onClick={() => handleModoChange("presencial")}
                 aria-pressed={modo === "presencial"}
                 style={{
+                  position: "relative", zIndex: 1,
                   flex: 1, padding: "10px 14px", borderRadius: 999,
-                  border: "none", cursor: "pointer",
-                  background: modo === "presencial" ? T.ink : T.cardWarm,
+                  border: "none", cursor: "pointer", background: "transparent",
                   color: modo === "presencial" ? T.cardWarm : T.ink,
                   fontFamily: F.sans, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 12,
+                  transition: "color 0.2s",
                 }}
               >Presencial</button>
             </div>

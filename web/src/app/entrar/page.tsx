@@ -2,6 +2,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { gameActions } from "@/lib/game-actions";
 import { toast } from "sonner";
@@ -34,24 +35,39 @@ function EntrarForm() {
   return (
     <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 0 }}>
       {/* TopBar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}
+      >
         <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
           <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
         </Link>
         <Eyebrow color={T.inkSoft}>Entrar em uma partida</Eyebrow>
-      </div>
+      </motion.div>
 
       {/* Hero */}
-      <div style={{ marginBottom: 24 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.38, ease: "easeOut", delay: 0.06 }}
+        style={{ marginBottom: 24 }}
+      >
         <Eyebrow color={T.sienna}>Convite recebido?</Eyebrow>
         <div style={{ fontFamily: F.display, fontSize: 36, fontWeight: 500, lineHeight: 1.1, color: T.ink, marginTop: 8 }}>
           Digite o código<br />
           da <span style={{ color: T.sienna, fontWeight: 700 }}>sala</span>.
         </div>
-      </div>
+      </motion.div>
 
       {/* Code + form card */}
-      <div style={{ background: T.card, borderRadius: 22, padding: "20px 18px", boxShadow: "0 10px 28px -14px rgba(58,42,20,0.28)", position: "relative", display: "flex", flexDirection: "column", gap: 16, marginBottom: 12 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.42, ease: "easeOut", delay: 0.12 }}
+        style={{ background: T.card, borderRadius: 22, padding: "20px 18px", boxShadow: "0 10px 28px -14px rgba(58,42,20,0.28)", position: "relative", display: "flex", flexDirection: "column", gap: 16, marginBottom: 12 }}
+      >
         <InsetFrame color={T.sienna} inset={6} radius={18} />
 
         {/* 4-char boxes */}
@@ -83,8 +99,20 @@ function EntrarForm() {
 
           <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
             {[0,1,2,3].map(i => (
-              <div key={i} data-testid="codigo-box" style={{ aspectRatio: "1/1.15", background: T.cardWarm, border: `1px solid ${codigo[i] ? T.sienna : T.hairlineStrong}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink }}>
-                {codigo[i] ?? ""}
+              <div key={i} data-testid="codigo-box" style={{ aspectRatio: "1/1.15", background: T.cardWarm, border: `1px solid ${codigo[i] ? T.sienna : T.hairlineStrong}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: T.ink, transition: "border-color 0.2s", overflow: "hidden" }}>
+                <AnimatePresence mode="wait">
+                  {codigo[i] ? (
+                    <motion.span
+                      key={codigo[i]}
+                      initial={{ opacity: 0, scale: 0.5, y: 8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.5, y: -8 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                    >
+                      {codigo[i]}
+                    </motion.span>
+                  ) : null}
+                </AnimatePresence>
               </div>
             ))}
           </div>
@@ -110,7 +138,7 @@ function EntrarForm() {
             {loading ? "Entrando…" : "Entrar na Sala"}
           </PrimaryBtn>
         </div>
-      </div>
+      </motion.div>
 
       {/* Divider */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 8px" }}>

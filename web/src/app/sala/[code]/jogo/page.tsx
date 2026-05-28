@@ -1,6 +1,7 @@
 "use client";
 import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import { EVENTOS } from "@/lib/eventos";
 import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
@@ -252,13 +253,27 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Timer */}
-      <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 22, padding: "20px 18px", boxShadow: "0 10px 28px -16px rgba(58,42,20,0.3)", textAlign: "center" }}>
-        <InsetFrame color={T.sienna} inset={6} radius={18} />
+      <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 22, padding: "20px 18px", boxShadow: "0 10px 28px -16px rgba(58,42,20,0.3)", textAlign: "center", overflow: "hidden" }}>
+        {/* Urgency pulse overlay */}
+        {pct < 0.15 && (
+          <motion.div
+            animate={{ opacity: [0, 0.1, 0] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            style={{ position: "absolute", inset: 0, background: T.brick, borderRadius: 22, pointerEvents: "none" }}
+          />
+        )}
+        <InsetFrame color={pct < 0.15 ? T.brick : T.sienna} inset={6} radius={18} />
         <div style={{ position: "relative" }}>
           <Eyebrow color={T.inkSoft} size={9}>Tempo restante</Eyebrow>
-          <div style={{ fontFamily: F.serif, fontSize: 56, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1, color: timerColor, marginTop: 6, fontVariantNumeric: "tabular-nums", transition: "color 0.5s" }}>
+          <motion.div
+            animate={pct < 0.15 ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+            transition={pct < 0.15
+              ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.3 }}
+            style={{ fontFamily: F.serif, fontSize: 56, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1, color: timerColor, marginTop: 6, fontVariantNumeric: "tabular-nums", transition: "color 0.5s" }}
+          >
             {display}
-          </div>
+          </motion.div>
           <div style={{ marginTop: 12, height: 6, background: T.siennaSoft, borderRadius: 3, overflow: "hidden" }}>
             <div style={{ width: `${timerBarPct}%`, height: "100%", background: `linear-gradient(90deg, ${T.sienna}, ${T.gold})`, borderRadius: 3, transition: "width 1s linear" }} />
           </div>
