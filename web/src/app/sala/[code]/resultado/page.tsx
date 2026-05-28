@@ -115,7 +115,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
       >
         <InsetFrame color={groupWon ? T.ink : T.gold} inset={6} radius={18} opacity={0.4} opacity2={0.2} />
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
-          <MEMedallion size={68} inset="star" variant={groupWon ? "gold" : "dark"} />
+          <MEMedallion size={68} inset="eye" variant={groupWon ? "gold" : "dark"} />
           <div style={{ flex: 1 }}>
             <Eyebrow color={groupWon ? T.ink : T.goldSoft} size={10}>{groupWon ? "Vitória do grupo" : "Vitória do espia"}</Eyebrow>
             <div style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 600, lineHeight: 1.05, color: groupWon ? T.ink : T.goldSoft, marginTop: 4 }}>

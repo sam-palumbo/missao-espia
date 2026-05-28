@@ -27,7 +27,7 @@ export default function PlacarPage({ params }: { params: Promise<{ code: string 
       {/* Header */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <Eyebrow color={T.inkSoft}>Partida Encerrada</Eyebrow>
-        <MEMedallion size={90} inset="star" variant="gold" />
+        <MEMedallion size={90} inset="eye" variant="gold" />
         <div style={{ fontFamily: F.display, fontSize: 42, fontWeight: 500, lineHeight: 0.95, letterSpacing: "-0.01em", color: T.ink, textAlign: "center" }}>
           Placar<br /><span style={{ color: T.sienna, fontWeight: 700 }}>Final</span>
         </div>

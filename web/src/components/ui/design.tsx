@@ -85,7 +85,7 @@ export function MERule({ color = T.sienna }: { color?: string }) {
 
 // ── Medallion ────────────────────────────────────────────────
 type MedVariant = "light" | "dark" | "gold";
-type MedInset = "scroll" | "star" | "eye" | "chalice";
+type MedInset = "scroll" | "eye" | "tablets" | "cross-crown";
 interface MedallionProps { size?: number; numeral?: string; variant?: MedVariant; inset?: MedInset; }
 export function MEMedallion({ size = 110, numeral, variant = "light", inset }: MedallionProps) {
   const palette =
@@ -113,9 +113,9 @@ export function MEMedallion({ size = 110, numeral, variant = "light", inset }: M
       })}
       {numeral && <text x="60" y="73" textAnchor="middle" fontFamily={F.serif} fontSize="38" fontWeight="500" fontStyle="italic" fill={palette.ink}>{numeral}</text>}
       {inset === "scroll" && <g transform="translate(60 60)" fill="none" stroke={palette.ink} strokeWidth="1.6" strokeLinecap="round"><path d="M-14 -8 H14 M-14 0 H10 M-14 8 H14" /><circle cx="-14" cy="-8" r="2" fill={palette.ink} /><circle cx="14" cy="8" r="2" fill={palette.ink} /></g>}
-      {inset === "star" && <path transform="translate(60 60)" d="M0 -16 L4 -5 L16 -3 L7 5 L9 17 L0 11 L-9 17 L-7 5 L-16 -3 L-4 -5 Z" fill={palette.ink} />}
       {inset === "eye" && <g fill={palette.ink}><path d="M40 60 Q60 40 80 60 Q60 80 40 60 Z" fill={palette.bg} stroke={palette.ink} strokeWidth="1.6" /><circle cx="60" cy="60" r="6" fill={palette.ink} /><circle cx="58" cy="58" r="1.5" fill={palette.bg} /></g>}
-      {inset === "chalice" && <g fill="none" stroke={palette.ink} strokeWidth="1.6" strokeLinecap="round"><path d="M46 44 H74 V52 a14 14 0 0 1-28 0 Z" /><path d="M60 66 V76 M52 76 H68" /></g>}
+      {inset === "tablets" && <g transform="translate(60 60)" fill="none" stroke={palette.ink} strokeWidth="1.4" strokeLinecap="round"><path d="M-13 11 L-13 -3 A5.5 5.5 0 0 0 -2 -3 L-2 11 Z" /><path d="M2 11 L2 -3 A5.5 5.5 0 0 0 13 -3 L13 11 Z" /><path d="M-11 1 L-4 1 M-11 4 L-4 4 M-11 7 L-4 7 M4 1 L11 1 M4 4 L11 4 M4 7 L11 7" /></g>}
+      {inset === "cross-crown" && <g transform="translate(60 60)" fill="none" stroke={palette.ink} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M0 -15 L0 14 M-11 -1 L11 -1" /><path d="M-6 -9 L-6 -13 L-3 -10 L0 -15 L3 -10 L6 -13 L6 -9" /></g>}
     </svg>
   );
 }

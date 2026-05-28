@@ -23,7 +23,7 @@ export default function HomePage() {
         transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
         style={{ position: "absolute", top: 24, right: 18, zIndex: 1 }}
       >
-        <MEMedallion size={48} inset="star" variant="light" />
+        <MEMedallion size={48} inset="eye" variant="light" />
       </motion.div>
 
       {/* Brand block */}

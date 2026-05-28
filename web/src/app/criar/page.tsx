@@ -211,7 +211,7 @@ export default function CriarPage() {
           >
             {atSel && <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.28} opacity2={0.12} />}
             <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <MEMedallion size={40} inset="scroll" variant={atSel ? "light" : "light"} />
+              <MEMedallion size={40} inset="tablets" variant={atSel ? "light" : "light"} />
               <AnimatePresence>
                 {atSel && (
                   <motion.div
@@ -259,7 +259,7 @@ export default function CriarPage() {
           >
             {ntSel && <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.28} opacity2={0.12} />}
             <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <MEMedallion size={40} inset="chalice" variant={ntSel ? "light" : "light"} />
+              <MEMedallion size={40} inset="cross-crown" variant={ntSel ? "light" : "light"} />
               <AnimatePresence>
                 {ntSel && (
                   <motion.div
