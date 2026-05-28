@@ -55,6 +55,7 @@ export function proximoTurnoAposEliminacao(
 ): string {
   const novaOrdem = ordemTurnos.filter((id) => id !== eliminadoId);
   if (turnoAtual !== eliminadoId) return turnoAtual;
+  if (novaOrdem.length === 0) throw new Error("Nenhum jogador restante após eliminação");
   const idx = ordemTurnos.indexOf(eliminadoId);
   return novaOrdem[idx % novaOrdem.length];
 }

@@ -5,7 +5,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { makeRodada, makePlayer } from "./helpers";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock("@/lib/supabase", async () => (await import("./helpers")).makeSupabaseMock({ id: "sala-1", modo: "online" }));
+vi.mock("@/lib/supabase", async () => (await import("./helpers")).makeSupabaseMock({ id: "sala-1", modo: "online", anfitriao: "user-1" }));
 vi.mock("@/hooks/usePlayers");
 vi.mock("@/hooks/useGameState");
 vi.mock("@/hooks/useAuth");

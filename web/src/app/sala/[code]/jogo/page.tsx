@@ -36,6 +36,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   const [modo, setModo] = useState<"online" | "presencial">("online")
   const [testamentos, setTestamentos] = useState<string[]>(["AT", "NT"]);
+  const [anfitriao, setAnfitriao] = useState<string | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
@@ -47,6 +48,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const [showAnswerQuestion, setShowAnswerQuestion] = useState(false);
   const [answerInput, setAnswerInput] = useState("");
   const [selectedGuessId, setSelectedGuessId] = useState<number | null>(null);
+  const [selectedFimTempoGuessId, setSelectedFimTempoGuessId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
   const [jaVotei, setJaVotei] = useState(false);
   const [showMyCard, setShowMyCard] = useState(false);
@@ -62,12 +64,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("salas").select("id, modo, testamentos").eq("codigo", code).single()
+    supabase.from("salas").select("id, modo, testamentos, anfitriao").eq("codigo", code).single()
       .then(({ data }) => {
         if (data) {
           setSalaId(data.id);
           setModo(data.modo ?? "online");
           setTestamentos(data.testamentos ?? ["AT", "NT"]);
+          setAnfitriao(data.anfitriao ?? null);
         }
       });
   }, [code]);
@@ -102,6 +105,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       finalizadoFimTempoRef.current = false;
       setAdivinheiNaFimTempo(false);
       setShowFimTempoGuess(false);
+      setSelectedFimTempoGuessId(null);
       setShowAskQuestion(false);
       setShowWordInput(false);
     }
@@ -111,11 +115,11 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     // Inclui "aguardando_resposta" e "turno_palavras" para cobrir o caso em que o timer
     // expira enquanto uma pergunta está pendente de resposta ou na fase de palavras.
     const faseAtiva = fase === "jogando" || fase === "aguardando_resposta" || fase === "turno_palavras";
-    if (secs === 0 && faseAtiva && rodada && !encerradoPorTempoRef.current && new Date() > new Date(rodada.estado.timer_end)) {
+    if (secs === 0 && faseAtiva && rodada && !encerradoPorTempoRef.current && user?.id === anfitriao && new Date() > new Date(rodada.estado.timer_end)) {
       encerradoPorTempoRef.current = true;
       gameActions.encerrarPorTempo(rodada.id).catch(() => {});
     }
-  }, [secs, fase, rodada]);
+  }, [secs, fase, rodada, user, anfitriao]);
 
   useEffect(() => {
     if (adivTimer.secs === 0 && fase === "adivinhacao_fim_tempo" && rodada?.estado.timer_adivinhacao_end && !finalizadoFimTempoRef.current && new Date() > new Date(rodada.estado.timer_adivinhacao_end)) {
@@ -169,13 +173,13 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   }
 
   async function handleAdivinharFimTempo() {
-    if (!rodada || selectedGuessId === null) return;
+    if (!rodada || selectedFimTempoGuessId === null) return;
     setActing(true);
     try {
-      await gameActions.adivinharFimTempo(rodada.id, selectedGuessId);
+      await gameActions.adivinharFimTempo(rodada.id, selectedFimTempoGuessId);
       setAdivinheiNaFimTempo(true);
       setShowFimTempoGuess(false);
-      setSelectedGuessId(null);
+      setSelectedFimTempoGuessId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao adivinhar");
     } finally {
@@ -341,7 +345,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <SheetResponderPergunta open={showAnswerQuestion} perguntaAtual={rodada?.estado.pergunta_atual} answerInput={answerInput} setAnswerInput={setAnswerInput} acting={acting} onSubmit={handleResponderPergunta} onClose={() => { setShowAnswerQuestion(false); setAnswerInput(""); }} />
       <SheetDizerPalavra open={showWordInput} onClose={() => setShowWordInput(false)} wordInput={wordInput} setWordInput={setWordInput} acting={acting} onSubmit={handleDizerPalavra} />
       <SheetAdivinhar open={showGuess} onClose={() => setShowGuess(false)} title="Adivinhar Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinhar} testamentos={testamentos} />
-      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} />
+      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedFimTempoGuessId} setSelectedGuessId={setSelectedFimTempoGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} />
       {fase === "adivinhacao_fim_tempo" && !isSpy && <BannerFimTempo adivTimerDisplay={adivTimer.display} />}
       <SheetMinhaCarta open={showMyCard} onClose={() => setShowMyCard(false)} isSpy={isSpy} evento={evento} testamentos={testamentos} />
     </main>

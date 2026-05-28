@@ -17,7 +17,6 @@ export async function gerarCodigoUnico(db: SupabaseClient): Promise<string> {
       .from("salas")
       .select("id")
       .eq("codigo", codigo)
-      .eq("status", "aguardando")
       .maybeSingle();
     if (!data) return codigo;
   }

@@ -104,11 +104,12 @@ export async function getJogadorById(db: SupabaseClient, id: string): Promise<Jo
 }
 
 export async function getJogadoresAtivos(db: SupabaseClient, salaId: string): Promise<Jogador[]> {
-  const { data } = await db
+  const { data, error } = await db
     .from("jogadores")
     .select("*")
     .eq("sala_id", salaId)
     .eq("ativo", true);
+  if (error) throw new Error("Falha ao buscar jogadores ativos: " + error.message);
   return (data ?? []) as Jogador[];
 }
 
@@ -140,6 +141,7 @@ export function assertModoOnline(modo: ModoSala): void {
 
 export function calcularProximoTurno(estado: EstadoRodada): { proximo: string; proximoTurnoNumero: number } {
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
+  if (idx === -1) throw new Error(`turno_atual '${estado.turno_atual}' não encontrado em ordem_turnos`);
   const proximo = estado.ordem_turnos[(idx + 1) % estado.ordem_turnos.length];
   const turnoNumero = estado.turno_numero_atual ?? 1;
   const proximoTurnoNumero = idx === estado.ordem_turnos.length - 1 ? turnoNumero + 1 : turnoNumero;

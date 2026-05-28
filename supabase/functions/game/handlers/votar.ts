@@ -107,7 +107,7 @@ export async function votar(userId: string, payload: unknown) {
     // Votação rejeitada: voltar para jogando
     const { error } = await db
       .from("rodadas")
-      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, historico: historicoComVotacao } })
+      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, acusou_neste_turno: false, historico: historicoComVotacao } })
       .eq("id", rodada_id);
     if (error) throw new Error(error.message);
     return { resultado_votacao: "rejeitado" };
@@ -131,12 +131,13 @@ export async function votar(userId: string, payload: unknown) {
   await db.from("jogadores").update({ ativo: false }).eq("id", estado.acusado_id);
 
   // Verificar limite de eliminações erradas
-  const totalJogadores = jogadoresAtivos?.length ?? 0;
+  // Subtrai 1 porque o acusado já foi marcado inativo na linha acima
+  const totalJogadores = (jogadoresAtivos?.length ?? 1) - 1;
   const n = numEspias(totalJogadores);
   const limite = limiteEliminacoesErradas(totalJogadores, n);
 
   // Persistir histórico antes de eventualmente encerrar — encerrarRodada não toca historico
-  if (novasElim > limite) {
+  if (novasElim >= limite) {
     await db
       .from("rodadas")
       .update({ estado: { ...estado, historico: historicoComVotacao } })
