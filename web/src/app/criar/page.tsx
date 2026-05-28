@@ -176,7 +176,7 @@ export default function CriarPage() {
         >
           <Eyebrow color={T.sienna}>Configurar a partida</Eyebrow>
           <div style={{ fontFamily: F.display, fontSize: 34, fontWeight: 500, lineHeight: 1.08, color: T.ink, marginTop: 8 }}>
-            De qual escritura<br />
+            Qual escritura<br />
             vamos <span style={{ color: T.sienna, fontWeight: 700 }}>jogar?</span>
           </div>
         </motion.div>
