@@ -124,7 +124,8 @@ export default function CriarPage() {
 
   function handleMaxJogadoresChange(v: number) {
     setMaxJogadores(v);
-    if (!duracaoTocada) setDuracaoMinutos(duracaoRecomendada(v));
+    setDuracaoMinutos(duracaoRecomendada(v));
+    setDuracaoTocada(false);
   }
   function handleDuracaoChange(v: number) {
     setDuracaoMinutos(v);
