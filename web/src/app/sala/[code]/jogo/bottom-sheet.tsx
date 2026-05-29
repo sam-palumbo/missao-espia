@@ -33,7 +33,7 @@ export function BottomSheet({ open, onBackdropClick, children, maxHeight, paddin
             exit={{ y: "100%" }}
             transition={SHEET_SPRING}
             onClick={e => e.stopPropagation()}
-            style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: `24px 20px ${paddingBottom}px`, display: "flex", flexDirection: "column", gap: 14, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative", ...(maxHeight ? { maxHeight } : {}) }}
+            style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: `24px 20px ${paddingBottom}px`, display: "flex", flexDirection: "column", gap: 14, maxWidth: "var(--app-max-width)", margin: "0 auto", width: "100%", position: "relative", ...(maxHeight ? { maxHeight } : {}) }}
           >
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />

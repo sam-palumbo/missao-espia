@@ -97,7 +97,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   }
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 16, width: "100%", maxWidth: 860, margin: "0 auto" }}>
+    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 16 }}>
       <ParchmentBg />
 
       {/* Header */}

@@ -46,7 +46,7 @@ export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, ac
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={SHEET_SPRING}
-            style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 390, margin: "0 auto", width: "100%", position: "relative" }}
+            style={{ background: T.card, borderRadius: "22px 22px 0 0", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, maxWidth: "var(--app-max-width)", margin: "0 auto", width: "100%", position: "relative" }}
           >
             <InsetFrame color={T.sienna} inset={6} radius={22} opacity={0.3} opacity2={0.15} />
             <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto 4px" }} />

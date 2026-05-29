@@ -34,6 +34,10 @@
 
   --shadow-card:  0 10px 28px -14px rgba(58,42,20,0.28);
   --shadow-float: 0 16px 36px -16px rgba(58,42,20,0.4);
+
+  /* Largura única da coluna do app — mobile-first.
+     Fonte única de verdade para páginas E sheets/overlays. */
+  --app-max-width: 440px;
 }
 
 @theme inline {
@@ -77,13 +81,14 @@ body::before {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 2px; }
 
-/* ── Page container (replaces maxWidth: 390 inline) ─────────── */
+/* ── Page container — largura única para TODAS as telas ─────── */
 .page-root {
-  max-width: 860px;
+  width: 100%;
+  max-width: var(--app-max-width);
   margin: 0 auto;
 }
 
-@media (min-width: 860px) {
+@media (min-width: 600px) {
   body {
     background: #120D05;
   }

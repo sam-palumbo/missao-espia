@@ -245,7 +245,7 @@ export function BottomSheet({ open, onClose, children, maxHeight = "85dvh" }: Bo
             style={{
               position: "fixed", bottom: 0, left: "50%",
               transform: "translateX(-50%)",
-              width: "100%", maxWidth: 390,
+              width: "100%", maxWidth: "var(--app-max-width)",
               zIndex: 51,
               background: T.card,
               borderRadius: "22px 22px 0 0",

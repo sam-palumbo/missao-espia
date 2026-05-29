@@ -10,7 +10,7 @@ interface Props {
 
 export function RevealScreen({ isSpy, evento, onReveal }: Props) {
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, width: "100%", maxWidth: 860, margin: "0 auto" }}>
+    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
       <ParchmentBg />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
