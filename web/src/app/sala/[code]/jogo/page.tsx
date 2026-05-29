@@ -10,7 +10,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ParchmentBg, InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
 import { isPrimeiroTurno, isEspia, estaForaDoTurno, isMeuTurno } from "@shared/regras";
 import { TurnoPresencial } from "./turno-presencial";
 import HistoricoTabs from "./historico-tabs";
@@ -148,51 +148,47 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     }
   }, [meuEliminado]);
 
-  async function handleAcusar(acusadoId: string) {
-    if (!rodada) return;
-    setActing(true);
-    try { await gameActions.acusar(rodada.id, acusadoId); setShowAccuse(false); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao acusar"); }
-    finally { setActing(false); }
-  }
-
-  async function handleVotar(aprovado: boolean) {
-    if (!rodada) return;
-    setActing(true);
-    try { await gameActions.votar(rodada.id, aprovado); setJaVotei(true); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao votar"); }
-    finally { setActing(false); }
-  }
-
-  async function handleAdivinhar() {
-    if (!rodada || selectedGuessId === null) return;
-    setActing(true);
-    try { await gameActions.adivinhar(rodada.id, selectedGuessId); setShowGuess(false); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao adivinhar"); }
-    finally { setActing(false); }
-  }
-
-  async function handleAdivinharFimTempo() {
-    if (!rodada || selectedFimTempoGuessId === null) return;
+  // Envolve uma ação de jogo com o ciclo padrão setActing/try-catch-toast/finally.
+  // onSuccess roda só se a ação resolver sem erro.
+  async function runAction(action: () => Promise<unknown>, errMsg: string, onSuccess?: () => void) {
     setActing(true);
     try {
-      await gameActions.adivinharFimTempo(rodada.id, selectedFimTempoGuessId);
-      setAdivinheiNaFimTempo(true);
-      setShowFimTempoGuess(false);
-      setSelectedFimTempoGuessId(null);
+      await action();
+      onSuccess?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao adivinhar");
+      toast.error(err instanceof Error ? err.message : errMsg);
     } finally {
       setActing(false);
     }
   }
 
+  async function handleAcusar(acusadoId: string) {
+    if (!rodada) return;
+    await runAction(() => gameActions.acusar(rodada.id, acusadoId), "Erro ao acusar", () => setShowAccuse(false));
+  }
+
+  async function handleVotar(aprovado: boolean) {
+    if (!rodada) return;
+    await runAction(() => gameActions.votar(rodada.id, aprovado), "Erro ao votar", () => setJaVotei(true));
+  }
+
+  async function handleAdivinhar() {
+    if (!rodada || selectedGuessId === null) return;
+    await runAction(() => gameActions.adivinhar(rodada.id, selectedGuessId), "Erro ao adivinhar", () => setShowGuess(false));
+  }
+
+  async function handleAdivinharFimTempo() {
+    if (!rodada || selectedFimTempoGuessId === null) return;
+    await runAction(
+      () => gameActions.adivinharFimTempo(rodada.id, selectedFimTempoGuessId),
+      "Erro ao adivinhar",
+      () => { setAdivinheiNaFimTempo(true); setShowFimTempoGuess(false); setSelectedFimTempoGuessId(null); },
+    );
+  }
+
   async function handleDizerPalavra() {
     if (!rodada || !wordInput.trim()) return;
-    setActing(true);
-    try { await gameActions.dizerPalavra(rodada.id, wordInput.trim()); setWordInput(""); setShowWordInput(false); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao dizer palavra"); }
-    finally { setActing(false); }
+    await runAction(() => gameActions.dizerPalavra(rodada.id, wordInput.trim()), "Erro ao dizer palavra", () => { setWordInput(""); setShowWordInput(false); });
   }
 
   async function handleFazerPergunta() {
@@ -200,26 +196,21 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     // Guard: se uma nova rodada começou enquanto o sheet estava aberto, o estado já
     // estará em fase "turno_palavras" mesmo antes do useEffect fechar o sheet.
     if (turnoPalavras) { setShowAskQuestion(false); return; }
-    setActing(true);
-    try { await gameActions.fazerPergunta(rodada.id, selectedRecipientId, questionInput.trim()); setQuestionInput(""); setSelectedRecipientId(null); setShowAskQuestion(false); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao fazer pergunta"); }
-    finally { setActing(false); }
+    await runAction(
+      () => gameActions.fazerPergunta(rodada.id, selectedRecipientId, questionInput.trim()),
+      "Erro ao fazer pergunta",
+      () => { setQuestionInput(""); setSelectedRecipientId(null); setShowAskQuestion(false); },
+    );
   }
 
   async function handleResponderPergunta() {
     if (!rodada || !answerInput.trim()) return;
-    setActing(true);
-    try { await gameActions.responderPergunta(rodada.id, answerInput.trim()); setAnswerInput(""); setShowAnswerQuestion(false); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao responder pergunta"); }
-    finally { setActing(false); }
+    await runAction(() => gameActions.responderPergunta(rodada.id, answerInput.trim()), "Erro ao responder pergunta", () => { setAnswerInput(""); setShowAnswerQuestion(false); });
   }
 
   async function handleProximoTurno() {
     if (!rodada) return;
-    setActing(true);
-    try { await gameActions.proximoTurno(rodada.id); }
-    catch (err) { toast.error(err instanceof Error ? err.message : "Erro ao avançar turno"); }
-    finally { setActing(false); }
+    await runAction(() => gameActions.proximoTurno(rodada.id), "Erro ao avançar turno");
   }
 
   function handleClickTurnoAction() {
@@ -242,8 +233,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const primeiroTurno = rodada ? isPrimeiroTurno(rodada.estado) : true;
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 14 }}>
-      <ParchmentBg />
+    <PageShell style={{ gap: 14 }}>
 
       {/* TopBar */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -348,6 +338,6 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedFimTempoGuessId} setSelectedGuessId={setSelectedFimTempoGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} />
       {fase === "adivinhacao_fim_tempo" && !isSpy && <BannerFimTempo adivTimerDisplay={adivTimer.display} />}
       <SheetMinhaCarta open={showMyCard} onClose={() => setShowMyCard(false)} isSpy={isSpy} evento={evento} testamentos={testamentos} />
-    </main>
+    </PageShell>
   );
 }

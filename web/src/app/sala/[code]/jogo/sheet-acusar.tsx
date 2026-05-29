@@ -14,7 +14,7 @@ interface Props {
 
 export function SheetAcusar({ open, onClose, players, meuId, acting, onAcusar }: Props) {
   return (
-    <BottomSheet open={open} onBackdropClick={onClose} motionKey="accuse">
+    <BottomSheet open={open} onBackdropClick={onClose} motionKey="accuse" label="Acusar jogador">
       <Eyebrow color={T.inkSoft}>Acusar Jogador</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Quem é o Espia?</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

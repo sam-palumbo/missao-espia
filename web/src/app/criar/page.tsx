@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { gameActions } from "@/lib/game-actions";
 import { EVENTOS } from "@/lib/eventos";
 import { toast } from "sonner";
-import { ParchmentBg, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 const atEvents = EVENTOS.filter(e => e.testament === "AT");
 const ntEvents = EVENTOS.filter(e => e.testament === "NT");
@@ -151,8 +151,7 @@ export default function CriarPage() {
   }
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
-      <ParchmentBg />
+    <PageShell>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 0 }}>
         {/* TopBar */}
@@ -162,7 +161,7 @@ export default function CriarPage() {
           transition={{ duration: 0.3, ease: "easeOut" }}
           style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}
         >
-          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
+          <Link href="/" aria-label="Voltar ao início" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
             <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
           </Link>
           <Eyebrow color={T.inkSoft}>Nova Partida</Eyebrow>
@@ -357,6 +356,6 @@ export default function CriarPage() {
           </PrimaryBtn>
         </motion.div>
       </div>
-    </main>
+    </PageShell>
   );
 }

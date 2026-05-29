@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { validarEmail } from "@/lib/auth-validation";
-import { ParchmentBg, InsetFrame, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 export default function RecuperarSenhaPage() {
   const { recuperarSenha } = useAuth();
@@ -24,8 +24,7 @@ export default function RecuperarSenhaPage() {
   }
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
-      <ParchmentBg />
+    <PageShell>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
         <motion.div
@@ -34,7 +33,7 @@ export default function RecuperarSenhaPage() {
           transition={{ duration: 0.3, ease: "easeOut" }}
           style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}
         >
-          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
+          <Link href="/" aria-label="Voltar ao início" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
             <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
           </Link>
           <Eyebrow color={T.inkSoft}>Recuperar senha</Eyebrow>
@@ -92,6 +91,6 @@ export default function RecuperarSenhaPage() {
           </motion.div>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

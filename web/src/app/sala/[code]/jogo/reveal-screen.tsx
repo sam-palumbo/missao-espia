@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "motion/react";
-import { ParchmentBg, InsetFrame, MEMedallion, MEIcon, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEMedallion, MEIcon, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 interface Props {
   isSpy: boolean;
@@ -10,8 +10,7 @@ interface Props {
 
 export function RevealScreen({ isSpy, evento, onReveal }: Props) {
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
-      <ParchmentBg />
+    <PageShell>
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -81,6 +80,6 @@ export function RevealScreen({ isSpy, evento, onReveal }: Props) {
         <div style={{ flex: 1 }} />
         <PrimaryBtn accent={T.gold} onClick={onReveal}>Memorizei</PrimaryBtn>
       </motion.div>
-    </main>
+    </PageShell>
   );
 }

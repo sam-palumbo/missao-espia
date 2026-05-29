@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { InsetFrame, T } from "@/components/ui/design";
 
@@ -13,9 +14,21 @@ interface BottomSheetProps {
   maxHeight?: string;
   paddingBottom?: number | string;
   motionKey: string;
+  /** Rótulo acessível do diálogo (anunciado por leitores de tela). */
+  label?: string;
 }
 
-export function BottomSheet({ open, onBackdropClick, children, maxHeight, paddingBottom = 20, motionKey }: BottomSheetProps) {
+export function BottomSheet({ open, onBackdropClick, children, maxHeight, paddingBottom = 20, motionKey, label }: BottomSheetProps) {
+  // Esc fecha o sheet (mesmo gesto do toque no backdrop). Para os sheets de
+  // digitação — que não passam onBackdropClick para não perder o texto — Esc
+  // também não fecha, mantendo o comportamento consistente.
+  useEffect(() => {
+    if (!open || !onBackdropClick) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onBackdropClick(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onBackdropClick]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -28,6 +41,9 @@ export function BottomSheet({ open, onBackdropClick, children, maxHeight, paddin
           onClick={onBackdropClick}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={label}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

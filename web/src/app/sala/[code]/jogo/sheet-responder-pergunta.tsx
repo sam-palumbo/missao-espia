@@ -14,7 +14,7 @@ interface Props {
 
 export function SheetResponderPergunta({ open, perguntaAtual, answerInput, setAnswerInput, acting, onSubmit, onClose }: Props) {
   return (
-    <BottomSheet open={open} motionKey="answer">
+    <BottomSheet open={open} motionKey="answer" label="Responder pergunta">
       <Eyebrow color={T.inkSoft}>Responder Pergunta</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>{perguntaAtual?.perguntador_apelido} perguntou:</div>
       <div style={{ background: T.cardWarm, borderRadius: 12, padding: "14px 16px", fontFamily: F.bodySerif, fontSize: 16, color: T.ink, lineHeight: 1.4 }}>

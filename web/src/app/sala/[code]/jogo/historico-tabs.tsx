@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import { T, F, MEAvatar, MEIcon, Eyebrow, InsetFrame } from "@/components/ui/design";
 import type {
   HistoricoItem,
@@ -126,7 +126,7 @@ function renderVotacao(h: HistoricoVotacao) {
 
 // ── HistoricoTabs ──────────────────────────────────────────────
 
-export default function HistoricoTabs({ historico, palavrasTurno }: Props) {
+function HistoricoTabs({ historico, palavrasTurno }: Props) {
   const groups = groupHistorico(historico, palavrasTurno);
   const hasPalavrasTab = groups[0]?.kind === "palavras";
 
@@ -274,3 +274,6 @@ export default function HistoricoTabs({ historico, palavrasTurno }: Props) {
     </div>
   );
 }
+
+// Memo: histórico/palavras vêm de rodada.estado (refs estáveis entre ticks do timer).
+export default memo(HistoricoTabs);

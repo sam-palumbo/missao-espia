@@ -18,7 +18,7 @@ export function SheetDizerPalavra({ open, onClose, wordInput, setWordInput, acti
   }
 
   return (
-    <BottomSheet open={open} motionKey="word">
+    <BottomSheet open={open} motionKey="word" label="Dizer uma palavra">
       <Eyebrow color={T.inkSoft}>Primeira Rodada</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Diga uma palavra</div>
       <div style={{ fontFamily: F.bodySerif, fontSize: 14, color: T.inkSoft, lineHeight: 1.4 }}>

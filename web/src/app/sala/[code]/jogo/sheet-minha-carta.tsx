@@ -14,7 +14,7 @@ interface Props {
 export function SheetMinhaCarta({ open, onClose, isSpy, evento, testamentos = ["AT", "NT"] }: Props) {
   const eventosFiltrados = EVENTOS.filter(e => testamentos.includes(e.testament));
   return (
-    <BottomSheet open={open} onBackdropClick={onClose} motionKey="mycard" maxHeight={isSpy ? "80dvh" : undefined} paddingBottom={0}>
+    <BottomSheet open={open} onBackdropClick={onClose} motionKey="mycard" maxHeight={isSpy ? "80dvh" : undefined} paddingBottom={0} label="Minha carta">
       <Eyebrow color={T.inkSoft}>Minha Carta</Eyebrow>
       {isSpy ? (
         <>

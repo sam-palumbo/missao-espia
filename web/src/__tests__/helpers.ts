@@ -36,6 +36,8 @@ const F = new Proxy({}, { get: () => "" });
 
 export const designMock = {
   ParchmentBg: () => null,
+  PageShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("main", null, children),
   InsetFrame: () => null,
   MEMedallion: () => null,
   MEAvatar: ({ initial }: { initial: string }) =>

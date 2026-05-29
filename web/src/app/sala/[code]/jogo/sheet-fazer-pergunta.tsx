@@ -24,7 +24,7 @@ export function SheetFazerPergunta({ open, onClose, players, meuId, selectedReci
   }
 
   return (
-    <BottomSheet open={open} motionKey="ask" maxHeight="80dvh" paddingBottom={0}>
+    <BottomSheet open={open} motionKey="ask" maxHeight="80dvh" paddingBottom={0} label="Fazer pergunta">
       <Eyebrow color={T.inkSoft}>Fazer Pergunta</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Para quem perguntar?</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>

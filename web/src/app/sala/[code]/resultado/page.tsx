@@ -9,7 +9,7 @@ import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
-import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 const listVariants = { show: { transition: { staggerChildren: 0.07, delayChildren: 0.25 } } };
 const rowVariants = {
@@ -97,8 +97,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   }
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 16 }}>
-      <ParchmentBg />
+    <PageShell style={{ gap: 16 }}>
 
       {/* Header */}
       <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
@@ -201,6 +200,6 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
           )}
         </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

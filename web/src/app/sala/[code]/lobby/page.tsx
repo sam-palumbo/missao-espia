@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ParchmentBg, InsetFrame, MEAvatar, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEAvatar, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 const playerListVariants = {
   show: { transition: { staggerChildren: 0.07 } },
@@ -102,17 +102,16 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const espias = players.length >= 4 ? numEspias(players.length) : null;
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
-      <ParchmentBg />
+    <PageShell>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, gap: 16 }}>
         {/* TopBar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
+          <Link href="/" aria-label="Voltar ao início" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}` }}>
             <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
           </Link>
           <Eyebrow color={T.inkSoft}>Sala de Espera</Eyebrow>
-          <button onClick={copyCode} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}`, cursor: "pointer" }}>
+          <button onClick={copyCode} aria-label="Copiar código da sala" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 19, background: T.card, border: `1px solid ${T.hairline}`, cursor: "pointer" }}>
             <MEIcon name="share" size={16} color={T.inkSoft} />
           </button>
         </div>
@@ -263,6 +262,6 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
           </div>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

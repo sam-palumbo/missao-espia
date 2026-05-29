@@ -3,7 +3,7 @@ import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePlayers } from "@/hooks/usePlayers";
 import { createClient } from "@/lib/supabase";
-import { ParchmentBg, InsetFrame, MEMedallion, MEAvatar, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEMedallion, MEAvatar, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
 
 export default function PlacarPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -21,8 +21,7 @@ export default function PlacarPage({ params }: { params: Promise<{ code: string 
   const max = sorted[0]?.pontuacao ?? 1;
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, gap: 20 }}>
-      <ParchmentBg />
+    <PageShell style={{ gap: 20 }}>
 
       {/* Header */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
@@ -69,6 +68,6 @@ export default function PlacarPage({ params }: { params: Promise<{ code: string 
         <PrimaryBtn accent={T.gold} onClick={() => router.push("/")}>Nova Partida</PrimaryBtn>
         <OutlineBtn onClick={() => router.push("/")}>Encerrar</OutlineBtn>
       </div>
-    </main>
+    </PageShell>
   );
 }

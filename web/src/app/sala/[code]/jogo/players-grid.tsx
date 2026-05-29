@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import { motion } from "motion/react";
 import { InsetFrame, T, F } from "@/components/ui/design";
 import type { Player } from "@/lib/types";
@@ -8,7 +9,7 @@ interface Props {
   turnoAtual: string | undefined;
 }
 
-export function PlayersGrid({ players, turnoAtual }: Props) {
+function PlayersGridBase({ players, turnoAtual }: Props) {
   return (
     <div style={{ position: "relative", zIndex: 1, background: T.card, borderRadius: 18, padding: 12, boxShadow: "0 4px 16px -12px rgba(58,42,20,0.22)" }}>
       <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.22} opacity2={0.1} />
@@ -68,3 +69,6 @@ export function PlayersGrid({ players, turnoAtual }: Props) {
     </div>
   );
 }
+
+// Memo: props (players, turnoAtual) ficam estáveis entre os ticks do timer.
+export const PlayersGrid = memo(PlayersGridBase);

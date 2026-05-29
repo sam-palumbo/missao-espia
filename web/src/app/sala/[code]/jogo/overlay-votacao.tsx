@@ -42,6 +42,9 @@ export function OverlayVotacao({ acusadoNome, meuEliminado, meuId, acusadoId, ac
           style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Votação"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

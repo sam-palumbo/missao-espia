@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { validarEmail } from "@/lib/auth-validation";
-import { ParchmentBg, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
+import { PageShell, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
 
 export default function HomePage() {
   const router = useRouter();
@@ -45,8 +45,7 @@ export default function HomePage() {
   if (authLoading || jaLogado) return null;
 
   return (
-    <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg }}>
-      <ParchmentBg />
+    <PageShell>
 
       {/* Hebrew watermark */}
       <div style={{ position: "absolute", top: 60, left: "50%", transform: "translateX(-50%)", fontFamily: F.display, fontSize: 280, lineHeight: 1, color: T.sienna, opacity: 0.055, pointerEvents: "none", userSelect: "none", zIndex: 0 }}>שׁ</div>
@@ -214,6 +213,6 @@ export default function HomePage() {
           Crie sua conta
         </Link>
       </motion.div>
-    </main>
+    </PageShell>
   );
 }

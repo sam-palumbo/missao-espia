@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import { InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
 
 export interface TurnoPresencialProps {
@@ -7,7 +8,7 @@ export interface TurnoPresencialProps {
   turnoPalavras: boolean;
 }
 
-export function TurnoPresencial({ isMinhaVez, jogadorAtualApelido, turnoPalavras }: TurnoPresencialProps) {
+function TurnoPresencialBase({ isMinhaVez, jogadorAtualApelido, turnoPalavras }: TurnoPresencialProps) {
   if (!isMinhaVez) {
     return (
       <div style={{ position: "relative", padding: "14px 16px", background: T.card, borderRadius: 16, textAlign: "center" }}>
@@ -35,3 +36,7 @@ export function TurnoPresencial({ isMinhaVez, jogadorAtualApelido, turnoPalavras
     </div>
   );
 }
+
+// Re-renderiza só quando as props mudam — o JogoPage re-renderiza a cada
+// segundo por causa do timer, e este componente não depende disso.
+export const TurnoPresencial = memo(TurnoPresencialBase);

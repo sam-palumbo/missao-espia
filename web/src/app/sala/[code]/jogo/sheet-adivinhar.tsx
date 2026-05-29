@@ -17,7 +17,7 @@ interface Props {
 export function SheetAdivinhar({ open, onClose, title, selectedGuessId, setSelectedGuessId, acting, onConfirm, testamentos = ["AT", "NT"] }: Props) {
   const eventosFiltrados = EVENTOS.filter(e => testamentos.includes(e.testament));
   return (
-    <BottomSheet open={open} onBackdropClick={onClose} motionKey="guess" maxHeight="80dvh" paddingBottom={0}>
+    <BottomSheet open={open} onBackdropClick={onClose} motionKey="guess" maxHeight="80dvh" paddingBottom={0} label={title}>
       <Eyebrow color={T.inkSoft}>{title}</Eyebrow>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Onde você está?</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>

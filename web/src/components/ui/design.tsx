@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 
 // ── Design tokens (mirrors app-tokens.jsx) ─────────────────────
 export const T = {
@@ -42,6 +42,28 @@ export function ParchmentBg() {
         radial-gradient(120% 60% at 20% 0%, rgba(255,245,210,0.6) 0%, transparent 60%),
         radial-gradient(140% 80% at 80% 110%, rgba(138,90,30,0.10) 0%, transparent 60%)`,
     }} />
+  );
+}
+
+// ── PageShell — largura única + fundo para todas as páginas ───
+const PAGE_SHELL_STYLE: React.CSSProperties = {
+  position: "relative",
+  minHeight: "100dvh",
+  display: "flex",
+  flexDirection: "column",
+  padding: "62px clamp(20px, 5vw, 56px) 48px",
+  background: T.bg,
+};
+interface PageShellProps {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}
+export function PageShell({ children, style }: PageShellProps) {
+  return (
+    <main className="page-root" style={{ ...PAGE_SHELL_STYLE, ...style }}>
+      <ParchmentBg />
+      {children}
+    </main>
   );
 }
 
@@ -212,55 +234,6 @@ export function OutlineBtn({ children, onClick, disabled, icon }: OutlineBtnProp
         </span>
       )}
     </motion.button>
-  );
-}
-
-// ── BottomSheet ───────────────────────────────────────────────
-interface BottomSheetProps {
-  open: boolean;
-  onClose?: () => void;
-  children: React.ReactNode;
-  maxHeight?: string;
-}
-export function BottomSheet({ open, onClose, children, maxHeight = "85dvh" }: BottomSheetProps) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            key="bs-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            onClick={onClose}
-            style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(26,18,8,0.72)", backdropFilter: "blur(4px)" }}
-          />
-          <motion.div
-            key="bs-sheet"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            style={{
-              position: "fixed", bottom: 0, left: "50%",
-              transform: "translateX(-50%)",
-              width: "100%", maxWidth: "var(--app-max-width)",
-              zIndex: 51,
-              background: T.card,
-              borderRadius: "22px 22px 0 0",
-              padding: "20px 20px 28px",
-              display: "flex", flexDirection: "column", gap: 14,
-              maxHeight,
-              overflowY: "auto",
-            }}
-          >
-            <div style={{ width: 40, height: 4, background: T.hairlineStrong, borderRadius: 2, margin: "0 auto -2px" }} />
-            {children}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
   );
 }
 
