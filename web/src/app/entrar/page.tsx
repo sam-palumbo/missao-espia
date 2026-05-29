@@ -6,16 +6,32 @@ import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { gameActions } from "@/lib/game-actions";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { ParchmentBg, InsetFrame, Eyebrow, PrimaryBtn, OutlineBtn, MEIcon, T, F } from "@/components/ui/design";
 
 function EntrarForm() {
   const params = useSearchParams();
   const router = useRouter();
+  const { isAnonymous, loading: authLoading, sair } = useAuth();
   const [codigo, setCodigo] = useState((params.get("code") ?? "").toUpperCase());
   const [apelido, setApelido] = useState("");
   const [senha, setSenha] = useState("");
   const [precisaSenha, setPrecisaSenha] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+
+  const logado = !authLoading && !isAnonymous;
+
+  async function handleSair() {
+    setSaindo(true);
+    const { error } = await sair();
+    if (error) {
+      setSaindo(false);
+      toast.error(error);
+      return;
+    }
+    router.replace("/");
+  }
 
   async function handleEntrar() {
     if (!apelido.trim() || codigo.length < 4) return;
@@ -45,6 +61,16 @@ function EntrarForm() {
           <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke={T.inkSoft} strokeWidth="1.6" strokeLinecap="round"><path d="M15 5 L8 12 L15 19" /></svg>
         </Link>
         <Eyebrow color={T.inkSoft}>Entrar em uma partida</Eyebrow>
+        {logado && (
+          <button
+            type="button"
+            onClick={handleSair}
+            disabled={saindo}
+            style={{ marginLeft: "auto", background: "none", border: "none", fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.muted, cursor: saindo ? "default" : "pointer", padding: 0, letterSpacing: "0.02em" }}
+          >
+            {saindo ? "Saindo…" : "Sair da conta"}
+          </button>
+        )}
       </motion.div>
 
       {/* Hero */}
