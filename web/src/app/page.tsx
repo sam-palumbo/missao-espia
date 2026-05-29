@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -10,11 +10,17 @@ import { ParchmentBg, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, Outl
 
 export default function HomePage() {
   const router = useRouter();
-  const { entrar, entrarComGoogle } = useAuth();
+  const { entrar, entrarComGoogle, isAnonymous, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Já logado (sessão real persistida) → pula a tela de login.
+  const jaLogado = !authLoading && !isAnonymous;
+  useEffect(() => {
+    if (jaLogado) router.replace("/entrar");
+  }, [jaLogado, router]);
 
   async function handleEntrar() {
     if (!validarEmail(email) || !password) return;
@@ -33,6 +39,10 @@ export default function HomePage() {
     if (error) toast.error(error);
     // Em sucesso, o provedor redireciona para /auth/callback.
   }
+
+  // Enquanto resolve a sessão ou redireciona um usuário já logado,
+  // não mostra o formulário de login (evita flash).
+  if (authLoading || jaLogado) return null;
 
   return (
     <main className="page-root" style={{ position: "relative", minHeight: "100dvh", display: "flex", flexDirection: "column", padding: "62px clamp(20px, 5vw, 56px) 48px", background: T.bg, width: "100%", maxWidth: 860, margin: "0 auto" }}>
