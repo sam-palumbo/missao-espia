@@ -39,6 +39,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const modo = modoOverride ?? sala?.modo ?? "online";
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [addingBot, setAddingBot] = useState(false);
   const players = usePlayers(salaId);
 
   useEffect(() => {
@@ -88,6 +89,27 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
       setModoOverride(novo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao mudar modo");
+    }
+  }
+
+  async function handleAdicionarBot() {
+    if (!salaId) return;
+    setAddingBot(true);
+    try {
+      await gameActions.adicionarBot(salaId);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao adicionar bot");
+    } finally {
+      setAddingBot(false);
+    }
+  }
+
+  async function handleRemoverBot(jogadorId: string) {
+    if (!salaId) return;
+    try {
+      await gameActions.removerBot(salaId, jogadorId);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao remover bot");
     }
   }
 
@@ -171,9 +193,16 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.apelido}</div>
                     <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: p.user_id === anfitriaoId ? T.sienna : T.inkSoft, textTransform: "uppercase", marginTop: 2 }}>
-                      {p.user_id === anfitriaoId ? "Anfitrião" : "Pronto"}
+                      {p.user_id === anfitriaoId ? "Anfitrião" : p.is_bot ? "Bot" : "Pronto"}
                     </div>
                   </div>
+                  {isHost && p.is_bot && (
+                    <button
+                      onClick={() => handleRemoverBot(p.id)}
+                      aria-label={`Remover bot ${p.apelido}`}
+                      style={{ width: 24, height: 24, borderRadius: 12, background: T.cardWarm, border: `1px solid ${T.hairline}`, color: T.inkSoft, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1, padding: 0 }}
+                    >×</button>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -187,6 +216,16 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
               </motion.div>
             ))}
           </motion.div>
+
+          {isHost && (
+            <button
+              onClick={handleAdicionarBot}
+              disabled={addingBot || players.length >= maxJogadores}
+              style={{ width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: 999, background: "transparent", border: `1px dashed ${T.hairlineStrong}`, color: T.inkSoft, fontFamily: F.sans, fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", cursor: addingBot || players.length >= maxJogadores ? "default" : "pointer", opacity: addingBot || players.length >= maxJogadores ? 0.5 : 1 }}
+            >
+              {addingBot ? "Adicionando…" : "+ Adicionar Bot"}
+            </button>
+          )}
         </div>
 
         {players.length < 4 && (

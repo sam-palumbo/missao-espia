@@ -1,0 +1,142 @@
+// supabase/functions/game/handlers/bot-agir.ts
+//
+// Executa UMA ação pendente de bot na rodada, se houver. O cliente do
+// anfitrião chama esta action periodicamente enquanto a rodada está ativa;
+// o ritmo das chamadas é o que dá a cadência "humana" aos bots.
+//
+// As decisões (palavra, pergunta, voto, adivinhação aleatória) vivem aqui no
+// servidor; a execução reusa os handlers normais via bot_id, que validam as
+// regras do jogo como para qualquer jogador.
+import { getDb } from "../lib/db.ts";
+import { getRodadaWithSala, getJogadoresAtivos, forbidden } from "../lib/queries.ts";
+import { isPrimeiroTurno } from "../lib/regras.ts";
+import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, RESPOSTAS_BOT } from "../lib/bot.ts";
+import { dizerPalavra } from "./dizer-palavra.ts";
+import { fazerPergunta } from "./fazer-pergunta.ts";
+import { responderPergunta } from "./responder-pergunta.ts";
+import { proximoTurno } from "./proximo-turno.ts";
+import { acusar } from "./acusar.ts";
+import { votar } from "./votar.ts";
+import { adivinhar } from "./adivinhar.ts";
+import { adivinharFimTempo } from "./adivinhar-fim-tempo.ts";
+import type { BotAgirPayload, Jogador } from "../lib/types.ts";
+
+const CHANCE_ADIVINHAR_ESPIA = 0.25; // por turno do bot espia, a partir da 3ª volta
+const CHANCE_ACUSAR = 0.2;           // por turno do bot, quando acusação é permitida
+const CHANCE_VOTO_SIM = 0.6;
+
+export async function botAgir(userId: string, payload: unknown) {
+  const { rodada_id } = payload as BotAgirPayload;
+  if (!rodada_id) throw new Error("rodada_id obrigatório");
+
+  const db = getDb();
+  const rodada = await getRodadaWithSala(db, rodada_id);
+  if (rodada.salas.anfitriao !== userId) forbidden("Apenas o anfitrião pode acionar os bots");
+  if (rodada.encerrada_em) return { agiu: false };
+
+  const estado = rodada.estado;
+  const modo = rodada.salas.modo;
+
+  const { data } = await db
+    .from("jogadores")
+    .select("*")
+    .eq("sala_id", rodada.sala_id)
+    .eq("is_bot", true);
+  const bots = (data ?? []) as Jogador[];
+  if (bots.length === 0) return { agiu: false };
+  const botPorId = new Map(bots.map((b) => [b.id, b]));
+
+  const fase = estado.fase;
+
+  // ── Turno de um bot (palavra ou pergunta) ─────────────────────────────
+  if (fase === "turno_palavras" || fase === "jogando") {
+    const bot = botPorId.get(estado.turno_atual);
+    if (!bot) return { agiu: false };
+
+    if (fase === "turno_palavras") {
+      // No presencial a palavra é dita em voz alta — só concluir o turno
+      if (modo === "presencial") {
+        await proximoTurno(userId, { rodada_id });
+        return { agiu: true, acao: "proximo_turno" };
+      }
+      await dizerPalavra(userId, { rodada_id, palavra: aleatorio(PALAVRAS_BOT), bot_id: bot.id });
+      return { agiu: true, acao: "dizer_palavra" };
+    }
+
+    const souEspia = estado.espia_ids.includes(bot.id);
+
+    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < CHANCE_ADIVINHAR_ESPIA) {
+      await adivinhar(userId, { rodada_id, evento_id: eventoAleatorioId(), bot_id: bot.id });
+      return { agiu: true, acao: "adivinhar" };
+    }
+
+    const alvos = (await getJogadoresAtivos(db, rodada.sala_id)).filter((j) => j.id !== bot.id);
+
+    if (
+      !souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
+      !isPrimeiroTurno(estado) && Math.random() < CHANCE_ACUSAR
+    ) {
+      await acusar(userId, { rodada_id, acusado_id: aleatorio(alvos).id, bot_id: bot.id });
+      return { agiu: true, acao: "acusar" };
+    }
+
+    if (modo === "presencial" || alvos.length === 0) {
+      await proximoTurno(userId, { rodada_id });
+      return { agiu: true, acao: "proximo_turno" };
+    }
+
+    await fazerPergunta(userId, {
+      rodada_id,
+      destinatario_id: aleatorio(alvos).id,
+      texto: aleatorio(PERGUNTAS_BOT),
+      bot_id: bot.id,
+    });
+    return { agiu: true, acao: "fazer_pergunta" };
+  }
+
+  // ── Bot deve responder a pergunta pendente ────────────────────────────
+  if (fase === "aguardando_resposta") {
+    const destinatarioId = estado.pergunta_atual?.destinatario_id;
+    const bot = destinatarioId ? botPorId.get(destinatarioId) : undefined;
+    if (!bot) return { agiu: false };
+    await responderPergunta(userId, { rodada_id, resposta: aleatorio(RESPOSTAS_BOT), bot_id: bot.id });
+    return { agiu: true, acao: "responder_pergunta" };
+  }
+
+  // ── Bots votam na acusação em andamento (um por chamada) ──────────────
+  if (fase === "votacao") {
+    const { data: votos } = await db
+      .from("votos")
+      .select("votante_id")
+      .eq("rodada_id", rodada_id)
+      .eq("acusado_id", estado.acusado_id);
+    const jaVotaram = new Set((votos ?? []).map((v) => v.votante_id));
+    const pendente = bots.find((b) => b.ativo && b.id !== estado.acusado_id && !jaVotaram.has(b.id));
+    if (!pendente) return { agiu: false };
+    await votar(userId, { rodada_id, aprovado: Math.random() < CHANCE_VOTO_SIM, bot_id: pendente.id });
+    return { agiu: true, acao: "votar" };
+  }
+
+  // ── Bot espia pego por votação tem 30s para adivinhar ─────────────────
+  if (fase === "adivinhacao") {
+    const bot = estado.acusado_id ? botPorId.get(estado.acusado_id) : undefined;
+    if (!bot || !estado.espia_ids.includes(bot.id)) return { agiu: false };
+    await adivinhar(userId, { rodada_id, evento_id: eventoAleatorioId(), bot_id: bot.id });
+    return { agiu: true, acao: "adivinhar" };
+  }
+
+  // ── Fim de tempo: bots espias com adivinhação pendente ────────────────
+  if (fase === "adivinhacao_fim_tempo") {
+    const pendentes = Object.entries(estado.adivinhacoes_fim_tempo ?? {})
+      .filter(([id, guess]) => guess == null && botPorId.has(id));
+    if (pendentes.length === 0) return { agiu: false };
+    await adivinharFimTempo(userId, {
+      rodada_id,
+      evento_id: eventoAleatorioId(),
+      bot_id: pendentes[0][0],
+    });
+    return { agiu: true, acao: "adivinhar_fim_tempo" };
+  }
+
+  return { agiu: false };
+}

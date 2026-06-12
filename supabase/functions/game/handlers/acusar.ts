@@ -1,11 +1,11 @@
 // supabase/functions/game/handlers/acusar.ts
 import { getDb }        from "../lib/db.ts";
 import { isPrimeiroTurno } from "../lib/regras.ts";
-import { atualizarEstadoComVersao } from "../lib/queries.ts";
+import { atualizarEstadoComVersao, getJogadorAtor } from "../lib/queries.ts";
 import type { AcusarPayload } from "../lib/types.ts";
 
 export async function acusar(userId: string, payload: unknown) {
-  const { rodada_id, acusado_id } = payload as AcusarPayload;
+  const { rodada_id, acusado_id, bot_id } = payload as AcusarPayload;
   if (!rodada_id || !acusado_id) throw new Error("rodada_id e acusado_id obrigatórios");
 
   const db = getDb();
@@ -26,14 +26,9 @@ export async function acusar(userId: string, payload: unknown) {
   if (isPrimeiroTurno(estado)) throw new Error("Não é possível acusar no primeiro turno da rodada");
 
   // Verificar que caller é o jogador do turno atual
-  const { data: caller } = await db
-    .from("jogadores")
-    .select("id")
-    .eq("sala_id", rodada.sala_id)
-    .eq("user_id", userId)
-    .single();
+  const caller = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
 
-  if (!caller || caller.id !== estado.turno_atual) {
+  if (caller.id !== estado.turno_atual) {
     throw Object.assign(new Error("Apenas o jogador do turno pode acusar"), { status: 403 });
   }
 

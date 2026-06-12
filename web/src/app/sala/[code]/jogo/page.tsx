@@ -150,6 +150,21 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
     }
   }, [fase, rodada?.estado.acusado_id, meuJogador?.id]);
 
+  // O cliente do anfitrião dá o "tique" dos bots: a cada chamada o servidor
+  // executa no máximo uma ação de bot pendente (bot_agir), o que define a
+  // cadência das jogadas. Erros (ex: 409 de lock otimista) são ignorados —
+  // o próximo tique tenta de novo sobre o estado atual.
+  const temBots = players.some(p => p.is_bot);
+  const rodadaId = rodada?.id ?? null;
+  const rodadaEncerrada = !!rodada?.encerrada_em;
+  useEffect(() => {
+    if (!temBots || !rodadaId || rodadaEncerrada || !user?.id || user.id !== anfitriao) return;
+    const interval = setInterval(() => {
+      gameActions.botAgir(rodadaId).catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [temBots, rodadaId, rodadaEncerrada, user?.id, anfitriao]);
+
   // Envolve uma ação de jogo com o ciclo padrão setActing/try-catch-toast/finally.
   // onSuccess roda só se a ação resolver sem erro.
   async function runAction(action: () => Promise<unknown>, errMsg: string, onSuccess?: () => void) {

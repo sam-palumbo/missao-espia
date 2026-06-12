@@ -1,6 +1,6 @@
 import { getDb } from "../lib/db.ts";
 import {
-  getRodadaWithSala, getJogadorByUserId,
+  getRodadaWithSala, getJogadorAtor,
   assertRodadaNaoEncerrada, assertFase, assertIsTurno, assertModoOnline,
   calcularProximoTurno, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
@@ -9,7 +9,7 @@ import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { DizerPalavraPayload } from "../lib/types.ts";
 
 export async function dizerPalavra(userId: string, payload: unknown) {
-  const { rodada_id, palavra } = payload as DizerPalavraPayload;
+  const { rodada_id, palavra, bot_id } = payload as DizerPalavraPayload;
   if (!rodada_id || !palavra?.trim()) throw new Error("Campos obrigatórios faltando");
   if (palavra.trim().length > 50) throw new Error("Palavra muito longa");
 
@@ -21,7 +21,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   const estado = rodada.estado;
   assertFase(estado, ["turno_palavras"]);
 
-  const jogador = await getJogadorByUserId(db, rodada.sala_id, userId);
+  const jogador = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
   assertIsTurno(estado, jogador.id);
 
   const palavraLimpa = palavra.trim();

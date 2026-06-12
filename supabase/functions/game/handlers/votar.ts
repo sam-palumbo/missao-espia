@@ -1,13 +1,13 @@
 // supabase/functions/game/handlers/votar.ts
 import { getDb }                 from "../lib/db.ts";
 import { limiteEliminacoesErradas } from "../lib/espias.ts";
-import { atualizarEstadoComVersao } from "../lib/queries.ts";
+import { atualizarEstadoComVersao, getJogadorAtor } from "../lib/queries.ts";
 import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
 import type { HistoricoVotacao, VotarPayload } from "../lib/types.ts";
 
 export async function votar(userId: string, payload: unknown) {
-  const { rodada_id, aprovado } = payload as VotarPayload;
+  const { rodada_id, aprovado, bot_id } = payload as VotarPayload;
   if (!rodada_id || typeof aprovado !== "boolean") throw new Error("Campos obrigatórios ausentes");
 
   const db = getDb();
@@ -25,14 +25,9 @@ export async function votar(userId: string, payload: unknown) {
   if (estado.fase !== "votacao") throw new Error("Não há votação em andamento");
 
   // Buscar jogador votante
-  const { data: votante } = await db
-    .from("jogadores")
-    .select("id, ativo")
-    .eq("sala_id", rodada.sala_id)
-    .eq("user_id", userId)
-    .single();
+  const votante = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
 
-  if (!votante || !votante.ativo) throw Object.assign(new Error("Jogador não encontrado ou eliminado"), { status: 403 });
+  if (!votante.ativo) throw Object.assign(new Error("Jogador não encontrado ou eliminado"), { status: 403 });
   if (votante.id === estado.acusado_id) throw Object.assign(new Error("Acusado não pode votar"), { status: 403 });
 
   // Verificar se jogador já votou nesta acusação

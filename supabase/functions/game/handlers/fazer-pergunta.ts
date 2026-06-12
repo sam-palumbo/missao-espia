@@ -1,13 +1,13 @@
 import { getDb } from "../lib/db.ts";
 import {
-  getRodadaWithSala, getJogadorByUserId, getJogadorById,
+  getRodadaWithSala, getJogadorAtor, getJogadorById,
   assertRodadaNaoEncerrada, assertFase, assertJogadorAtivo,
   assertIsTurno, assertModoOnline, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
 import type { FazerPerguntaPayload } from "../lib/types.ts";
 
 export async function fazerPergunta(userId: string, payload: unknown) {
-  const { rodada_id, destinatario_id, texto } = payload as FazerPerguntaPayload;
+  const { rodada_id, destinatario_id, texto, bot_id } = payload as FazerPerguntaPayload;
   if (!rodada_id || !destinatario_id || !texto?.trim()) throw new Error("Campos obrigatórios faltando");
 
   const textoLimpo = texto.trim();
@@ -21,7 +21,7 @@ export async function fazerPergunta(userId: string, payload: unknown) {
   assertModoOnline(modo);
   assertFase(rodada.estado, ["jogando"]);
 
-  const perguntador = await getJogadorByUserId(db, rodada.sala_id, userId);
+  const perguntador = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
   assertJogadorAtivo(perguntador);
   assertIsTurno(rodada.estado, perguntador.id);
 

@@ -1,6 +1,6 @@
 import { getDb } from "../lib/db.ts";
 import {
-  getRodadaWithSala, getJogadorByUserId,
+  getRodadaWithSala, getJogadorAtor,
   assertRodadaNaoEncerrada, assertFase, assertModoOnline, forbidden,
   calcularProximoTurno, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
@@ -8,7 +8,7 @@ import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { ResponderPerguntaPayload } from "../lib/types.ts";
 
 export async function responderPergunta(userId: string, payload: unknown) {
-  const { rodada_id, resposta } = payload as ResponderPerguntaPayload;
+  const { rodada_id, resposta, bot_id } = payload as ResponderPerguntaPayload;
   if (!rodada_id || !resposta?.trim()) throw new Error("Campos obrigatórios faltando");
   if (resposta.trim().length > 200) throw new Error("Resposta muito longa");
 
@@ -23,7 +23,7 @@ export async function responderPergunta(userId: string, payload: unknown) {
   const perguntaAtual = estado.pergunta_atual;
   if (!perguntaAtual) throw new Error("Nenhuma pergunta ativa");
 
-  const jogador = await getJogadorByUserId(db, rodada.sala_id, userId);
+  const jogador = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
   if (jogador.id !== perguntaAtual.destinatario_id) forbidden("Não é sua vez de responder");
 
   if (new Date() > new Date(estado.timer_end)) {

@@ -81,6 +81,7 @@ export interface Jogador {
   pontuacao: number;
   ativo: boolean;
   conectado: boolean;
+  is_bot: boolean;
   entrou_em: string;
 }
 
@@ -156,35 +157,45 @@ export interface ProximoTurnoPayload {
   rodada_id: string;
 }
 
+/**
+ * Ações de jogo aceitam um bot_id opcional: o anfitrião (e somente ele)
+ * executa a ação em nome de um jogador bot da sala (ver bot-agir).
+ */
 export interface DizerPalavraPayload {
   rodada_id: string;
   palavra: string;
+  bot_id?: string;
 }
 
 export interface FazerPerguntaPayload {
   rodada_id: string;
   destinatario_id: string;
   texto: string;
+  bot_id?: string;
 }
 
 export interface ResponderPerguntaPayload {
   rodada_id: string;
   resposta: string;
+  bot_id?: string;
 }
 
 export interface AcusarPayload {
   rodada_id: string;
   acusado_id: string;
+  bot_id?: string;
 }
 
 export interface VotarPayload {
   rodada_id: string;
   aprovado: boolean;
+  bot_id?: string;
 }
 
 export interface AdivinharPayload {
   rodada_id: string;
   evento_id: number;
+  bot_id?: string;
 }
 
 export interface EncerrarPorTempoPayload {
@@ -194,9 +205,23 @@ export interface EncerrarPorTempoPayload {
 export interface AdivinharFimTempoPayload {
   rodada_id: string;
   evento_id: number;
+  bot_id?: string;
 }
 
 export interface FinalizarAdivinhacaoFimTempoPayload {
+  rodada_id: string;
+}
+
+export interface AdicionarBotPayload {
+  sala_id: string;
+}
+
+export interface RemoverBotPayload {
+  sala_id: string;
+  jogador_id: string;
+}
+
+export interface BotAgirPayload {
   rodada_id: string;
 }
 

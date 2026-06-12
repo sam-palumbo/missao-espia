@@ -227,6 +227,7 @@ Single Edge Function (`/functions/v1/game`) with action-based routing. All reque
 | pontuacao | INT         | NOT NULL DEFAULT 0                   |
 | ativo     | BOOLEAN     | NOT NULL DEFAULT true                |
 | conectado | BOOLEAN     | NOT NULL DEFAULT true                |
+| is_bot    | BOOLEAN     | NOT NULL DEFAULT false               |
 | entrou_em | TIMESTAMPTZ | NOT NULL DEFAULT now()               |
 
 #### `rodadas` (Rounds)
@@ -302,6 +303,9 @@ Request body: `{ action: string, payload: object }`
 | `votar`             | votar.ts             | Register vote, resolve when all eligible have voted   |
 | `adivinhar`         | adivinhar.ts         | Spy submits guess, resolve round immediately          |
 | `encerrar_rodada`   | encerrar-rodada.ts   | Calculate scores, advance to next round or end game   |
+| `adicionar_bot`     | adicionar-bot.ts     | Host adds a bot player in the lobby                   |
+| `remover_bot`       | remover-bot.ts       | Host removes a bot player in the lobby                |
+| `bot_agir`          | bot-agir.ts          | Host-triggered tick: server performs one pending bot move |
 
 ### Payloads (TypeScript)
 
@@ -317,6 +321,11 @@ interface ResponderPerguntaPayload { rodada_id: string; resposta: string }
 interface AcusarPayload   { rodada_id: string; acusado_id: string }
 interface VotarPayload    { rodada_id: string; aprovado: boolean }
 interface AdivinharPayload { rodada_id: string; evento_id: number }
+interface AdicionarBotPayload { sala_id: string }
+interface RemoverBotPayload   { sala_id: string; jogador_id: string }
+interface BotAgirPayload      { rodada_id: string }
+// Gameplay payloads also accept an optional bot_id: the host (and only the
+// host) executes the action on behalf of a bot player (used by bot_agir).
 ```
 
 ---
@@ -472,6 +481,10 @@ Calculated per round by `calcularPontuacao()` in `lib/pontuacao.ts`.
 `scripts/bots.mjs` — Node.js script that creates automated bot players for testing. Joins room, passes turns, accuses, and votes automatically.
 
 Usage: `node scripts/bots.mjs <ROOM_CODE> <NUM_BOTS>`
+
+### In-Game Bots
+
+The host can add bots from the lobby (`adicionar_bot`/`remover_bot`). Bots are `jogadores` rows with `is_bot = true` and no `user_id`. During the game, the host's client calls `bot_agir` every ~3s; the server performs at most one pending bot move per call (word, question, answer, vote, accusation, or guess), reusing the normal handlers via the `bot_id` delegation in their payloads.
 
 ---
 

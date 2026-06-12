@@ -55,6 +55,15 @@ export const gameActions = {
   definirModo: (sala_id: string, modo: ModoSala) =>
     callGame<{ ok: true; modo: ModoSala }>("definir_modo", { sala_id, modo }),
 
+  adicionarBot: (sala_id: string) =>
+    callGame<{ jogador: { id: string; apelido: string } }>("adicionar_bot", { sala_id }),
+
+  removerBot: (sala_id: string, jogador_id: string) =>
+    callGame<{ ok: true }>("remover_bot", { sala_id, jogador_id }),
+
+  botAgir: (rodada_id: string) =>
+    callGame<{ agiu: boolean; acao?: string }>("bot_agir", { rodada_id }),
+
   iniciarRodada: (sala_id: string) =>
     callGame<{ rodada: { id: string } }>("iniciar_rodada", { sala_id }),
 

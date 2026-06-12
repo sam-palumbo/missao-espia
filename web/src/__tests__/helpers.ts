@@ -114,6 +114,7 @@ export function makePlayer(overrides: Partial<Player> = {}): Player {
     pontuacao: 0,
     ativo: true,
     conectado: true,
+    is_bot: false,
     entrou_em: "2026-01-01T00:00:00Z",
     ...overrides,
   };

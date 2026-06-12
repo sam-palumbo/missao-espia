@@ -103,6 +103,25 @@ export async function getJogadorById(db: SupabaseClient, id: string): Promise<Jo
   return data as Jogador;
 }
 
+/**
+ * Resolve o jogador que executa uma ação de jogo. Sem bot_id, é o jogador
+ * do usuário autenticado. Com bot_id, o anfitrião (e somente ele) age em
+ * nome de um jogador bot da sala — usado pelo handler bot_agir.
+ */
+export async function getJogadorAtor(
+  db: SupabaseClient,
+  salaId: string,
+  userId: string,
+  botId?: string,
+): Promise<Jogador> {
+  if (!botId) return getJogadorByUserId(db, salaId, userId);
+  const sala = await getSalaById(db, salaId);
+  if (sala.anfitriao !== userId) forbidden("Apenas o anfitrião pode agir por um bot");
+  const bot = await getJogadorById(db, botId);
+  if (!bot.is_bot || bot.sala_id !== salaId) forbidden("bot_id não é um bot desta sala");
+  return bot;
+}
+
 export async function getJogadoresAtivos(db: SupabaseClient, salaId: string): Promise<Jogador[]> {
   const { data, error } = await db
     .from("jogadores")

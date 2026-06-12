@@ -11,6 +11,9 @@ import { dizerPalavra }    from "./handlers/dizer-palavra.ts";
 import { fazerPergunta }   from "./handlers/fazer-pergunta.ts";
 import { responderPergunta } from "./handlers/responder-pergunta.ts";
 import { definirModo }      from "./handlers/definir-modo.ts";
+import { adicionarBot }     from "./handlers/adicionar-bot.ts";
+import { removerBot }       from "./handlers/remover-bot.ts";
+import { botAgir }          from "./handlers/bot-agir.ts";
 import { encerrarPorTempo }              from "./handlers/encerrar-por-tempo.ts";
 import { adivinharFimTempo }             from "./handlers/adivinhar-fim-tempo.ts";
 import { finalizarAdivinhacaoFimTempo }  from "./handlers/finalizar-adivinhacao-fim-tempo.ts";
@@ -68,6 +71,9 @@ Deno.serve(async (req) => {
       case "encerrar_rodada": return json(await encerrarRodada(user.id, payload));
       case "dizer_palavra":   return json(await dizerPalavra(user.id, payload));
       case "definir_modo":    return json(await definirModo(user.id, payload));
+      case "adicionar_bot":   return json(await adicionarBot(user.id, payload));
+      case "remover_bot":     return json(await removerBot(user.id, payload));
+      case "bot_agir":        return json(await botAgir(user.id, payload));
       default: return json({ error: `Action desconhecida: ${action}` }, 400);
     }
   } catch (err) {

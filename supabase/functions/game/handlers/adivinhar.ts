@@ -3,11 +3,11 @@ import { getDb }          from "../lib/db.ts";
 import { encerrarRodada } from "./encerrar-rodada.ts";
 import { EVENTOS }        from "../lib/eventos.ts";
 import { proximoTurnoAposEliminacao, todosFalaramNaOrdem } from "../lib/regras.ts";
-import { atualizarEstadoComVersao } from "../lib/queries.ts";
+import { atualizarEstadoComVersao, getJogadorAtor } from "../lib/queries.ts";
 import type { AdivinharPayload } from "../lib/types.ts";
 
 export async function adivinhar(userId: string, payload: unknown) {
-  const { rodada_id, evento_id } = payload as AdivinharPayload;
+  const { rodada_id, evento_id, bot_id } = payload as AdivinharPayload;
   if (!rodada_id || !evento_id) throw new Error("rodada_id e evento_id obrigatórios");
 
   const db = getDb();
@@ -30,14 +30,9 @@ export async function adivinhar(userId: string, payload: unknown) {
     throw new Error(`Não é possível adivinhar na fase '${estado.fase}'`);
   }
 
-  const { data: jogador } = await db
-    .from("jogadores")
-    .select("id")
-    .eq("sala_id", rodada.sala_id)
-    .eq("user_id", userId)
-    .single();
+  const jogador = await getJogadorAtor(db, rodada.sala_id, userId, bot_id);
 
-  if (!jogador || !estado.espia_ids.includes(jogador.id)) {
+  if (!estado.espia_ids.includes(jogador.id)) {
     throw Object.assign(new Error("Apenas o espia pode adivinhar"), { status: 403 });
   }
 

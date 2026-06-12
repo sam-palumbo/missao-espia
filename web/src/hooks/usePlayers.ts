@@ -15,7 +15,7 @@ export function usePlayers(salaId: string | null) {
     async function fetch() {
       const { data } = await supabase
         .from("jogadores")
-        .select("id, apelido, pontuacao, ativo, conectado, user_id")
+        .select("id, apelido, pontuacao, ativo, conectado, user_id, is_bot")
         .eq("sala_id", salaId!);
       if (data) setPlayers(data as Player[]);
     }
