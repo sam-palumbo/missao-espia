@@ -30,6 +30,11 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
     throw new Error(`Não é possível encerrar por tempo na fase '${estado.fase}'`);
   }
 
+  // Validação no servidor: sem isso qualquer cliente encerraria a rodada antes da hora.
+  if (new Date() <= new Date(estado.timer_end)) {
+    throw new Error("O tempo da rodada ainda não expirou");
+  }
+
   if (estado.espia_ids.length === 0) {
     return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
   }

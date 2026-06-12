@@ -31,6 +31,19 @@ export async function proximoTurno(userId: string, payload: unknown) {
     return encerrarPorTempo(userId, { rodada_id });
   }
 
+  // Só o jogador do turno atual (ou o anfitrião, como fallback) pode avançar —
+  // sem isso qualquer cliente poderia pular o turno dos outros.
+  const { data: caller } = await db
+    .from("jogadores")
+    .select("id")
+    .eq("sala_id", rodada.sala_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const isAnfitriao = rodada.salas?.anfitriao === userId;
+  if (!isAnfitriao && (!caller || caller.id !== estado.turno_atual)) {
+    throw Object.assign(new Error("Apenas o jogador do turno pode concluir o turno"), { status: 403 });
+  }
+
   // Buscar apelido do jogador do turno atual (para o histórico presencial)
   const { data: jogadorAtual } = await db
     .from("jogadores")
