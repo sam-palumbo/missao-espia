@@ -36,6 +36,10 @@ export async function adivinharFimTempo(userId: string, payload: unknown) {
   }
 
   const adivinhacoes: Record<string, number | null> = estado.adivinhacoes_fim_tempo ?? {};
+  // O mapa só contém espias ativos no fim do tempo — espia eliminado não participa.
+  if (!(jogador.id in adivinhacoes)) {
+    throw Object.assign(new Error("Espia eliminado não participa da adivinhação final"), { status: 403 });
+  }
   if (adivinhacoes[jogador.id] != null) {
     throw new Error("Você já adivinhou nesta rodada");
   }
@@ -47,8 +51,10 @@ export async function adivinharFimTempo(userId: string, payload: unknown) {
   const novasAdivinhacoes = { ...adivinhacoes, [jogador.id]: evento_id };
   const novoEstado = { ...estado, adivinhacoes_fim_tempo: novasAdivinhacoes };
 
-  const todosSouberam = estado.espia_ids.every(
-    (id: string) => novasAdivinhacoes[id] !== null && novasAdivinhacoes[id] !== undefined
+  // Considera apenas os espias do mapa (ativos) — usar espia_ids travaria a
+  // finalização à espera de um espia eliminado que nunca poderá adivinhar.
+  const todosSouberam = Object.values(novasAdivinhacoes).every(
+    (guess) => guess !== null && guess !== undefined
   );
 
   if (todosSouberam) {

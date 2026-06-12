@@ -34,9 +34,23 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
     return encerrarRodada(userId, { rodada_id, espia_pego: false, espia_adivinhou: false });
   }
 
+  // Apenas espias ainda ativos participam da adivinhação final —
+  // espia eliminado durante a rodada não adivinha nem pontua (regra: 0 pontos).
+  const { data: espiasAtivos } = await db
+    .from("jogadores")
+    .select("id")
+    .eq("sala_id", rodada.sala_id)
+    .eq("ativo", true)
+    .in("id", estado.espia_ids);
+  const espiaIdsAtivos = (espiasAtivos ?? []).map((j: { id: string }) => j.id);
+
+  if (espiaIdsAtivos.length === 0) {
+    return encerrarRodada(userId, { rodada_id, espia_pego: true, espia_adivinhou: false });
+  }
+
   const timerAdivinhacaoEnd = new Date(Date.now() + 30_000).toISOString();
   const adivinhacoesFimTempo: Record<string, number | null> =
-    Object.fromEntries(estado.espia_ids.map((id: string) => [id, null]));
+    Object.fromEntries(espiaIdsAtivos.map((id: string) => [id, null]));
 
   const { error } = await db
     .from("rodadas")

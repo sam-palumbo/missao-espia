@@ -73,6 +73,8 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
 
   const badgeFimTempo = (espiaId: string): string => {
     if (!adivinhacoesFimTempo || !rodada) return "+2 pt";
+    // Espia ausente do mapa foi eliminado antes do fim do tempo — não pontua.
+    if (!(espiaId in adivinhacoesFimTempo)) return "0 pt";
     const guess = adivinhacoesFimTempo[espiaId] ?? null;
     return (guess !== null && guess === rodada.evento_id) ? "+3 pt" : "+2 pt";
   };
