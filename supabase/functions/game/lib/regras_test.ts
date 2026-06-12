@@ -125,19 +125,21 @@ Deno.test("todosFalaramNaOrdem: ordem_turnos vazia retorna false", () => {
 
 Deno.test("proximoTurnoAposEliminacao: eliminado não é o turno atual → turno não muda", () => {
   // j3 (espia) adivinha errado fora do seu turno; j1 continua jogando
-  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j1"), "j1");
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j1"), { proximo: "j1", novaVolta: false });
 });
 
 Deno.test("proximoTurnoAposEliminacao: eliminado É o turno atual → avança para o próximo", () => {
   // j2 (espia) adivinha errado durante seu próprio turno → passa para j3
-  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j2", "j2"), "j3");
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j2", "j2"), { proximo: "j3", novaVolta: false });
 });
 
-Deno.test("proximoTurnoAposEliminacao: eliminado é o último na ordem → avança para o primeiro", () => {
-  // j3 (espia) é o último e adivinha errado no seu turno → passa para j1
-  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j3"), "j1");
+Deno.test("proximoTurnoAposEliminacao: eliminado é o último na ordem → volta para o primeiro e inicia nova volta", () => {
+  // j3 (espia) é o último e adivinha errado no seu turno → passa para j1;
+  // sem novaVolta, a volta seguinte seria registrada com o número da anterior
+  // (jogadores apareceriam duas vezes no mesmo turno do histórico)
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j3", "j3"), { proximo: "j1", novaVolta: true });
 });
 
 Deno.test("proximoTurnoAposEliminacao: eliminado é o primeiro, turno era do segundo → turno não muda", () => {
-  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j1", "j2"), "j2");
+  assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j1", "j2"), { proximo: "j2", novaVolta: false });
 });

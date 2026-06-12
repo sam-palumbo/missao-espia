@@ -47,17 +47,21 @@ export function isMeuTurno(estado: EstadoRodada, jogadorId: string): boolean {
  * - Se o eliminado NÃO é o jogador do turno atual, o turno não muda.
  * - Se o eliminado É o jogador do turno atual, avança para o próximo
  *   jogador na nova ordem (sem o eliminado).
+ * - `novaVolta` indica que o turno deu a volta para o início da ordem
+ *   (eliminado era o último) — o chamador deve incrementar
+ *   turno_numero_atual, senão a volta seguinte é registrada no
+ *   histórico com o número da anterior.
  */
 export function proximoTurnoAposEliminacao(
   ordemTurnos: string[],
   eliminadoId: string,
   turnoAtual: string,
-): string {
+): { proximo: string; novaVolta: boolean } {
   const novaOrdem = ordemTurnos.filter((id) => id !== eliminadoId);
-  if (turnoAtual !== eliminadoId) return turnoAtual;
+  if (turnoAtual !== eliminadoId) return { proximo: turnoAtual, novaVolta: false };
   if (novaOrdem.length === 0) throw new Error("Nenhum jogador restante após eliminação");
   const idx = ordemTurnos.indexOf(eliminadoId);
-  return novaOrdem[idx % novaOrdem.length];
+  return { proximo: novaOrdem[idx % novaOrdem.length], novaVolta: idx >= novaOrdem.length };
 }
 
 /**

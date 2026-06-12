@@ -63,7 +63,7 @@ export async function adivinhar(userId: string, payload: unknown) {
         const novaOrdem = estado.ordem_turnos.filter((id: string) => id !== jogador.id);
 
         // If it was this spy's turn, advance to the next player in the new order.
-        const proximoTurno = proximoTurnoAposEliminacao(
+        const { proximo: proximoTurno, novaVolta } = proximoTurnoAposEliminacao(
           estado.ordem_turnos,
           jogador.id,
           estado.turno_atual,
@@ -78,6 +78,7 @@ export async function adivinhar(userId: string, payload: unknown) {
               ordem_turnos: novaOrdem,
               turno_atual: proximoTurno,
               acusou_neste_turno: false,
+              turno_numero_atual: (estado.turno_numero_atual ?? 1) + (novaVolta ? 1 : 0),
             },
           })
           .eq("id", rodada_id);
