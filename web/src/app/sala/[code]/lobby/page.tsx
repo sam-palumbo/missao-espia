@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { usePlayers } from "@/hooks/usePlayers";
+import { useSala } from "@/hooks/useSala";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
@@ -28,28 +29,25 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
   const { code } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [salaId, setSalaId] = useState<string | null>(null);
-  const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
-  const [numRodadas, setNumRodadas] = useState<number | null>(null);
-  const [maxJogadores, setMaxJogadores] = useState<number>(12);
-  const [modo, setModo] = useState<"online" | "presencial">("online");
+  const { sala, notFound } = useSala(code);
+  const salaId = sala?.id ?? null;
+  const anfitriaoId = sala?.anfitriao ?? null;
+  const numRodadas = sala?.num_rodadas ?? null;
+  const maxJogadores = sala?.max_jogadores ?? 12;
+  // Modo escolhido pelo anfitrião (ou recebido via realtime) sobrepõe o da carga inicial.
+  const [modoOverride, setModoOverride] = useState<"online" | "presencial" | null>(null);
+  const modo = modoOverride ?? sala?.modo ?? "online";
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
   const players = usePlayers(salaId);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.from("salas").select("id, anfitriao, status, num_rodadas, modo, max_jogadores").eq("codigo", code).single()
-      .then(({ data }) => {
-        if (!data) { toast.error("Sala não encontrada"); router.push("/"); return; }
-        if (data.status === "jogando") { router.push(`/sala/${code}/jogo`); return; }
-        setSalaId(data.id);
-        setAnfitriaoId(data.anfitriao);
-        setNumRodadas(data.num_rodadas);
-        setMaxJogadores(data.max_jogadores ?? 12);
-        setModo(data.modo ?? "online");
-      });
-  }, [code, router]);
+    if (notFound) { toast.error("Sala não encontrada"); router.push("/"); }
+  }, [notFound, router]);
+
+  useEffect(() => {
+    if (sala?.status === "jogando") router.push(`/sala/${code}/jogo`);
+  }, [sala?.status, code, router]);
 
   useEffect(() => {
     if (!salaId) return;
@@ -59,7 +57,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "salas", filter: `id=eq.${salaId}` },
         (payload) => {
           if (payload.new.status === "jogando") router.push(`/sala/${code}/jogo`);
-          if (payload.new.modo) setModo(payload.new.modo);
+          if (payload.new.modo) setModoOverride(payload.new.modo);
         })
       .subscribe();
     const interval = setInterval(async () => {
@@ -87,7 +85,7 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
     if (!salaId || !isHost || novo === modo) return;
     try {
       await gameActions.definirModo(salaId, novo);
-      setModo(novo);
+      setModoOverride(novo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao mudar modo");
     }

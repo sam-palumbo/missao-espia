@@ -8,7 +8,7 @@ import { usePlayers } from "@/hooks/usePlayers";
 import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
-import { createClient } from "@/lib/supabase";
+import { useSala } from "@/hooks/useSala";
 import { PageShell, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 const listVariants = { show: { transition: { staggerChildren: 0.07, delayChildren: 0.25 } } };
@@ -21,9 +21,10 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   const { code } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [salaId, setSalaId] = useState<string | null>(null);
-  const [anfitriaoId, setAnfitriaoId] = useState<string | null>(null);
-  const [salaEncerrada, setSalaEncerrada] = useState(false);
+  const { sala } = useSala(code);
+  const salaId = sala?.id ?? null;
+  const anfitriaoId = sala?.anfitriao ?? null;
+  const salaEncerrada = sala?.status === "encerrada";
   const [revealed, setRevealed] = useState(false);
   const [starting, setStarting] = useState(false);
   const [rodadaInicialId, setRodadaInicialId] = useState<string | null>(null);
@@ -31,18 +32,6 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
 
   const rodada = useGameState(salaId);
   const players = usePlayers(salaId);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.from("salas").select("id, status, anfitriao").eq("codigo", code).single()
-      .then(({ data }) => {
-        if (data) {
-          setSalaId(data.id);
-          setSalaEncerrada(data.status === "encerrada");
-          setAnfitriaoId(data.anfitriao);
-        }
-      });
-  }, [code]);
 
   useEffect(() => {
     if (rodada && !rodadaInicialId) setRodadaInicialId(rodada.id);

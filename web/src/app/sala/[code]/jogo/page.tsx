@@ -8,7 +8,7 @@ import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { useTimer } from "@/hooks/useTimer";
 import { gameActions } from "@/lib/game-actions";
-import { createClient } from "@/lib/supabase";
+import { useSala } from "@/hooks/useSala";
 import { toast } from "sonner";
 import { PageShell, InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
 import { isPrimeiroTurno, isEspia, estaForaDoTurno, isMeuTurno } from "@shared/regras";
@@ -30,13 +30,14 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const { code } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [salaId, setSalaId] = useState<string | null>(null);
+  const { sala } = useSala(code);
+  const salaId = sala?.id ?? null;
   const players = usePlayers(salaId);
   const rodada = useGameState(salaId);
 
-  const [modo, setModo] = useState<"online" | "presencial">("online")
-  const [testamentos, setTestamentos] = useState<string[]>(["AT", "NT"]);
-  const [anfitriao, setAnfitriao] = useState<string | null>(null);
+  const modo = sala?.modo ?? "online";
+  const testamentos = sala?.testamentos ?? ["AT", "NT"];
+  const anfitriao = sala?.anfitriao ?? null;
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAccuse, setShowAccuse] = useState(false);
   const [showGuess, setShowGuess] = useState(false);
@@ -61,19 +62,6 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   const encerradoPorTempoRef = useRef(false);
   const finalizadoFimTempoRef = useRef(false);
   const lastRodadaIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.from("salas").select("id, modo, testamentos, anfitriao").eq("codigo", code).single()
-      .then(({ data }) => {
-        if (data) {
-          setSalaId(data.id);
-          setModo(data.modo ?? "online");
-          setTestamentos(data.testamentos ?? ["AT", "NT"]);
-          setAnfitriao(data.anfitriao ?? null);
-        }
-      });
-  }, [code]);
 
   useEffect(() => {
     if (rodada?.estado.fase === "resultado") router.push(`/sala/${code}/resultado`);

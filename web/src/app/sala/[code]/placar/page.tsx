@@ -1,21 +1,15 @@
 "use client";
-import { use, useState, useEffect } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { usePlayers } from "@/hooks/usePlayers";
-import { createClient } from "@/lib/supabase";
+import { useSala } from "@/hooks/useSala";
 import { PageShell, InsetFrame, MEMedallion, MEAvatar, MERule, Eyebrow, PrimaryBtn, OutlineBtn, T, F } from "@/components/ui/design";
 
 export default function PlacarPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
-  const [salaId, setSalaId] = useState<string | null>(null);
-  const players = usePlayers(salaId);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.from("salas").select("id").eq("codigo", code).single()
-      .then(({ data }) => { if (data) setSalaId(data.id); });
-  }, [code]);
+  const { sala } = useSala(code);
+  const players = usePlayers(sala?.id ?? null);
 
   const sorted = [...players].sort((a, b) => b.pontuacao - a.pontuacao);
   const max = sorted[0]?.pontuacao ?? 1;
