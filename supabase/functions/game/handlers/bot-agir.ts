@@ -4,13 +4,19 @@
 // anfitrião chama esta action periodicamente enquanto a rodada está ativa;
 // o ritmo das chamadas é o que dá a cadência "humana" aos bots.
 //
-// As decisões (palavra, pergunta, voto, adivinhação aleatória) vivem aqui no
-// servidor; a execução reusa os handlers normais via bot_id, que validam as
-// regras do jogo como para qualquer jogador.
+// As decisões vêm da IA (lib/bot-ia.ts, Claude) quando ANTHROPIC_API_KEY está
+// configurada, com fallback aleatório (lib/bot.ts) em qualquer falha; a
+// execução reusa os handlers normais via bot_id, que validam as regras do
+// jogo como para qualquer jogador.
 import { getDb } from "../lib/db.ts";
 import { getRodadaWithSala, getJogadoresAtivos, forbidden } from "../lib/queries.ts";
 import { isPrimeiroTurno } from "../lib/regras.ts";
+import { EVENTOS } from "../lib/eventos.ts";
 import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, RESPOSTAS_BOT } from "../lib/bot.ts";
+import {
+  acusadoIA, adivinhacaoIA, palavraIA, perguntaIA, respostaIA, votoIA,
+  type ContextoBotIA,
+} from "../lib/bot-ia.ts";
 import { dizerPalavra } from "./dizer-palavra.ts";
 import { fazerPergunta } from "./fazer-pergunta.ts";
 import { responderPergunta } from "./responder-pergunta.ts";
@@ -48,6 +54,22 @@ export async function botAgir(userId: string, payload: unknown) {
 
   const fase = estado.fase;
 
+  const ativos = await getJogadoresAtivos(db, rodada.sala_id);
+  const eventoRodada = EVENTOS.find((e) => e.id === rodada.evento_id) ?? null;
+
+  // Contexto que a IA enxerga ao decidir por um bot — o espia nunca recebe o evento.
+  function contexto(bot: Jogador): ContextoBotIA {
+    const souEspia = estado.espia_ids.includes(bot.id);
+    return {
+      apelido: bot.apelido,
+      souEspia,
+      evento: souEspia || !eventoRodada ? null : { evento: eventoRodada.evento, local: eventoRodada.local },
+      jogadores: ativos.filter((j) => j.id !== bot.id).map((j) => ({ id: j.id, apelido: j.apelido })),
+      palavras: estado.palavras_turno ?? [],
+      historico: estado.historico ?? [],
+    };
+  }
+
   // ── Turno de um bot (palavra ou pergunta) ─────────────────────────────
   if (fase === "turno_palavras" || fase === "jogando") {
     const bot = botPorId.get(estado.turno_atual);
@@ -59,24 +81,27 @@ export async function botAgir(userId: string, payload: unknown) {
         await proximoTurno(userId, { rodada_id });
         return { agiu: true, acao: "proximo_turno" };
       }
-      await dizerPalavra(userId, { rodada_id, palavra: aleatorio(PALAVRAS_BOT), bot_id: bot.id });
+      const palavra = (await palavraIA(contexto(bot))) ?? aleatorio(PALAVRAS_BOT);
+      await dizerPalavra(userId, { rodada_id, palavra, bot_id: bot.id });
       return { agiu: true, acao: "dizer_palavra" };
     }
 
     const souEspia = estado.espia_ids.includes(bot.id);
 
     if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < CHANCE_ADIVINHAR_ESPIA) {
-      await adivinhar(userId, { rodada_id, evento_id: eventoAleatorioId(), bot_id: bot.id });
+      const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
+      await adivinhar(userId, { rodada_id, evento_id, bot_id: bot.id });
       return { agiu: true, acao: "adivinhar" };
     }
 
-    const alvos = (await getJogadoresAtivos(db, rodada.sala_id)).filter((j) => j.id !== bot.id);
+    const alvos = ativos.filter((j) => j.id !== bot.id);
 
     if (
       !souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
       !isPrimeiroTurno(estado) && Math.random() < CHANCE_ACUSAR
     ) {
-      await acusar(userId, { rodada_id, acusado_id: aleatorio(alvos).id, bot_id: bot.id });
+      const acusado_id = (await acusadoIA(contexto(bot))) ?? aleatorio(alvos).id;
+      await acusar(userId, { rodada_id, acusado_id, bot_id: bot.id });
       return { agiu: true, acao: "acusar" };
     }
 
@@ -85,10 +110,11 @@ export async function botAgir(userId: string, payload: unknown) {
       return { agiu: true, acao: "proximo_turno" };
     }
 
+    const pergunta = await perguntaIA(contexto(bot));
     await fazerPergunta(userId, {
       rodada_id,
-      destinatario_id: aleatorio(alvos).id,
-      texto: aleatorio(PERGUNTAS_BOT),
+      destinatario_id: pergunta?.destinatario_id ?? aleatorio(alvos).id,
+      texto: pergunta?.texto ?? aleatorio(PERGUNTAS_BOT),
       bot_id: bot.id,
     });
     return { agiu: true, acao: "fazer_pergunta" };
@@ -96,10 +122,11 @@ export async function botAgir(userId: string, payload: unknown) {
 
   // ── Bot deve responder a pergunta pendente ────────────────────────────
   if (fase === "aguardando_resposta") {
-    const destinatarioId = estado.pergunta_atual?.destinatario_id;
-    const bot = destinatarioId ? botPorId.get(destinatarioId) : undefined;
-    if (!bot) return { agiu: false };
-    await responderPergunta(userId, { rodada_id, resposta: aleatorio(RESPOSTAS_BOT), bot_id: bot.id });
+    const perguntaAtual = estado.pergunta_atual;
+    const bot = perguntaAtual ? botPorId.get(perguntaAtual.destinatario_id) : undefined;
+    if (!bot || !perguntaAtual) return { agiu: false };
+    const resposta = (await respostaIA(contexto(bot), perguntaAtual)) ?? aleatorio(RESPOSTAS_BOT);
+    await responderPergunta(userId, { rodada_id, resposta, bot_id: bot.id });
     return { agiu: true, acao: "responder_pergunta" };
   }
 
@@ -113,7 +140,9 @@ export async function botAgir(userId: string, payload: unknown) {
     const jaVotaram = new Set((votos ?? []).map((v) => v.votante_id));
     const pendente = bots.find((b) => b.ativo && b.id !== estado.acusado_id && !jaVotaram.has(b.id));
     if (!pendente) return { agiu: false };
-    await votar(userId, { rodada_id, aprovado: Math.random() < CHANCE_VOTO_SIM, bot_id: pendente.id });
+    const acusadoApelido = ativos.find((j) => j.id === estado.acusado_id)?.apelido ?? "?";
+    const aprovado = (await votoIA(contexto(pendente), acusadoApelido)) ?? (Math.random() < CHANCE_VOTO_SIM);
+    await votar(userId, { rodada_id, aprovado, bot_id: pendente.id });
     return { agiu: true, acao: "votar" };
   }
 
@@ -121,7 +150,8 @@ export async function botAgir(userId: string, payload: unknown) {
   if (fase === "adivinhacao") {
     const bot = estado.acusado_id ? botPorId.get(estado.acusado_id) : undefined;
     if (!bot || !estado.espia_ids.includes(bot.id)) return { agiu: false };
-    await adivinhar(userId, { rodada_id, evento_id: eventoAleatorioId(), bot_id: bot.id });
+    const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
+    await adivinhar(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar" };
   }
 
@@ -130,11 +160,9 @@ export async function botAgir(userId: string, payload: unknown) {
     const pendentes = Object.entries(estado.adivinhacoes_fim_tempo ?? {})
       .filter(([id, guess]) => guess == null && botPorId.has(id));
     if (pendentes.length === 0) return { agiu: false };
-    await adivinharFimTempo(userId, {
-      rodada_id,
-      evento_id: eventoAleatorioId(),
-      bot_id: pendentes[0][0],
-    });
+    const bot = botPorId.get(pendentes[0][0])!;
+    const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
+    await adivinharFimTempo(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar_fim_tempo" };
   }
 

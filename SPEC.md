@@ -484,7 +484,9 @@ Usage: `node scripts/bots.mjs <ROOM_CODE> <NUM_BOTS>`
 
 ### In-Game Bots
 
-The host can add bots from the lobby (`adicionar_bot`/`remover_bot`). Bots are `jogadores` rows with `is_bot = true` and no `user_id`. During the game, the host's client calls `bot_agir` every ~3s; the server performs at most one pending bot move per call (word, question, answer, vote, accusation, or guess), reusing the normal handlers via the `bot_id` delegation in their payloads.
+The host can add bots from the lobby (`adicionar_bot`/`remover_bot`). Bots are `jogadores` rows with `is_bot = true` and no `user_id`. During the game, the host's client calls `bot_agir` every ~3s (non-overlapping ticks); the server performs at most one pending bot move per call (word, question, answer, vote, accusation, or guess), reusing the normal handlers via the `bot_id` delegation in their payloads.
+
+When the `ANTHROPIC_API_KEY` secret is set on the edge function, bot decisions are made by Claude (`supabase/functions/game/lib/bot-ia.ts`, model `claude-opus-4-8`, structured outputs): each bot receives its role (the event+location only if it is not the spy), the round words, and the question/answer/vote history, and decides its word, question + target, answer, vote, accusation target, and spy guess. Timing gates (when to accuse/guess) remain random in `bot-agir.ts`. On any AI failure — or without the key — decisions fall back to the random pools in `lib/bot.ts`, so the game never stalls.
 
 ---
 

@@ -1,5 +1,6 @@
 {
   "imports": {
+    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
     "bcrypt": "https://deno.land/x/bcrypt@v0.4.1/mod.ts",
     "std/assert": "https://deno.land/std@0.224.0/assert/mod.ts"
