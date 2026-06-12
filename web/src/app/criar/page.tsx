@@ -111,6 +111,61 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 380, damping: 28 } },
 };
 
+function TestamentoCard({ nome, medallion, numLocais, idMin, idMax, selected, onToggle }: {
+  nome: string; medallion: React.ComponentProps<typeof MEMedallion>["inset"];
+  numLocais: number; idMin: number; idMax: number;
+  selected: boolean; onToggle: () => void;
+}) {
+  return (
+    <motion.button
+      variants={itemVariants}
+      onClick={onToggle}
+      whileTap={{ scale: 0.97 }}
+      style={{
+        background: selected ? T.card : T.bg,
+        border: `2px solid ${selected ? T.sienna : T.hairlineStrong}`,
+        borderRadius: 18,
+        padding: "16px 14px 14px",
+        cursor: "pointer",
+        textAlign: "left",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        position: "relative",
+        boxShadow: selected ? "0 8px 24px -12px rgba(58,42,20,0.25)" : "none",
+        transition: "box-shadow 0.2s, border-color 0.2s, background 0.2s",
+      }}
+    >
+      {selected && <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.28} opacity2={0.12} />}
+      <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <MEMedallion size={40} inset={medallion} variant="light" />
+        <AnimatePresence>
+          {selected && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+              style={{ width: 20, height: 20, borderRadius: 10, background: T.sienna, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12 L10 17 L19 7" />
+              </svg>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <div style={{ position: "relative" }}>
+        <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: selected ? T.ink : T.muted, letterSpacing: "0.01em" }}>{nome}</div>
+        <div style={{ fontFamily: F.mono, fontSize: 11, color: selected ? T.sienna : T.muted, marginTop: 2 }}>{numLocais} locais</div>
+        <div style={{ marginTop: 6, display: "inline-flex", background: selected ? T.siennaSoft : T.hairline, borderRadius: 6, padding: "3px 8px", fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: selected ? T.sienna : T.muted, letterSpacing: "0.05em" }}>
+          {String(idMin).padStart(2,"0")} – {String(idMax).padStart(2,"0")}
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
 export default function CriarPage() {
   const router = useRouter();
   const [apelido, setApelido] = useState("");
@@ -188,101 +243,18 @@ export default function CriarPage() {
           animate="show"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}
         >
-          {/* AT card */}
-          <motion.button
-            variants={itemVariants}
-            onClick={() => { if (ntSel || !atSel) setAtSel(v => !v); }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              background: atSel ? T.card : T.bg,
-              border: `2px solid ${atSel ? T.sienna : T.hairlineStrong}`,
-              borderRadius: 18,
-              padding: "16px 14px 14px",
-              cursor: "pointer",
-              textAlign: "left",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              position: "relative",
-              boxShadow: atSel ? "0 8px 24px -12px rgba(58,42,20,0.25)" : "none",
-              transition: "box-shadow 0.2s, border-color 0.2s, background 0.2s",
-            }}
-          >
-            {atSel && <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.28} opacity2={0.12} />}
-            <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <MEMedallion size={40} inset="tablets" variant={atSel ? "light" : "light"} />
-              <AnimatePresence>
-                {atSel && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                    style={{ width: 20, height: 20, borderRadius: 10, background: T.sienna, display: "flex", alignItems: "center", justifyContent: "center" }}
-                  >
-                    <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12 L10 17 L19 7" />
-                    </svg>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <div style={{ position: "relative" }}>
-              <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: atSel ? T.ink : T.muted, letterSpacing: "0.01em" }}>Antigo Testamento</div>
-              <div style={{ fontFamily: F.mono, fontSize: 11, color: atSel ? T.sienna : T.muted, marginTop: 2 }}>{atEvents.length} locais</div>
-              <div style={{ marginTop: 6, display: "inline-flex", background: atSel ? T.siennaSoft : T.hairline, borderRadius: 6, padding: "3px 8px", fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: atSel ? T.sienna : T.muted, letterSpacing: "0.05em" }}>
-                {String(atMin).padStart(2,"0")} – {String(atMax).padStart(2,"0")}
-              </div>
-            </div>
-          </motion.button>
-
-          {/* NT card */}
-          <motion.button
-            variants={itemVariants}
-            onClick={() => { if (atSel || !ntSel) setNtSel(v => !v); }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              background: ntSel ? T.card : T.bg,
-              border: `2px solid ${ntSel ? T.sienna : T.hairlineStrong}`,
-              borderRadius: 18,
-              padding: "16px 14px 14px",
-              cursor: "pointer",
-              textAlign: "left",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              position: "relative",
-              boxShadow: ntSel ? "0 8px 24px -12px rgba(58,42,20,0.25)" : "none",
-              transition: "box-shadow 0.2s, border-color 0.2s, background 0.2s",
-            }}
-          >
-            {ntSel && <InsetFrame color={T.sienna} inset={5} radius={14} opacity={0.28} opacity2={0.12} />}
-            <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <MEMedallion size={40} inset="cross-crown" variant={ntSel ? "light" : "light"} />
-              <AnimatePresence>
-                {ntSel && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                    style={{ width: 20, height: 20, borderRadius: 10, background: T.sienna, display: "flex", alignItems: "center", justifyContent: "center" }}
-                  >
-                    <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12 L10 17 L19 7" />
-                    </svg>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <div style={{ position: "relative" }}>
-              <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: ntSel ? T.ink : T.muted, letterSpacing: "0.01em" }}>Novo Testamento</div>
-              <div style={{ fontFamily: F.mono, fontSize: 11, color: ntSel ? T.sienna : T.muted, marginTop: 2 }}>{ntEvents.length} locais</div>
-              <div style={{ marginTop: 6, display: "inline-flex", background: ntSel ? T.siennaSoft : T.hairline, borderRadius: 6, padding: "3px 8px", fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: ntSel ? T.sienna : T.muted, letterSpacing: "0.05em" }}>
-                {String(ntMin).padStart(2,"0")} – {String(ntMax).padStart(2,"0")}
-              </div>
-            </div>
-          </motion.button>
+          <TestamentoCard
+            nome="Antigo Testamento" medallion="tablets"
+            numLocais={atEvents.length} idMin={atMin} idMax={atMax}
+            selected={atSel}
+            onToggle={() => { if (ntSel || !atSel) setAtSel(v => !v); }}
+          />
+          <TestamentoCard
+            nome="Novo Testamento" medallion="cross-crown"
+            numLocais={ntEvents.length} idMin={ntMin} idMax={ntMax}
+            selected={ntSel}
+            onToggle={() => { if (atSel || !ntSel) setNtSel(v => !v); }}
+          />
         </motion.div>
 
         {/* Stats row */}
