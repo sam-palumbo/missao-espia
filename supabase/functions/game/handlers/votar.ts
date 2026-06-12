@@ -104,10 +104,12 @@ export async function votar(userId: string, payload: unknown) {
   await db.from("votos").delete().eq("rodada_id", rodada_id).eq("acusado_id", estado.acusado_id);
 
   if (resultado === "rejeitado") {
-    // Votação rejeitada: voltar para jogando
+    // Votação rejeitada: voltar para jogando. acusou_neste_turno permanece true —
+    // regra: no máximo UMA acusação por turno, mesmo rejeitada; o jogador ainda
+    // faz sua pergunta e só pode acusar de novo no próximo turno dele.
     const { error } = await db
       .from("rodadas")
-      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, acusou_neste_turno: false, historico: historicoComVotacao } })
+      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, historico: historicoComVotacao } })
       .eq("id", rodada_id);
     if (error) throw new Error(error.message);
     return { resultado_votacao: "rejeitado" };
