@@ -79,6 +79,14 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
     return (guess !== null && guess === rodada.evento_id) ? "+3 pt" : "+2 pt";
   };
 
+  const badgePontos = (espiaId: string): string => {
+    if (isFimTempo) return badgeFimTempo(espiaId);
+    const espia = players.find(p => p.id === espiaId);
+    const thisPego = espia ? !espia.ativo : espiaPego;
+    if (!espiaAdivinhou) return thisPego ? "0 pt" : "+2 pt";
+    return thisPego ? "+1 pt" : "+3 pt";
+  };
+
   if (!rodada || players.length === 0) {
     return (
       <main style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
@@ -130,7 +138,7 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
                   : (espiaAdivinhou ? "Adivinhou o local" : "Não adivinhou o local")}</Eyebrow>
               </div>
               <div style={{ background: espiaAdivinhou ? T.siennaSoft : T.brickSoft, color: espiaAdivinhou ? T.sienna : T.brick, padding: "5px 10px", borderRadius: 999, fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>
-                {isFimTempo ? badgeFimTempo(espias[0].id) : (espiaAdivinhou ? "+1 pt" : "0 pt")}
+                {badgePontos(espias[0].id)}
               </div>
             </div>
             {/* Event reveal */}

@@ -69,9 +69,17 @@ export async function _finalizarAdivinhacaoFimTempo(
     await db.rpc("incrementar_pontuacao", { jogador_id: espiaId, delta: pontos });
   }
 
+  const alguemAcertou = Object.values(adivinhacoes).some(
+    (guess) => guess !== null && guess === rodada.evento_id,
+  );
+
   await atualizarEstadoComVersao(
     db, rodada_id, versaoLida,
-    { ...estado, fase: "resultado" },
+    {
+      ...estado,
+      fase: "resultado",
+      adivinhou_evento_id: alguemAcertou ? rodada.evento_id : null,
+    },
     { encerrada_em: new Date().toISOString() },
   );
 
