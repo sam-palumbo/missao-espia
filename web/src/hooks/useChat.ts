@@ -38,10 +38,11 @@ export function useChat(salaId: string | null) {
     return () => { supabase.removeChannel(channel); };
   }, [salaId]);
 
-  const enviar = useCallback(async (salaId: string, jogadorId: string, apelido: string, texto: string) => {
+  const enviar = useCallback(async (jogadorId: string, apelido: string, texto: string) => {
+    if (!salaId) return;
     const supabase = createClient();
     await supabase.from("mensagens").insert({ sala_id: salaId, jogador_id: jogadorId, apelido, texto });
-  }, []);
+  }, [salaId]);
 
   return { mensagens, enviar };
 }

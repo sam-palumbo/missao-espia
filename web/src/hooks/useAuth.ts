@@ -10,6 +10,20 @@ function origin(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
 }
 
+// Executa uma operação de auth e converte qualquer erro (retornado ou lançado)
+// em mensagem traduzida no formato Resultado.
+async function comErroTraduzido(
+  op: (supabase: ReturnType<typeof createClient>) => Promise<{ error: unknown }>
+): Promise<Resultado> {
+  try {
+    const { error } = await op(createClient());
+    if (error) return { error: traduzErroAuth(error) };
+    return {};
+  } catch (err) {
+    return { error: traduzErroAuth(err) };
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,36 +57,23 @@ export function useAuth() {
   // ── Criar conta (US1) ──────────────────────────────────────────
   // Converte a sessão anônima (mesmo user.id, preserva histórico — D1/P1).
   // Sem sessão anônima, faz signUp (fallback, caso de borda).
-  async function criarConta(email: string, password: string): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      if (isAnonymous) {
-        const { error } = await supabase.auth.updateUser({ email, password });
-        if (error) return { error: traduzErroAuth(error) };
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${origin()}/auth/callback` },
-        });
-        if (error) return { error: traduzErroAuth(error) };
-      }
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+  function criarConta(email: string, password: string): Promise<Resultado> {
+    return comErroTraduzido((supabase) =>
+      isAnonymous
+        ? supabase.auth.updateUser({ email, password })
+        : supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${origin()}/auth/callback` },
+          })
+    );
   }
 
   // ── Login com e-mail/senha (US3) ───────────────────────────────
-  async function entrar(email: string, password: string): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: traduzErroAuth(error) };
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+  function entrar(email: string, password: string): Promise<Resultado> {
+    return comErroTraduzido((supabase) =>
+      supabase.auth.signInWithPassword({ email, password })
+    );
   }
 
   // ── Solicitar recuperação (US4) ────────────────────────────────
@@ -90,67 +91,40 @@ export function useAuth() {
   }
 
   // ── Redefinir senha (US5) ──────────────────────────────────────
-  async function redefinirSenha(password: string): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) return { error: traduzErroAuth(error) };
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+  function redefinirSenha(password: string): Promise<Resultado> {
+    return comErroTraduzido((supabase) => supabase.auth.updateUser({ password }));
   }
 
   // ── Reenviar e-mail de confirmação ─────────────────────────────
-  async function reenviarConfirmacao(email: string): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      const { error } = await supabase.auth.resend({
+  function reenviarConfirmacao(email: string): Promise<Resultado> {
+    return comErroTraduzido((supabase) =>
+      supabase.auth.resend({
         type: "signup",
         email,
         options: { emailRedirectTo: `${origin()}/auth/callback` },
-      });
-      if (error) return { error: traduzErroAuth(error) };
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+      })
+    );
   }
 
   // ── Google OAuth (US7) ─────────────────────────────────────────
   // Anônimo → vincula (preserva user.id). Senão → login/criação direta.
-  async function entrarComGoogle(): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      if (isAnonymous) {
-        const { error } = await supabase.auth.linkIdentity({
-          provider: "google",
-          options: { redirectTo: `${origin()}/auth/callback` },
-        });
-        if (error) return { error: traduzErroAuth(error) };
-      } else {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: `${origin()}/auth/callback` },
-        });
-        if (error) return { error: traduzErroAuth(error) };
-      }
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+  function entrarComGoogle(): Promise<Resultado> {
+    return comErroTraduzido((supabase) =>
+      isAnonymous
+        ? supabase.auth.linkIdentity({
+            provider: "google",
+            options: { redirectTo: `${origin()}/auth/callback` },
+          })
+        : supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: `${origin()}/auth/callback` },
+          })
+    );
   }
 
   // ── Logout (US6) ───────────────────────────────────────────────
-  async function sair(): Promise<Resultado> {
-    const supabase = createClient();
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) return { error: traduzErroAuth(error) };
-      return {};
-    } catch (err) {
-      return { error: traduzErroAuth(err) };
-    }
+  function sair(): Promise<Resultado> {
+    return comErroTraduzido((supabase) => supabase.auth.signOut());
   }
 
   return {
