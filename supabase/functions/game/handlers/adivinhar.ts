@@ -117,5 +117,6 @@ export async function adivinhar(userId: string, payload: unknown) {
     espia_adivinhou: true,
     espia_pego_id: espiaPego ? jogador.id : undefined,
     espia_adivinhador_id: jogador.id,
+    adivinhou_evento_id: evento_id,
   });
 }

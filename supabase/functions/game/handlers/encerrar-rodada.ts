@@ -11,10 +11,22 @@ interface EncerrarPayload {
   espia_pego_id?: string;
   /** Espia que acertou a adivinhação — só ele recebe o +1 (multi-espia). */
   espia_adivinhador_id?: string;
+  /** Evento_id que o espia adivinhou (armazenado no estado para o frontend exibir). */
+  adivinhou_evento_id?: number;
+}
+
+/** Monta o estado final da rodada — função pura para facilitar testes. */
+export function montarEstadoResultado(
+  estado: Record<string, unknown>,
+  adivinhou_evento_id?: number,
+): Record<string, unknown> {
+  return adivinhou_evento_id != null
+    ? { ...estado, fase: "resultado", adivinhou_evento_id }
+    : { ...estado, fase: "resultado" };
 }
 
 export async function encerrarRodada(_userId: string, payload: unknown) {
-  const { rodada_id, espia_pego, espia_adivinhou, espia_pego_id, espia_adivinhador_id } =
+  const { rodada_id, espia_pego, espia_adivinhou, espia_pego_id, espia_adivinhador_id, adivinhou_evento_id } =
     payload as EncerrarPayload;
   if (!rodada_id) throw new Error("rodada_id obrigatório");
 
@@ -61,9 +73,11 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
     }
   }
 
+  const novoEstado = montarEstadoResultado(estado, adivinhou_evento_id);
+
   await atualizarEstadoComVersao(
     db, rodada_id, rodada.versao,
-    { ...estado, fase: "resultado" },
+    novoEstado,
     { encerrada_em: new Date().toISOString() },
   );
 
