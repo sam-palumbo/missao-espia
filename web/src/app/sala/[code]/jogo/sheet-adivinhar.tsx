@@ -12,13 +12,22 @@ interface Props {
   acting: boolean;
   onConfirm: () => void;
   testamentos?: string[];
+  /** Contagem regressiva exibida quando a adivinhação tem tempo limite (ex: espia pego tem 30s). */
+  timerDisplay?: string;
 }
 
-export function SheetAdivinhar({ open, onClose, title, selectedGuessId, setSelectedGuessId, acting, onConfirm, testamentos = ["AT", "NT"] }: Props) {
+export function SheetAdivinhar({ open, onClose, title, selectedGuessId, setSelectedGuessId, acting, onConfirm, testamentos = ["AT", "NT"], timerDisplay }: Props) {
   const eventosFiltrados = EVENTOS.filter(e => testamentos.includes(e.testament));
   return (
     <BottomSheet open={open} onBackdropClick={onClose} motionKey="guess" maxHeight="80dvh" paddingBottom={0} label={title}>
-      <Eyebrow color={T.inkSoft}>{title}</Eyebrow>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Eyebrow color={T.inkSoft}>{title}</Eyebrow>
+        {timerDisplay && (
+          <span style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: T.brick, fontVariantNumeric: "tabular-nums" }} aria-label="Tempo restante para adivinhar">
+            {timerDisplay}
+          </span>
+        )}
+      </div>
       <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 600, color: T.ink }}>Onde você está?</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingBottom: 8 }}>
         {eventosFiltrados.map(e => (

@@ -110,7 +110,10 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   }, [secs, fase, rodada, user, anfitriao]);
 
   useEffect(() => {
-    if (adivTimer.secs === 0 && fase === "adivinhacao_fim_tempo" && rodada?.estado.timer_adivinhacao_end && !finalizadoFimTempoRef.current && new Date() > new Date(rodada.estado.timer_adivinhacao_end)) {
+    // Cobre as duas fases com timer de adivinhação: fim por tempo (todos os espias)
+    // e espia pego por votação (30s para adivinhar antes de encerrar como pego).
+    const faseAdivinhacao = fase === "adivinhacao_fim_tempo" || fase === "adivinhacao";
+    if (adivTimer.secs === 0 && faseAdivinhacao && rodada?.estado.timer_adivinhacao_end && !finalizadoFimTempoRef.current && new Date() > new Date(rodada.estado.timer_adivinhacao_end)) {
       finalizadoFimTempoRef.current = true;
       gameActions.finalizarAdivinhacaoFimTempo(rodada.id).catch(() => {});
     }
@@ -119,6 +122,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   useEffect(() => {
     if (fase === "adivinhacao_fim_tempo" && isSpy && !adivinheiNaFimTempo) setShowFimTempoGuess(true);
   }, [fase, isSpy, adivinheiNaFimTempo]);
+
 
   // Combina dois sinais por causa da race condition entre usePlayers e useGameState:
   // useGameState pode atualizar ordem_turnos antes de usePlayers refletir ativo=false (e vice-versa).
@@ -135,6 +139,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       setShowFimTempoGuess(false);
     }
   }, [meuEliminado]);
+
+  // Espia pego por votação: abre o sheet de adivinhação automaticamente — ele
+  // tem 30s e não deve perder tempo procurando o botão. Declarado APÓS o efeito
+  // de meuEliminado: o espia pego sai de ordem_turnos (meuEliminado=true) no
+  // mesmo update que muda a fase, e este efeito precisa prevalecer.
+  useEffect(() => {
+    if (fase === "adivinhacao" && rodada?.estado.acusado_id && rodada.estado.acusado_id === meuJogador?.id) {
+      setShowGuess(true);
+    }
+  }, [fase, rodada?.estado.acusado_id, meuJogador?.id]);
 
   // Envolve uma ação de jogo com o ciclo padrão setActing/try-catch-toast/finally.
   // onSuccess roda só se a ação resolver sem erro.
@@ -322,9 +336,16 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <SheetFazerPergunta open={showAskQuestion} onClose={() => setShowAskQuestion(false)} players={players} meuId={meuJogador?.id} selectedRecipientId={selectedRecipientId} setSelectedRecipientId={setSelectedRecipientId} questionInput={questionInput} setQuestionInput={setQuestionInput} acting={acting} onSubmit={handleFazerPergunta} />
       <SheetResponderPergunta open={showAnswerQuestion} perguntaAtual={rodada?.estado.pergunta_atual} answerInput={answerInput} setAnswerInput={setAnswerInput} acting={acting} onSubmit={handleResponderPergunta} onClose={() => { setShowAnswerQuestion(false); setAnswerInput(""); }} />
       <SheetDizerPalavra open={showWordInput} onClose={() => setShowWordInput(false)} wordInput={wordInput} setWordInput={setWordInput} acting={acting} onSubmit={handleDizerPalavra} />
-      <SheetAdivinhar open={showGuess} onClose={() => setShowGuess(false)} title="Adivinhar Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinhar} testamentos={testamentos} />
-      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedFimTempoGuessId} setSelectedGuessId={setSelectedFimTempoGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} />
+      <SheetAdivinhar open={showGuess} onClose={() => setShowGuess(false)} title="Adivinhar Local" selectedGuessId={selectedGuessId} setSelectedGuessId={setSelectedGuessId} acting={acting} onConfirm={handleAdivinhar} testamentos={testamentos} timerDisplay={fase === "adivinhacao" ? adivTimer.display : undefined} />
+      <SheetAdivinhar open={showFimTempoGuess} title="Tempo Esgotado — Adivinha o Local" selectedGuessId={selectedFimTempoGuessId} setSelectedGuessId={setSelectedFimTempoGuessId} acting={acting} onConfirm={handleAdivinharFimTempo} testamentos={testamentos} timerDisplay={adivTimer.display} />
       {fase === "adivinhacao_fim_tempo" && !isSpy && <BannerFimTempo adivTimerDisplay={adivTimer.display} />}
+      {fase === "adivinhacao" && !isSpy && (
+        <BannerFimTempo
+          adivTimerDisplay={adivTimer.display}
+          title="Espia desmascarado!"
+          subtitle="O espia tem 30 segundos para tentar adivinhar o local…"
+        />
+      )}
       <SheetMinhaCarta open={showMyCard} onClose={() => setShowMyCard(false)} isSpy={isSpy} evento={evento} testamentos={testamentos} />
     </PageShell>
   );

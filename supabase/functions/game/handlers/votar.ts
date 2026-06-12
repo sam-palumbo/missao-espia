@@ -1,6 +1,6 @@
 // supabase/functions/game/handlers/votar.ts
 import { getDb }                 from "../lib/db.ts";
-import { limiteEliminacoesErradas, numEspias } from "../lib/espias.ts";
+import { limiteEliminacoesErradas } from "../lib/espias.ts";
 import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
 import type { HistoricoVotacao, VotarPayload } from "../lib/types.ts";
@@ -114,11 +114,19 @@ export async function votar(userId: string, payload: unknown) {
   }
 
   if (acusadoEhEspia) {
-    // Espia pego — remover do turno e dar chance de adivinhar
+    // Espia pego — remover do turno e dar 30 segundos para adivinhar (regra da acusação)
     const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id!);
     const { error } = await db
       .from("rodadas")
-      .update({ estado: { ...estado, fase: "adivinhacao", ordem_turnos: novaOrdem, historico: historicoComVotacao } })
+      .update({
+        estado: {
+          ...estado,
+          fase: "adivinhacao",
+          ordem_turnos: novaOrdem,
+          historico: historicoComVotacao,
+          timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
+        },
+      })
       .eq("id", rodada_id);
     if (error) throw new Error(error.message);
     return { resultado_votacao: "aprovado", espia_pego: true, fase: "adivinhacao" };
@@ -130,14 +138,20 @@ export async function votar(userId: string, payload: unknown) {
   // Marcar acusado como inativo
   await db.from("jogadores").update({ ativo: false }).eq("id", estado.acusado_id);
 
-  // Verificar limite de eliminações erradas
-  // Subtrai 1 porque o acusado já foi marcado inativo na linha acima
-  const totalJogadores = (jogadoresAtivos?.length ?? 1) - 1;
-  const n = numEspias(totalJogadores);
-  const limite = limiteEliminacoesErradas(totalJogadores, n);
+  // Limite de eliminações erradas conforme a tabela das regras, calculado com
+  // os participantes do INÍCIO da rodada: nº de espias sorteados (espia_ids) e
+  // total de jogadores da sala (iniciar_rodada reativa todos). Recalcular com os
+  // ativos atuais subestimaria o limite conforme jogadores são eliminados.
+  const { count: totalJogadoresRodada } = await db
+    .from("jogadores")
+    .select("id", { count: "exact", head: true })
+    .eq("sala_id", rodada.sala_id);
+  const n = estado.espia_ids.length;
+  const limite = limiteEliminacoesErradas(totalJogadoresRodada ?? 4, n);
 
+  // Eliminações erradas são TOLERADAS até o limite — espias só vencem ao ultrapassá-lo.
   // Persistir histórico antes de eventualmente encerrar — encerrarRodada não toca historico
-  if (novasElim >= limite) {
+  if (novasElim > limite) {
     await db
       .from("rodadas")
       .update({ estado: { ...estado, historico: historicoComVotacao } })

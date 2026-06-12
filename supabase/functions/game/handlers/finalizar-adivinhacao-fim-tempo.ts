@@ -1,5 +1,6 @@
 // supabase/functions/game/handlers/finalizar-adivinhacao-fim-tempo.ts
 import { getDb }        from "../lib/db.ts";
+import { encerrarRodada } from "./encerrar-rodada.ts";
 import type { FinalizarAdivinhacaoFimTempoPayload } from "../lib/types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -19,6 +20,16 @@ export async function finalizarAdivinhacaoFimTempo(userId: string, payload: unkn
   if (rodada.encerrada_em) return { ok: true };
 
   const estado = rodada.estado;
+
+  // Espia pego por votação tem 30s para adivinhar (fase "adivinhacao");
+  // expirado o timer sem adivinhar, encerra como pego sem acerto.
+  if (estado.fase === "adivinhacao") {
+    if (!estado.timer_adivinhacao_end || new Date() <= new Date(estado.timer_adivinhacao_end)) {
+      throw new Error("O tempo de adivinhação ainda não expirou");
+    }
+    return encerrarRodada(userId, { rodada_id, espia_pego: true, espia_adivinhou: false });
+  }
+
   if (estado.fase !== "adivinhacao_fim_tempo") {
     throw new Error(`Não é possível finalizar na fase '${estado.fase}'`);
   }
@@ -37,7 +48,14 @@ export async function _finalizarAdivinhacaoFimTempo(
 ) {
   const adivinhacoes: Record<string, number | null> = estado.adivinhacoes_fim_tempo ?? {};
 
-  for (const espiaId of estado.espia_ids) {
+  // Pontua apenas os espias que participaram da adivinhação final (ativos
+  // quando o tempo acabou) — espia eliminado durante a rodada fica com 0.
+  // Fallback para espia_ids cobre rodadas antigas sem o mapa.
+  const espiasElegiveis = Object.keys(adivinhacoes).length > 0
+    ? Object.keys(adivinhacoes)
+    : estado.espia_ids;
+
+  for (const espiaId of espiasElegiveis) {
     const guess = adivinhacoes[espiaId] ?? null;
     const acertou = guess !== null && guess === rodada.evento_id;
     const pontos = acertou ? 3 : 2;
