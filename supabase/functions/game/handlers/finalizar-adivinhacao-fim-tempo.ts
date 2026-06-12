@@ -27,7 +27,12 @@ export async function finalizarAdivinhacaoFimTempo(userId: string, payload: unkn
     if (!estado.timer_adivinhacao_end || new Date() <= new Date(estado.timer_adivinhacao_end)) {
       throw new Error("O tempo de adivinhação ainda não expirou");
     }
-    return encerrarRodada(userId, { rodada_id, espia_pego: true, espia_adivinhou: false });
+    return encerrarRodada(userId, {
+      rodada_id,
+      espia_pego: true,
+      espia_adivinhou: false,
+      espia_pego_id: estado.acusado_id ?? undefined,
+    });
   }
 
   if (estado.fase !== "adivinhacao_fim_tempo") {

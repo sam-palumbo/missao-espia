@@ -6,10 +6,15 @@ interface EncerrarPayload {
   rodada_id: string;
   espia_pego: boolean;
   espia_adivinhou: boolean;
+  /** Espia cuja captura encerrou a rodada — só ele conta como "pego" na pontuação. */
+  espia_pego_id?: string;
+  /** Espia que acertou a adivinhação — só ele recebe o +1 (multi-espia). */
+  espia_adivinhador_id?: string;
 }
 
 export async function encerrarRodada(_userId: string, payload: unknown) {
-  const { rodada_id, espia_pego, espia_adivinhou } = payload as EncerrarPayload;
+  const { rodada_id, espia_pego, espia_adivinhou, espia_pego_id, espia_adivinhador_id } =
+    payload as EncerrarPayload;
   if (!rodada_id) throw new Error("rodada_id obrigatório");
 
   const db = getDb();
@@ -37,7 +42,19 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
 
   for (const j of jogadoresAtivos ?? []) {
     const ehEspia = estado.espia_ids.includes(j.id);
-    const delta = ehEspia ? pontoEspia : pontoGrupo;
+    let delta: number;
+    if (!ehEspia) {
+      delta = pontoGrupo;
+    } else if (espia_pego_id || espia_adivinhador_id) {
+      // Multi-espia: pontua cada espia ativo pela SUA situação — só o pego conta
+      // como pego, só quem adivinhou recebe o bônus; parceiro sobrevivente ganha 2.
+      delta = calcularPontuacao({
+        espiaPego: j.id === espia_pego_id,
+        espiaAdivinhou: j.id === espia_adivinhador_id,
+      }).pontoEspia;
+    } else {
+      delta = pontoEspia;
+    }
     if (delta > 0) {
       await db.rpc("incrementar_pontuacao", { jogador_id: j.id, delta });
     }

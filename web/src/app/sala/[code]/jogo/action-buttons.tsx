@@ -33,6 +33,13 @@ const turnoBtnVariants = {
 
 export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPalavras, primeiroTurno, acusouNesteTurno, modo, acting, onMinhaCarta, onAdivinhar, onClickTurnoAction, onAcusar, onProximoTurno }: Props) {
   const showTurnoActions = ehMeuTurno && !meuEliminado && (fase === "jogando" || fase === "turno_palavras");
+  // Regra: o espia pode adivinhar a qualquer momento da rodada (não só no turno dele).
+  // Na fase adivinhacao o espia pego está fora de ordem_turnos (meuEliminado),
+  // mas é exatamente ele quem precisa adivinhar.
+  const showAdivinhar = isSpy && (
+    fase === "adivinhacao" ||
+    (!meuEliminado && ["jogando", "aguardando_resposta", "turno_palavras"].includes(fase))
+  );
 
   return (
     <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -41,7 +48,7 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPala
           Minha Carta
         </motion.button>
         <AnimatePresence>
-          {isSpy && fase === "adivinhacao" && (
+          {showAdivinhar && (
             <motion.button
               key="adiv-secondary"
               initial={{ opacity: 0, scale: 0.92 }}
@@ -85,16 +92,6 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPala
               >
                 <MEIcon name="spy" size={15} color="white" />
                 Acusar
-              </motion.button>
-            )}
-            {isSpy && !turnoPalavras && (
-              <motion.button
-                {...tap} {...hover}
-                disabled={acting}
-                onClick={onAdivinhar}
-                style={{ flex: 1, minWidth: 130, background: T.card, color: T.ink, border: `1.5px solid ${T.sienna}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}
-              >
-                Adivinhar
               </motion.button>
             )}
             {modo === "presencial" && (
