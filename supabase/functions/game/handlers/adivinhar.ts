@@ -3,6 +3,7 @@ import { getDb }          from "../lib/db.ts";
 import { encerrarRodada } from "./encerrar-rodada.ts";
 import { EVENTOS }        from "../lib/eventos.ts";
 import { proximoTurnoAposEliminacao, todosFalaramNaOrdem } from "../lib/regras.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import type { AdivinharPayload } from "../lib/types.ts";
 
 export async function adivinhar(userId: string, payload: unknown) {
@@ -13,7 +14,7 @@ export async function adivinhar(userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, evento_id, encerrada_em")
+    .select("estado, sala_id, evento_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -92,22 +93,15 @@ export async function adivinhar(userId: string, payload: unknown) {
           novaFase = "jogando";
         }
 
-        const { error } = await db
-          .from("rodadas")
-          .update({
-            estado: {
-              ...estado,
-              fase: novaFase,
-              pergunta_atual: novaPergunta,
-              ordem_turnos: novaOrdem,
-              turno_atual: proximoTurno,
-              acusou_neste_turno: false,
-              turno_numero_atual: (estado.turno_numero_atual ?? 1) + (novaVolta ? 1 : 0),
-            },
-          })
-          .eq("id", rodada_id);
-
-        if (error) throw new Error("Falha ao continuar rodada: " + error.message);
+        await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+          ...estado,
+          fase: novaFase,
+          pergunta_atual: novaPergunta,
+          ordem_turnos: novaOrdem,
+          turno_atual: proximoTurno,
+          acusou_neste_turno: false,
+          turno_numero_atual: (estado.turno_numero_atual ?? 1) + (novaVolta ? 1 : 0),
+        });
         return { espia_eliminado: true, game_continues: true, turno_atual: proximoTurno };
       }
     }

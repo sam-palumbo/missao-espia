@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/encerrar-rodada.ts
 import { getDb }            from "../lib/db.ts";
 import { calcularPontuacao } from "../lib/pontuacao.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 
 interface EncerrarPayload {
   rodada_id: string;
@@ -21,7 +22,7 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, encerrada_em")
+    .select("estado, sala_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -60,13 +61,11 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
     }
   }
 
-  await db
-    .from("rodadas")
-    .update({
-      encerrada_em: new Date().toISOString(),
-      estado: { ...estado, fase: "resultado" },
-    })
-    .eq("id", rodada_id);
+  await atualizarEstadoComVersao(
+    db, rodada_id, rodada.versao,
+    { ...estado, fase: "resultado" },
+    { encerrada_em: new Date().toISOString() },
+  );
 
   const { data: sala } = await db
     .from("salas")

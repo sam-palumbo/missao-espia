@@ -2,7 +2,7 @@ import { getDb } from "../lib/db.ts";
 import {
   getRodadaWithSala, getJogadorByUserId,
   assertRodadaNaoEncerrada, assertFase, assertIsTurno, assertModoOnline,
-  calcularProximoTurno,
+  calcularProximoTurno, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
 import { todosFalaramNaOrdem } from "../lib/regras.ts";
 import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
@@ -49,8 +49,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
     novoEstado.fase = "jogando";
   }
 
-  const { error } = await db.from("rodadas").update({ estado: novoEstado }).eq("id", rodada_id);
-  if (error) throw new Error("Falha ao registrar palavra: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, novoEstado);
 
   return { ok: true, turno_atual: proximo, turno_palavras_encerrado: todosFalaram };
 }

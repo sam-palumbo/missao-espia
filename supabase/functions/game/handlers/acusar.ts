@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/acusar.ts
 import { getDb }        from "../lib/db.ts";
 import { isPrimeiroTurno } from "../lib/regras.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import type { AcusarPayload } from "../lib/types.ts";
 
 export async function acusar(userId: string, payload: unknown) {
@@ -47,12 +48,9 @@ export async function acusar(userId: string, payload: unknown) {
   if (!acusado || !acusado.ativo) throw new Error("Jogador acusado não encontrado ou eliminado");
   if (acusado_id === caller.id) throw new Error("Não é possível acusar a si mesmo");
 
-  const { error } = await db
-    .from("rodadas")
-    .update({ estado: { ...estado, fase: "votacao", acusado_id, acusou_neste_turno: true } })
-    .eq("id", rodada_id);
-
-  if (error) throw new Error("Falha ao iniciar votação: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+    ...estado, fase: "votacao", acusado_id, acusou_neste_turno: true,
+  });
 
   return { fase: "votacao", acusado_id };
 }

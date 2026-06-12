@@ -2,7 +2,7 @@ import { getDb } from "../lib/db.ts";
 import {
   getRodadaWithSala, getJogadorByUserId,
   assertRodadaNaoEncerrada, assertFase, assertModoOnline, forbidden,
-  calcularProximoTurno,
+  calcularProximoTurno, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
 import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { ResponderPerguntaPayload } from "../lib/types.ts";
@@ -51,8 +51,7 @@ export async function responderPergunta(userId: string, payload: unknown) {
     ],
   };
 
-  const { error } = await db.from("rodadas").update({ estado: novoEstado }).eq("id", rodada_id);
-  if (error) throw new Error("Falha ao registrar resposta: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, novoEstado);
 
   return { ok: true, turno_atual: proximo };
 }

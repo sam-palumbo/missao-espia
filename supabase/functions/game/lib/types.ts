@@ -108,6 +108,8 @@ export interface Rodada {
   numero: number;
   evento_id: number;
   estado: EstadoRodada;
+  /** Lock otimista — incrementada a cada update de estado; updates condicionam em .eq("versao"). */
+  versao: number;
   iniciada_em: string;
   encerrada_em: string | null;
 }

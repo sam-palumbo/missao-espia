@@ -2,7 +2,7 @@ import { getDb } from "../lib/db.ts";
 import {
   getRodadaWithSala, getJogadorByUserId, getJogadorById,
   assertRodadaNaoEncerrada, assertFase, assertJogadorAtivo,
-  assertIsTurno, assertModoOnline,
+  assertIsTurno, assertModoOnline, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
 import type { FazerPerguntaPayload } from "../lib/types.ts";
 
@@ -43,8 +43,7 @@ export async function fazerPergunta(userId: string, payload: unknown) {
     },
   };
 
-  const { error } = await db.from("rodadas").update({ estado: novoEstado }).eq("id", rodada_id);
-  if (error) throw new Error("Falha ao registrar pergunta: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, novoEstado);
 
   return { ok: true };
 }

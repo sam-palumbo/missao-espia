@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/encerrar-por-tempo.ts
 import { getDb }           from "../lib/db.ts";
 import { encerrarRodada }  from "./encerrar-rodada.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import type { EncerrarPorTempoPayload } from "../lib/types.ts";
 
 export async function encerrarPorTempo(userId: string, payload: unknown) {
@@ -11,7 +12,7 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, encerrada_em")
+    .select("estado, sala_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -57,20 +58,14 @@ export async function encerrarPorTempo(userId: string, payload: unknown) {
   const adivinhacoesFimTempo: Record<string, number | null> =
     Object.fromEntries(espiaIdsAtivos.map((id: string) => [id, null]));
 
-  const { error } = await db
-    .from("rodadas")
-    .update({
-      estado: {
-        ...estado,
-        fase: "adivinhacao_fim_tempo",
-        timer_adivinhacao_end: timerAdivinhacaoEnd,
-        adivinhacoes_fim_tempo: adivinhacoesFimTempo,
-        // Limpa pergunta ativa caso o timer expire no meio de uma pergunta
-        pergunta_atual: null,
-      },
-    })
-    .eq("id", rodada_id);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+    ...estado,
+    fase: "adivinhacao_fim_tempo",
+    timer_adivinhacao_end: timerAdivinhacaoEnd,
+    adivinhacoes_fim_tempo: adivinhacoesFimTempo,
+    // Limpa pergunta ativa caso o timer expire no meio de uma pergunta
+    pergunta_atual: null,
+  });
 
-  if (error) throw new Error("Falha ao encerrar por tempo: " + error.message);
   return { ok: true, timer_adivinhacao_end: timerAdivinhacaoEnd };
 }

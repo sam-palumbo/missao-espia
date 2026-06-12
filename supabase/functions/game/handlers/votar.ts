@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/votar.ts
 import { getDb }                 from "../lib/db.ts";
 import { limiteEliminacoesErradas } from "../lib/espias.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
 import type { HistoricoVotacao, VotarPayload } from "../lib/types.ts";
@@ -13,7 +14,7 @@ export async function votar(userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, encerrada_em")
+    .select("estado, sala_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -107,30 +108,22 @@ export async function votar(userId: string, payload: unknown) {
     // Votação rejeitada: voltar para jogando. acusou_neste_turno permanece true —
     // regra: no máximo UMA acusação por turno, mesmo rejeitada; o jogador ainda
     // faz sua pergunta e só pode acusar de novo no próximo turno dele.
-    const { error } = await db
-      .from("rodadas")
-      .update({ estado: { ...estado, fase: "jogando", acusado_id: null, historico: historicoComVotacao } })
-      .eq("id", rodada_id);
-    if (error) throw new Error(error.message);
+    await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+      ...estado, fase: "jogando", acusado_id: null, historico: historicoComVotacao,
+    });
     return { resultado_votacao: "rejeitado" };
   }
 
   if (acusadoEhEspia) {
     // Espia pego — remover do turno e dar 30 segundos para adivinhar (regra da acusação)
     const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id!);
-    const { error } = await db
-      .from("rodadas")
-      .update({
-        estado: {
-          ...estado,
-          fase: "adivinhacao",
-          ordem_turnos: novaOrdem,
-          historico: historicoComVotacao,
-          timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
-        },
-      })
-      .eq("id", rodada_id);
-    if (error) throw new Error(error.message);
+    await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+      ...estado,
+      fase: "adivinhacao",
+      ordem_turnos: novaOrdem,
+      historico: historicoComVotacao,
+      timer_adivinhacao_end: new Date(Date.now() + 30_000).toISOString(),
+    });
     return { resultado_votacao: "aprovado", espia_pego: true, fase: "adivinhacao" };
   }
 
@@ -154,10 +147,9 @@ export async function votar(userId: string, payload: unknown) {
   // Eliminações erradas são TOLERADAS até o limite — espias só vencem ao ultrapassá-lo.
   // Persistir histórico antes de eventualmente encerrar — encerrarRodada não toca historico
   if (novasElim > limite) {
-    await db
-      .from("rodadas")
-      .update({ estado: { ...estado, historico: historicoComVotacao } })
-      .eq("id", rodada_id);
+    await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+      ...estado, historico: historicoComVotacao,
+    });
     return encerrarRodada(userId, {
       rodada_id,
       espia_pego: false,
@@ -169,19 +161,14 @@ export async function votar(userId: string, payload: unknown) {
   // acusar.ts garante acusado_id !== turno_atual, logo turno_atual não precisa ser atualizado
   const novaOrdem = estado.ordem_turnos.filter((id) => id !== estado.acusado_id);
 
-  await db
-    .from("rodadas")
-    .update({
-      estado: {
-        ...estado,
-        fase: "jogando",
-        acusado_id: null,
-        eliminacoes_erradas: novasElim,
-        ordem_turnos: novaOrdem,
-        historico: historicoComVotacao,
-      },
-    })
-    .eq("id", rodada_id);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+    ...estado,
+    fase: "jogando",
+    acusado_id: null,
+    eliminacoes_erradas: novasElim,
+    ordem_turnos: novaOrdem,
+    historico: historicoComVotacao,
+  });
 
   return { resultado_votacao: "aprovado", espia_pego: false, eliminacoes_erradas: novasElim };
 }

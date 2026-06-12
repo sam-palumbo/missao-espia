@@ -1,6 +1,7 @@
 // supabase/functions/game/handlers/finalizar-adivinhacao-fim-tempo.ts
 import { getDb }        from "../lib/db.ts";
 import { encerrarRodada } from "./encerrar-rodada.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import type { FinalizarAdivinhacaoFimTempoPayload } from "../lib/types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -12,7 +13,7 @@ export async function finalizarAdivinhacaoFimTempo(userId: string, payload: unkn
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, evento_id, encerrada_em")
+    .select("estado, sala_id, evento_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -39,7 +40,7 @@ export async function finalizarAdivinhacaoFimTempo(userId: string, payload: unkn
     throw new Error(`Não é possível finalizar na fase '${estado.fase}'`);
   }
 
-  return _finalizarAdivinhacaoFimTempo(db, rodada_id, rodada, estado);
+  return _finalizarAdivinhacaoFimTempo(db, rodada_id, rodada, estado, rodada.versao);
 }
 
 export async function _finalizarAdivinhacaoFimTempo(
@@ -49,7 +50,8 @@ export async function _finalizarAdivinhacaoFimTempo(
   estado: Record<string, unknown> & {
     espia_ids: string[];
     adivinhacoes_fim_tempo?: Record<string, number | null>;
-  }
+  },
+  versaoLida: number,
 ) {
   const adivinhacoes: Record<string, number | null> = estado.adivinhacoes_fim_tempo ?? {};
 
@@ -67,13 +69,11 @@ export async function _finalizarAdivinhacaoFimTempo(
     await db.rpc("incrementar_pontuacao", { jogador_id: espiaId, delta: pontos });
   }
 
-  await db
-    .from("rodadas")
-    .update({
-      encerrada_em: new Date().toISOString(),
-      estado: { ...estado, fase: "resultado" },
-    })
-    .eq("id", rodada_id);
+  await atualizarEstadoComVersao(
+    db, rodada_id, versaoLida,
+    { ...estado, fase: "resultado" },
+    { encerrada_em: new Date().toISOString() },
+  );
 
   const { data: sala } = await db
     .from("salas")

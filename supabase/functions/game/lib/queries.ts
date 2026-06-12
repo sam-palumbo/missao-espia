@@ -139,6 +139,36 @@ export function assertModoOnline(modo: ModoSala): void {
   if (modo === "presencial") throw new Error("Ação indisponível no modo presencial");
 }
 
+/**
+ * Update de estado com lock otimista: só aplica se `versao` no banco ainda for
+ * a lida pelo handler, e a incrementa. Se outra ação atualizou a rodada no meio
+ * tempo, lança 409 — o cliente reenvia sobre o estado novo. Sem isso, dois
+ * requests simultâneos (ex: duplo clique) sobrescrevem um ao outro.
+ * `extra` permite colunas adicionais (ex: encerrada_em).
+ */
+export async function atualizarEstadoComVersao(
+  db: SupabaseClient,
+  rodadaId: string,
+  versaoLida: number,
+  estado: unknown,
+  extra: Record<string, unknown> = {},
+): Promise<void> {
+  const { data, error } = await db
+    .from("rodadas")
+    .update({ estado, versao: versaoLida + 1, ...extra })
+    .eq("id", rodadaId)
+    .eq("versao", versaoLida)
+    .select("id");
+
+  if (error) throw new Error("Falha ao atualizar rodada: " + error.message);
+  if (!data || data.length === 0) {
+    throw Object.assign(
+      new Error("A rodada foi atualizada por outra ação — tente novamente"),
+      { status: 409 },
+    );
+  }
+}
+
 export function calcularProximoTurno(estado: EstadoRodada): { proximo: string; proximoTurnoNumero: number } {
   const idx = estado.ordem_turnos.indexOf(estado.turno_atual);
   if (idx === -1) throw new Error(`turno_atual '${estado.turno_atual}' não encontrado em ordem_turnos`);

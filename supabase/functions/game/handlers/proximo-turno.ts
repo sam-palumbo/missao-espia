@@ -1,5 +1,5 @@
 import { getDb }                from "../lib/db.ts";
-import { calcularProximoTurno } from "../lib/queries.ts";
+import { calcularProximoTurno, atualizarEstadoComVersao } from "../lib/queries.ts";
 import { encerrarPorTempo }     from "./encerrar-por-tempo.ts";
 import type { ProximoTurnoPayload, HistoricoTurnoPresencial, FaseJogo } from "../lib/types.ts";
 
@@ -78,21 +78,14 @@ export async function proximoTurno(userId: string, payload: unknown) {
     }
   }
 
-  const { error } = await db
-    .from("rodadas")
-    .update({
-      estado: {
-        ...estado,
-        fase: novaFase,
-        turno_atual: proximo,
-        acusou_neste_turno: false,
-        historico: novoHistorico,
-        ...(modo === "presencial" ? { turno_numero_atual: proximoTurnoNumero } : {}),
-      },
-    })
-    .eq("id", rodada_id);
-
-  if (error) throw new Error("Falha ao avançar turno: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, {
+    ...estado,
+    fase: novaFase,
+    turno_atual: proximo,
+    acusou_neste_turno: false,
+    historico: novoHistorico,
+    ...(modo === "presencial" ? { turno_numero_atual: proximoTurnoNumero } : {}),
+  });
 
   return { turno_atual: proximo };
 }

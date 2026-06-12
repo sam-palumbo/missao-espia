@@ -2,6 +2,7 @@
 import { getDb }    from "../lib/db.ts";
 import { _finalizarAdivinhacaoFimTempo } from "./finalizar-adivinhacao-fim-tempo.ts";
 import { EVENTOS }  from "../lib/eventos.ts";
+import { atualizarEstadoComVersao } from "../lib/queries.ts";
 import type { AdivinharFimTempoPayload } from "../lib/types.ts";
 
 export async function adivinharFimTempo(userId: string, payload: unknown) {
@@ -12,7 +13,7 @@ export async function adivinharFimTempo(userId: string, payload: unknown) {
 
   const { data: rodada } = await db
     .from("rodadas")
-    .select("estado, sala_id, evento_id, encerrada_em")
+    .select("estado, sala_id, evento_id, encerrada_em, versao")
     .eq("id", rodada_id)
     .single();
 
@@ -58,17 +59,10 @@ export async function adivinharFimTempo(userId: string, payload: unknown) {
   );
 
   if (todosSouberam) {
-    await db.from("rodadas")
-      .update({ estado: novoEstado })
-      .eq("id", rodada_id);
-    return _finalizarAdivinhacaoFimTempo(db, rodada_id, rodada, novoEstado);
+    // _finalizar grava estado final + encerrada_em num único update versionado
+    return _finalizarAdivinhacaoFimTempo(db, rodada_id, rodada, novoEstado, rodada.versao);
   }
 
-  const { error } = await db
-    .from("rodadas")
-    .update({ estado: novoEstado })
-    .eq("id", rodada_id);
-
-  if (error) throw new Error("Falha ao registrar adivinhação: " + error.message);
+  await atualizarEstadoComVersao(db, rodada_id, rodada.versao, novoEstado);
   return { aguardando: true };
 }
