@@ -198,5 +198,21 @@ jogadores = await getJogadores(hostToken, salaId);
 const totalPontos = jogadores.reduce((s, j) => s + j.pontuacao, 0);
 check(totalPontos > 0, `pontuação distribuída (total: ${totalPontos})`);
 
+// Transcrição da rodada — útil para avaliar a qualidade das jogadas (IA vs fallback)
+console.log("\n[transcrição]");
+for (const p of rodada.estado.palavras_turno ?? []) {
+  console.log(`  palavra — ${p.apelido}: "${p.palavra}"`);
+}
+for (const h of rodada.estado.historico ?? []) {
+  if (!h.tipo || h.tipo === "pergunta") {
+    console.log(`  ${h.perguntador_apelido} → ${h.destinatario_apelido}: "${h.pergunta}"`);
+    console.log(`    resposta: "${h.resposta}"`);
+  } else if (h.tipo === "votacao") {
+    console.log(`  votação contra ${h.acusado_apelido}: ${h.resultado}`);
+  }
+}
+const eventoFinal = rodada.estado.adivinhou_evento_id;
+console.log(`  evento da rodada: id ${rodada.evento_id}; adivinhação registrada: ${eventoFinal ?? "—"}`);
+
 console.log(falhas === 0 ? "\n=== TODOS OS CHECKS PASSARAM ===" : `\n=== ${falhas} CHECK(S) FALHARAM ===`);
 process.exit(falhas === 0 ? 0 : 1);

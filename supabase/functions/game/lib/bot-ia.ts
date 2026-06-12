@@ -1,30 +1,22 @@
 // ============================================================
-// BOT com IA (Claude) do Missão Espia
+// BOT com IA (Groq) do Missão Espia
 // ============================================================
 // Decide as jogadas dos bots a partir do estado real da rodada:
 // palavra do turno de palavras, pergunta + destinatário, resposta,
 // voto, alvo de acusação e adivinhação do espia.
 //
+// Usa a API da Groq (compatível com OpenAI, via fetch) em modo JSON.
 // Cada função retorna null quando a IA está indisponível (sem
-// ANTHROPIC_API_KEY) ou quando a chamada falha — o bot-agir usa o
+// GROQ_API_KEY) ou quando a chamada falha — o bot-agir usa o
 // fallback aleatório de bot.ts, então o jogo nunca trava por causa
 // da IA.
 // ============================================================
 
-import Anthropic from "@anthropic-ai/sdk";
 import { EVENTOS } from "./eventos.ts";
 import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
-const MODEL = "claude-opus-4-8";
-
-let _client: Anthropic | null = null;
-
-function getClient(): Anthropic | null {
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) return null;
-  _client ??= new Anthropic({ apiKey, maxRetries: 1, timeout: 25_000 });
-  return _client;
-}
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL_PADRAO = "llama-3.3-70b-versatile";
 
 export interface ContextoBotIA {
   apelido: string;
@@ -42,7 +34,8 @@ const SYSTEM = `Você é um jogador de "Missão Espia", um jogo de dedução soc
 Como jogar bem:
 - Se você NÃO é o espia: demonstre sutilmente que conhece o evento/local, mas NUNCA cite o evento, o local ou detalhes óbvios demais — isso entregaria a resposta ao espia. Desconfie de quem responde de forma vaga ou incoerente.
 - Se você É o espia: disfarce. Dê respostas vagas porém plausíveis, faça perguntas genéricas que serviriam para qualquer evento, e use as palavras e respostas dos outros como pistas para deduzir o local.
-- Responda sempre em português brasileiro, em tom natural e curto, como numa conversa entre amigos.`;
+- Fale sempre em português brasileiro, em tom natural e curto, como numa conversa entre amigos.
+- Responda SEMPRE apenas com um objeto JSON válido, exatamente no formato pedido, sem texto fora do JSON.`;
 
 export function descreverContexto(ctx: ContextoBotIA): string {
   const linhas: string[] = [`Você é "${ctx.apelido}".`];
@@ -78,29 +71,39 @@ export function descreverContexto(ctx: ContextoBotIA): string {
   return linhas.join("\n");
 }
 
+function listarJogadores(ctx: ContextoBotIA): string {
+  return ctx.jogadores.map((j) => `${j.id} — ${j.apelido}`).join("\n");
+}
+
 /**
- * Uma decisão = uma chamada à API com structured output. Qualquer falha
- * (sem chave, timeout, refusal, JSON inválido) vira null.
+ * Uma decisão = uma chamada à Groq em modo JSON. Qualquer falha (sem chave,
+ * timeout, erro HTTP, JSON inválido) vira null.
  */
-async function decidir<T>(ctx: ContextoBotIA, instrucao: string, schema: Record<string, unknown>): Promise<T | null> {
-  const client = getClient();
-  if (!client) return null;
+async function decidir<T>(ctx: ContextoBotIA, instrucao: string): Promise<T | null> {
+  const apiKey = Deno.env.get("GROQ_API_KEY");
+  if (!apiKey) return null;
   try {
-    const response = await client.messages.create({
-      model: MODEL,
-      // Teto, não custo: o thinking adaptativo conta contra max_tokens, e um
-      // valor baixo truncaria o JSON estruturado (parse falha → fallback).
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "low",
-        format: { type: "json_schema", schema },
-      },
-      system: SYSTEM,
-      messages: [{ role: "user", content: `${descreverContexto(ctx)}\n\n${instrucao}` }],
+    const res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: Deno.env.get("GROQ_MODEL") ?? MODEL_PADRAO,
+        temperature: 0.8,
+        max_completion_tokens: 512,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: `${descreverContexto(ctx)}\n\n${instrucao}` },
+        ],
+      }),
+      signal: AbortSignal.timeout(20_000),
     });
-    if (response.stop_reason === "refusal") return null;
-    const texto = response.content.find((b) => b.type === "text")?.text;
+    if (!res.ok) {
+      console.error(`[bot-ia] Groq HTTP ${res.status}:`, (await res.text()).slice(0, 300));
+      return null;
+    }
+    const data = await res.json();
+    const texto: string | undefined = data.choices?.[0]?.message?.content;
     return texto ? (JSON.parse(texto) as T) : null;
   } catch (err) {
     console.error("[bot-ia] decisão falhou:", err instanceof Error ? err.message : err);
@@ -111,17 +114,12 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, schema: Record<
 export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
   const out = await decidir<{ palavra: string }>(
     ctx,
-    ctx.souEspia
+    (ctx.souEspia
       ? "É o turno de palavras: cada jogador diz UMA única palavra relacionada ao evento. Como espia, diga uma palavra genérica de tema bíblico que não destoe das já ditas."
-      : "É o turno de palavras: diga UMA única palavra sutilmente relacionada ao evento/local — nem óbvia demais (ajudaria o espia) nem desconectada (você pareceria o espia).",
-    {
-      type: "object",
-      properties: { palavra: { type: "string", description: "Uma única palavra, sem espaços" } },
-      required: ["palavra"],
-      additionalProperties: false,
-    },
+      : "É o turno de palavras: diga UMA única palavra sutilmente relacionada ao evento/local — nem óbvia demais (ajudaria o espia) nem desconectada (você pareceria o espia).") +
+      '\nResponda em JSON: {"palavra": "<uma única palavra, sem espaços>"}',
   );
-  const palavra = out?.palavra?.trim().split(/\s+/)[0]?.replace(/[.,!?"']/g, "").slice(0, 50);
+  const palavra = out?.palavra?.toString().trim().split(/\s+/)[0]?.replace(/[.,!?"']/g, "").slice(0, 50);
   return palavra || null;
 }
 
@@ -129,18 +127,9 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
   if (ctx.jogadores.length === 0) return null;
   const out = await decidir<{ destinatario_id: string; pergunta: string }>(
     ctx,
-    "É a sua vez de perguntar. Escolha um jogador (prefira quem ainda não foi questionado ou quem pareceu suspeito) e faça UMA pergunta curta (máx. 200 caracteres) sobre a experiência dele no local, sem revelar o evento/local.",
-    {
-      type: "object",
-      properties: {
-        destinatario_id: { type: "string", enum: ctx.jogadores.map((j) => j.id) },
-        pergunta: { type: "string" },
-      },
-      required: ["destinatario_id", "pergunta"],
-      additionalProperties: false,
-    },
+    `É a sua vez de perguntar. Escolha um jogador (prefira quem ainda não foi questionado ou quem pareceu suspeito) e faça UMA pergunta curta (máx. 200 caracteres) sobre a experiência dele no local, sem revelar o evento/local.\nJogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
   );
-  const texto = out?.pergunta?.trim().slice(0, 200);
+  const texto = out?.pergunta?.toString().trim().slice(0, 200);
   if (!texto || !ctx.jogadores.some((j) => j.id === out!.destinatario_id)) return null;
   return { destinatario_id: out!.destinatario_id, texto };
 }
@@ -148,58 +137,35 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
 export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): Promise<string | null> {
   const out = await decidir<{ resposta: string }>(
     ctx,
-    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". Responda em no máximo 200 caracteres, de forma coerente com o seu papel.`,
-    {
-      type: "object",
-      properties: { resposta: { type: "string" } },
-      required: ["resposta"],
-      additionalProperties: false,
-    },
+    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". Responda em no máximo 200 caracteres, de forma coerente com o seu papel.\nResponda em JSON: {"resposta": "<sua resposta>"}`,
   );
-  const resposta = out?.resposta?.trim().slice(0, 200);
+  const resposta = out?.resposta?.toString().trim().slice(0, 200);
   return resposta || null;
 }
 
 export async function votoIA(ctx: ContextoBotIA, acusadoApelido: string): Promise<boolean | null> {
   const out = await decidir<{ aprovado: boolean }>(
     ctx,
-    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. Com base no histórico, vote a favor (aprovado=true) só se a suspeita se sustentar. Lembre: eliminar um inocente favorece o espia${ctx.souEspia ? "; como espia, vote de forma a desviar a atenção de você" : ""}.`,
-    {
-      type: "object",
-      properties: { aprovado: { type: "boolean" } },
-      required: ["aprovado"],
-      additionalProperties: false,
-    },
+    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. Com base no histórico, vote a favor só se a suspeita se sustentar. Lembre: eliminar um inocente favorece o espia${ctx.souEspia ? "; como espia, vote de forma a desviar a atenção de você" : ""}.\nResponda em JSON: {"aprovado": true ou false}`,
   );
-  return out?.aprovado ?? null;
+  return typeof out?.aprovado === "boolean" ? out.aprovado : null;
 }
 
 export async function acusadoIA(ctx: ContextoBotIA): Promise<string | null> {
   if (ctx.jogadores.length === 0) return null;
   const out = await decidir<{ acusado_id: string }>(
     ctx,
-    "Você decidiu acusar alguém de ser o espia. Com base nas palavras e no histórico, escolha o jogador mais suspeito (respostas vagas, incoerentes ou que não demonstram conhecer o local).",
-    {
-      type: "object",
-      properties: { acusado_id: { type: "string", enum: ctx.jogadores.map((j) => j.id) } },
-      required: ["acusado_id"],
-      additionalProperties: false,
-    },
+    `Você decidiu acusar alguém de ser o espia. Com base nas palavras e no histórico, escolha o jogador mais suspeito (respostas vagas, incoerentes ou que não demonstram conhecer o local).\nJogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"acusado_id": "<id da lista>"}`,
   );
   return out && ctx.jogadores.some((j) => j.id === out.acusado_id) ? out.acusado_id : null;
 }
 
 export async function adivinhacaoIA(ctx: ContextoBotIA): Promise<number | null> {
   const lista = EVENTOS.map((e) => `${e.id}: ${e.evento} (${e.local})`).join("\n");
-  const out = await decidir<{ evento_id: number }>(
+  const out = await decidir<{ evento_id: number | string }>(
     ctx,
-    `Você vai arriscar adivinhar o evento/local da rodada. Com base nas palavras e no histórico, escolha o evento mais provável desta lista:\n${lista}`,
-    {
-      type: "object",
-      properties: { evento_id: { type: "integer", enum: EVENTOS.map((e) => e.id) } },
-      required: ["evento_id"],
-      additionalProperties: false,
-    },
+    `Você vai arriscar adivinhar o evento/local da rodada. Com base nas palavras e no histórico, escolha o evento mais provável desta lista:\n${lista}\nResponda em JSON: {"evento_id": <número do evento>}`,
   );
-  return out && EVENTOS.some((e) => e.id === out.evento_id) ? out.evento_id : null;
+  const eventoId = Number(out?.evento_id);
+  return EVENTOS.some((e) => e.id === eventoId) ? eventoId : null;
 }
