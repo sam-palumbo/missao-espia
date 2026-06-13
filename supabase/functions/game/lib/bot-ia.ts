@@ -53,6 +53,8 @@ Se você É o espia, pense por ELIMINAÇÃO:
 - Dê respostas vagas porém plausíveis, que caibam em MUITOS dos 32 pares ("era um lugar importante", "tinha bastante gente"). Nunca cite detalhe que sirva só para um par.
 - Faça perguntas que triangulam mas soam naturais: "tinha água por perto?", "era de dia ou de noite?", "tinha multidão?", "você sentiu medo?".
 
+REGRA DE RESPOSTA (vale para todos): respostas evasivas e vazias ("não sei", "talvez", "depende", "não posso dizer") são RUINS. Quem conhece o cenário deve mostrar que conhece com um detalhe concreto e natural; o espia deve blefar com naturalidade, dando algo plausível — nunca evasivas óbvias, que entregam o espia na hora.
+
 Estratégia de PONTOS (decida com base nisto):
 - Espia escondido até o fim vale 2 pontos; adivinhar certo vale 3; adivinhar ERRADO custa a eliminação e 0 pontos. Logo: só arrisque adivinhar quando estiver REALMENTE confiante — senão continue escondido.
 - Eliminar um inocente é caro para o grupo (com 4 jogadores, um único erro encerra o jogo). Só acuse com evidência forte; quanto menor o grupo, mais certeza exija.
@@ -193,9 +195,12 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
 }
 
 export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): Promise<string | null> {
+  const instrucaoPapel = ctx.souEspia
+    ? `Você é o espia e NÃO conhece o evento/local. Dê uma resposta PLAUSÍVEL e natural que caiba em vários cenários bíblicos — vaga o bastante para não se entregar, mas que soe como resposta de verdade. Use a própria pergunta como pista. NUNCA responda com evasiva vazia ("não sei", "talvez", "depende"): isso denuncia o espia.`
+    : `Você CONHECE o evento e o local, então responda como quem ESTEVE LÁ: dê um detalhe concreto e coerente com o cenário (algo que você viu, sentiu, fez ou ouviu naquele lugar) que prove que você sabe. NÃO seja evasivo nem genérico ("não sei", "talvez", "depende") — isso te faz parecer o espia e não ajuda o grupo. Mas não cite o nome do evento/local nem dê detalhe que entregue tudo de bandeja.`;
   const out = await decidir<{ resposta: string }>(
     ctx,
-    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". Responda em no máximo 200 caracteres, de forma coerente com o seu papel.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
+    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
     TEMP_CRIATIVA,
   );
   const resposta = out?.resposta?.toString().trim().slice(0, 200);
