@@ -313,34 +313,53 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
         palavrasTurno={rodada?.estado.palavras_turno ?? []}
       />
 
-      <div style={{ flex: 1 }} />
+      {/* Barra de ações fixa no rodapé — sangra de ponta a ponta e sempre fácil de tocar no celular.
+          marginTop:auto empurra pro fundo; as margens negativas cancelam o padding do PageShell
+          para o fundo cobrir a tela inteira; o banner de eliminado fica dentro da área fixa. */}
+      <div style={{
+        position: "sticky",
+        bottom: 0,
+        zIndex: 20,
+        marginTop: "auto",
+        marginLeft: "calc(-1 * clamp(20px, 5vw, 56px))",
+        marginRight: "calc(-1 * clamp(20px, 5vw, 56px))",
+        marginBottom: -48,
+        paddingLeft: "clamp(20px, 5vw, 56px)",
+        paddingRight: "clamp(20px, 5vw, 56px)",
+        paddingTop: 16,
+        paddingBottom: "max(20px, env(safe-area-inset-bottom))",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        background: `linear-gradient(to top, ${T.bg} 78%, transparent)`,
+      }}>
+        {/* banner oculto durante votação — overlay de votação já exibe mensagem de observador */}
+        {/* banner oculto para espia pego durante adivinhacao — ele ainda precisa adivinhar */}
+        {meuEliminado && fase !== "votacao" && !(isSpy && fase === "adivinhacao") && (
+          <div style={{ background: T.brick, borderRadius: 14, padding: "12px 16px", textAlign: "center" }}>
+            <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              Você foi eliminado — apenas observe
+            </span>
+          </div>
+        )}
 
-      <ActionButtons
-        isSpy={isSpy}
-        ehMeuTurno={ehMeuTurno}
-        meuEliminado={meuEliminado}
-        fase={fase}
-        turnoPalavras={turnoPalavras}
-        primeiroTurno={primeiroTurno}
-        acusouNesteTurno={acusouNesteTurno}
-        modo={modo}
-        acting={acting}
-        onMinhaCarta={() => setShowMyCard(true)}
-        onAdivinhar={() => setShowGuess(true)}
-        onClickTurnoAction={handleClickTurnoAction}
-        onAcusar={() => setShowAccuse(true)}
-        onProximoTurno={handleProximoTurno}
-      />
-
-      {/* banner oculto durante votação — overlay de votação já exibe mensagem de observador */}
-      {/* banner oculto para espia pego durante adivinhacao — ele ainda precisa adivinhar */}
-      {meuEliminado && fase !== "votacao" && !(isSpy && fase === "adivinhacao") && (
-        <div style={{ position: "relative", zIndex: 1, background: T.brick, borderRadius: 14, padding: "12px 16px", textAlign: "center" }}>
-          <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Você foi eliminado — apenas observe
-          </span>
-        </div>
-      )}
+        <ActionButtons
+          isSpy={isSpy}
+          ehMeuTurno={ehMeuTurno}
+          meuEliminado={meuEliminado}
+          fase={fase}
+          turnoPalavras={turnoPalavras}
+          primeiroTurno={primeiroTurno}
+          acusouNesteTurno={acusouNesteTurno}
+          modo={modo}
+          acting={acting}
+          onMinhaCarta={() => setShowMyCard(true)}
+          onAdivinhar={() => setShowGuess(true)}
+          onClickTurnoAction={handleClickTurnoAction}
+          onAcusar={() => setShowAccuse(true)}
+          onProximoTurno={handleProximoTurno}
+        />
+      </div>
 
       {fase === "votacao" && (
         <OverlayVotacao
