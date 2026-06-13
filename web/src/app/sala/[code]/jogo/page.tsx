@@ -303,6 +303,7 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
           isMinhaVez={currentPlayer.id === meuJogador?.id}
           jogadorAtualApelido={currentPlayer.apelido}
           turnoPalavras={turnoPalavras}
+          fase={fase}
         />
       )}
 
@@ -311,6 +312,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
       <HistoricoTabs
         historico={rodada?.estado.historico ?? []}
         palavrasTurno={rodada?.estado.palavras_turno ?? []}
+        perguntaAtual={fase === "aguardando_resposta" ? rodada?.estado.pergunta_atual ?? null : null}
+        turnoNumeroAtual={rodada?.estado.turno_numero_atual ?? 1}
       />
 
       {/* Barra de ações fixa no rodapé — sangra de ponta a ponta e sempre fácil de tocar no celular.

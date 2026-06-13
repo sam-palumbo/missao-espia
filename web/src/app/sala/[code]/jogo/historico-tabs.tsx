@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useRef, useEffect, memo } from "react";
 import { T, F, MEAvatar, MEIcon, Eyebrow, InsetFrame } from "@/components/ui/design";
+import { AnimatedDots } from "./animated-dots";
 import type {
   HistoricoItem,
   HistoricoPergunta,
   HistoricoVotacao,
   HistoricoTurnoPresencial,
   PalavraTurno,
+  PerguntaAtual,
 } from "@/lib/types";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -19,6 +21,8 @@ type TabGroup =
 interface Props {
   historico: HistoricoItem[];
   palavrasTurno: PalavraTurno[];
+  perguntaAtual?: PerguntaAtual | null;
+  turnoNumeroAtual?: number;
 }
 
 // ── groupHistorico ─────────────────────────────────────────────
@@ -80,6 +84,27 @@ function renderPergunta(h: HistoricoPergunta, key: string | number, isLast: bool
   );
 }
 
+function renderPerguntaPendente(p: PerguntaAtual) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 10, marginTop: 2, borderTop: `1px solid ${T.hairline}` }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <MEAvatar size={18} initial={p.perguntador_apelido.slice(0, 1)} variant="light" />
+        <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{p.perguntador_apelido}</span>
+        <span style={{ fontFamily: F.bodySerif, fontSize: 12, color: T.inkSoft }}>→</span>
+        <MEAvatar size={18} initial={p.destinatario_apelido.slice(0, 1)} variant="light" />
+        <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{p.destinatario_apelido}</span>
+      </div>
+      <div style={{ fontFamily: F.bodySerif, fontSize: 13, color: T.ink, paddingLeft: 24 }}>
+        <span style={{ fontStyle: "italic", color: T.inkSoft }}>{p.texto}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, paddingLeft: 24 }}>
+        <span style={{ fontFamily: F.sans, fontSize: 11, fontStyle: "italic", color: T.inkSoft }}>{p.destinatario_apelido} está respondendo</span>
+        <AnimatedDots color={T.sienna} size={4} />
+      </div>
+    </div>
+  );
+}
+
 function renderTurnoPresencial(h: HistoricoTurnoPresencial, key: string | number) {
   return (
     <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: T.cardWarm, borderRadius: 999, alignSelf: "flex-start" }}>
@@ -126,39 +151,39 @@ function renderVotacao(h: HistoricoVotacao) {
 
 // ── HistoricoTabs ──────────────────────────────────────────────
 
-function HistoricoTabs({ historico, palavrasTurno }: Props) {
+function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtual }: Props) {
   const groups = groupHistorico(historico, palavrasTurno);
+
+  // Garante uma aba para a volta atual mesmo antes da primeira resposta, para a
+  // pergunta em andamento aparecer imediatamente (em vez de só quando respondida).
+  if (perguntaAtual && turnoNumeroAtual != null && !groups.some(g => g.kind === "turno" && g.numero === turnoNumeroAtual)) {
+    groups.push({ kind: "turno", numero: turnoNumeroAtual, items: [] });
+  }
+
   const hasPalavrasTab = groups[0]?.kind === "palavras";
 
   const [selectedTab, setSelectedTab] = useState<number>(0);
-  const prevGroupCount = useRef(0);
-  const prevHistoricoLength = useRef(0);
+  const prevFrontier = useRef(0);
+  const hasPending = !!perguntaAtual;
 
+  // Mantém o usuário acompanhando a aba mais recente conforme o jogo avança
+  // (nova volta, pergunta em andamento ou resposta registrada). Só "puxa" quando
+  // ele já estava na fronteira anterior — se voltou para uma aba antiga, respeita.
   useEffect(() => {
-    if (historico.length <= prevHistoricoLength.current) return;
-    prevHistoricoLength.current = historico.length;
-
-    if (groups.length > prevGroupCount.current) {
-      // New tab created — advance if user was on last tab
-      const prevCount = prevGroupCount.current;
-      prevGroupCount.current = groups.length;
-      setSelectedTab((prev) => {
-        const wasOnLast = prev === prevCount - 1 || prevCount === 0;
-        return wasOnLast ? groups.length - 1 : prev;
-      });
-    } else {
-      // Items added to existing group (e.g. post-votação mid-cycle) —
-      // if user is stuck on a votação tab, move them to the last turno group
-      setSelectedTab((prev) => {
-        if (groups[prev]?.kind !== "votacao") return prev;
+    const frontier = groups.length - 1;
+    setSelectedTab((prev) => {
+      if (frontier > prevFrontier.current && prev === prevFrontier.current) return frontier;
+      // Preso numa aba de votação após ela resolver → vai para o último turno.
+      if (groups[prev]?.kind === "votacao") {
         for (let i = groups.length - 1; i >= 0; i--) {
           if (groups[i].kind === "turno") return i;
         }
-        return prev;
-      });
-    }
+      }
+      return Math.min(prev, frontier);
+    });
+    prevFrontier.current = frontier;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historico.length]);
+  }, [historico.length, hasPending, turnoNumeroAtual]);
 
   if (groups.length === 0) {
     return null;
@@ -251,6 +276,7 @@ function HistoricoTabs({ historico, palavrasTurno }: Props) {
           }
           return renderPergunta(item as HistoricoPergunta, i, isLast);
         })}
+        {perguntaAtual && activeGroup.numero === turnoNumeroAtual && renderPerguntaPendente(perguntaAtual)}
       </div>
     );
   } else if (activeGroup?.kind === "votacao") {

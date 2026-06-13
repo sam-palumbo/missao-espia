@@ -149,14 +149,14 @@ describe("Jogo presencial — TurnoPresencial integrado", () => {
     });
   });
 
-  it("vez de outro jogador: mostra 'Vez de Bruno', sem botão 'Concluí turno'", async () => {
+  it("vez de outro jogador (fase jogando): mostra 'Bruno está perguntando', sem botão 'Concluí turno'", async () => {
     vi.mocked(useGameState).mockReturnValue(rodadaPresencial("jogador-2"));
 
     await act(async () => { renderJogo(); });
     await passarRevealScreen();
 
     await waitFor(() => {
-      expect(screen.getByText(/Vez de\s*Bruno/i)).toBeInTheDocument();
+      expect(screen.getByText(/Bruno está perguntando/i)).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: /Conclu[íi] turno/i })).not.toBeInTheDocument();
   });
