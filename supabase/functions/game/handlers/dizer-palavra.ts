@@ -4,7 +4,7 @@ import {
   assertRodadaNaoEncerrada, assertFase, assertIsTurno, assertModoOnline,
   calcularProximoTurno, atualizarEstadoComVersao,
 } from "../lib/queries.ts";
-import { todosFalaramNaOrdem } from "../lib/regras.ts";
+import { todosFalaramNaOrdem, temMaisDeUmaPalavra, ERRO_UMA_PALAVRA } from "../lib/regras.ts";
 import { encerrarPorTempo } from "./encerrar-por-tempo.ts";
 import type { DizerPalavraPayload } from "../lib/types.ts";
 
@@ -25,7 +25,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   assertIsTurno(estado, jogador.id);
 
   const palavraLimpa = palavra.trim();
-  if (/\s/.test(palavraLimpa)) throw new Error("Nesta rodada vale só uma palavra. Tire o espaço e mande uma só.");
+  if (temMaisDeUmaPalavra(palavraLimpa)) throw new Error(ERRO_UMA_PALAVRA);
 
   if (new Date() > new Date(estado.timer_end)) {
     return encerrarPorTempo(userId, { rodada_id });

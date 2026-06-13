@@ -1,5 +1,5 @@
 import { assertEquals } from "std/assert";
-import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno, proximoTurnoAposEliminacao, todosFalaramNaOrdem } from "./regras.ts";
+import { estaForaDoTurno, isEspia, isMeuTurno, isPrimeiroTurno, proximoTurnoAposEliminacao, temMaisDeUmaPalavra, todosFalaramNaOrdem } from "./regras.ts";
 import type { EstadoRodada } from "./types.ts";
 
 function makeEstado(over: Partial<EstadoRodada> = {}): EstadoRodada {
@@ -142,4 +142,24 @@ Deno.test("proximoTurnoAposEliminacao: eliminado é o último na ordem → volta
 
 Deno.test("proximoTurnoAposEliminacao: eliminado é o primeiro, turno era do segundo → turno não muda", () => {
   assertEquals(proximoTurnoAposEliminacao(["j1", "j2", "j3"], "j1", "j2"), { proximo: "j2", novaVolta: false });
+});
+
+Deno.test("temMaisDeUmaPalavra: uma única palavra → false", () => {
+  assertEquals(temMaisDeUmaPalavra("fé"), false);
+});
+
+Deno.test("temMaisDeUmaPalavra: palavra com espaços ao redor (será trimada) → false", () => {
+  assertEquals(temMaisDeUmaPalavra("  graça  "), false);
+});
+
+Deno.test("temMaisDeUmaPalavra: duas palavras separadas por espaço → true", () => {
+  assertEquals(temMaisDeUmaPalavra("muralha caída"), true);
+});
+
+Deno.test("temMaisDeUmaPalavra: separador tab também conta → true", () => {
+  assertEquals(temMaisDeUmaPalavra("davi\tgolias"), true);
+});
+
+Deno.test("temMaisDeUmaPalavra: separador quebra de linha também conta → true", () => {
+  assertEquals(temMaisDeUmaPalavra("arca\nnoé"), true);
 });

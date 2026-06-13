@@ -80,3 +80,18 @@ export function todosFalaramNaOrdem(
   const falaram = new Set(palavrasTurno.map((p) => p.jogador_id));
   return ordemTurnos.every((id) => falaram.has(id));
 }
+
+/** Mensagem exibida quando o jogador tenta dizer mais de uma palavra no turno de palavras. */
+export const ERRO_UMA_PALAVRA = "Nesta rodada vale só uma palavra. Tire o espaço e mande uma só.";
+
+/**
+ * A entrada do turno de palavras contém mais de uma palavra?
+ *
+ * Considera qualquer espaço em branco (espaço, tab, quebra de linha) como
+ * separador. Usado nos dois lados: no frontend para barrar antes de enviar
+ * (o FunctionsHttpError não propaga a mensagem do corpo em status não-2xx)
+ * e no backend como validação autoritativa para bots/chamadas diretas.
+ */
+export function temMaisDeUmaPalavra(palavra: string): boolean {
+  return /\s/.test(palavra.trim());
+}

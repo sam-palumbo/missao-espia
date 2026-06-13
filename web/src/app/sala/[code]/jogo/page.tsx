@@ -11,7 +11,7 @@ import { gameActions } from "@/lib/game-actions";
 import { useSala } from "@/hooks/useSala";
 import { toast } from "sonner";
 import { PageShell, InsetFrame, Eyebrow, T, F } from "@/components/ui/design";
-import { isPrimeiroTurno, isEspia, estaForaDoTurno, isMeuTurno } from "@shared/regras";
+import { isPrimeiroTurno, isEspia, estaForaDoTurno, isMeuTurno, temMaisDeUmaPalavra, ERRO_UMA_PALAVRA } from "@shared/regras";
 import { TurnoPresencial } from "./turno-presencial";
 import HistoricoTabs from "./historico-tabs";
 import { RevealScreen } from "./reveal-screen";
@@ -213,8 +213,8 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
   async function handleDizerPalavra() {
     if (!rodada || !wordInput.trim()) return;
     const palavra = wordInput.trim();
-    if (/\s/.test(palavra)) {
-      toast.error("Nesta rodada vale só uma palavra. Tire o espaço e mande uma só.");
+    if (temMaisDeUmaPalavra(palavra)) {
+      toast.error(ERRO_UMA_PALAVRA);
       return;
     }
     await runAction(() => gameActions.dizerPalavra(rodada.id, palavra), "Erro ao dizer palavra", () => { setWordInput(""); setShowWordInput(false); });
