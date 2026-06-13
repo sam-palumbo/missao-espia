@@ -105,7 +105,7 @@ function listarJogadores(ctx: ContextoBotIA): string {
  * cruza as falas para deduzir o par. Vazio se ninguém falou ainda.
  */
 function resumoPorJogador(ctx: ContextoBotIA): string {
-  const porJogador = new Map<string, { palavra?: string; respostas: string[] }>();
+  const porJogador = new Map<string, { palavra?: string; respostas: { pergunta: string; resposta: string }[] }>();
   const get = (apelido: string) => {
     let e = porJogador.get(apelido);
     if (!e) { e = { respostas: [] }; porJogador.set(apelido, e); }
@@ -113,14 +113,20 @@ function resumoPorJogador(ctx: ContextoBotIA): string {
   };
   for (const p of ctx.palavras) get(p.apelido).palavra = p.palavra;
   for (const h of ctx.historico) {
-    if ("pergunta" in h && h.resposta) get(h.destinatario_apelido).respostas.push(h.resposta);
+    if ("pergunta" in h && h.resposta) {
+      get(h.destinatario_apelido).respostas.push({ pergunta: h.pergunta, resposta: h.resposta });
+    }
   }
   if (porJogador.size === 0) return "";
   const linhas: string[] = [];
   for (const [apelido, e] of porJogador) {
     const partes: string[] = [];
     if (e.palavra) partes.push(`palavra "${e.palavra}"`);
-    if (e.respostas.length) partes.push(`respostas: ${e.respostas.map((r) => `"${r}"`).join(", ")}`);
+    // Cada resposta vem com a pergunta que a motivou — sem isso "Muitos" não
+    // diz nada; com a pergunta, dá para julgar se a fala bate com o cenário.
+    if (e.respostas.length) {
+      partes.push(`respondeu: ${e.respostas.map((r) => `"${r.pergunta}" → "${r.resposta}"`).join("; ")}`);
+    }
     linhas.push(`- ${apelido}: ${partes.join("; ") || "(ainda não falou)"}`);
   }
   return "Análise por jogador (confronte cada fala com o cenário real):\n" + linhas.join("\n");
@@ -200,8 +206,8 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
   if (ctx.jogadores.length === 0) return null;
   const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
   const instrucao = ctx.souEspia
-    ? `É a sua vez de perguntar. Você é o espia e NÃO conhece o local — faça UMA pergunta AMPLA que ajude a TRIANGULAR o cenário (extrair pistas: ambiente, quem está presente, perigo, época, o que se faz ali) sem revelar que você não sabe. Espalhe as perguntas: evite insistir sempre no mesmo jogador. Máx. 200 caracteres.`
-    : `É a sua vez de perguntar. Você CONHECE o cenário — use a pergunta para DESMASCARAR o espia: faça uma pergunta-armadilha ligada ao evento/local real que só quem é de dentro responde com naturalidade (um detalhe específico do cenário), e mire de preferência o jogador mais suspeito, pressionando-o. NÃO revele o evento/local nem facilite para o espia. Máx. 200 caracteres.`;
+    ? `É a sua vez de perguntar. Você é o espia e NÃO conhece o local — faça UMA pergunta AMPLA que ajude a TRIANGULAR o cenário (extrair pistas: ambiente, quem está presente, perigo, época, o que se faz ali) sem revelar que você não sabe. Foque na dimensão ainda AMBÍGUA: se as falas já sugerem o ambiente, pergunte sobre quem está presente ou a época; não repita o ângulo que já foi respondido. Espalhe as perguntas: evite insistir sempre no mesmo jogador. Máx. 200 caracteres.`
+    : `É a sua vez de perguntar. Você CONHECE o cenário — use a pergunta para DESMASCARAR o espia. Se alguém já deu uma resposta vaga, genérica ou que NÃO bate com o evento/local, APROFUNDE nela: faça um acompanhamento que force um detalhe verificável e exponha a contradição. Senão, faça uma pergunta-armadilha ligada ao cenário real que só quem é de dentro responde com naturalidade. Mire de preferência o jogador mais suspeito, pressionando-o. NÃO revele o evento/local nem facilite para o espia. Máx. 200 caracteres.`;
   const out = await decidir<{ destinatario_id: string; pergunta: string }>(
     ctx,
     `${instrucao}\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
@@ -218,7 +224,7 @@ export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): P
     : `Você CONHECE o evento e o local, então responda como quem ESTEVE LÁ: dê um detalhe concreto e coerente com o cenário (algo que você viu, sentiu, fez ou ouviu naquele lugar) que prove que você sabe. NÃO seja evasivo nem genérico ("não sei", "talvez", "depende") — isso te faz parecer o espia e não ajuda o grupo. Mas não cite o nome do evento/local nem dê detalhe que entregue tudo de bandeja.`;
   const out = await decidir<{ resposta: string }>(
     ctx,
-    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Mantenha COERÊNCIA com o que você já disse antes (veja o histórico) — não se contradiga. Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
+    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Mantenha COERÊNCIA com o que você já disse antes (veja o histórico) — não se contradiga e, se já falou antes, acrescente um detalhe NOVO em vez de repetir as mesmas palavras, para construir um testemunho consistente. Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
     TEMP_CRIATIVA,
   );
   const resposta = out?.resposta?.toString().trim().slice(0, 200);
