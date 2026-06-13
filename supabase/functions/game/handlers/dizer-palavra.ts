@@ -25,7 +25,7 @@ export async function dizerPalavra(userId: string, payload: unknown) {
   assertIsTurno(estado, jogador.id);
 
   const palavraLimpa = palavra.trim();
-  if (palavraLimpa.includes(" ")) throw new Error("Na primeira rodada, só é permitido uma única palavra");
+  if (/\s/.test(palavraLimpa)) throw new Error("Nesta rodada vale só uma palavra. Tire o espaço e mande uma só.");
 
   if (new Date() > new Date(estado.timer_end)) {
     return encerrarPorTempo(userId, { rodada_id });

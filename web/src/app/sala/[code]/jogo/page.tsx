@@ -212,7 +212,12 @@ export default function JogoPage({ params }: { params: Promise<{ code: string }>
 
   async function handleDizerPalavra() {
     if (!rodada || !wordInput.trim()) return;
-    await runAction(() => gameActions.dizerPalavra(rodada.id, wordInput.trim()), "Erro ao dizer palavra", () => { setWordInput(""); setShowWordInput(false); });
+    const palavra = wordInput.trim();
+    if (/\s/.test(palavra)) {
+      toast.error("Nesta rodada vale só uma palavra. Tire o espaço e mande uma só.");
+      return;
+    }
+    await runAction(() => gameActions.dizerPalavra(rodada.id, palavra), "Erro ao dizer palavra", () => { setWordInput(""); setShowWordInput(false); });
   }
 
   async function handleFazerPergunta() {
