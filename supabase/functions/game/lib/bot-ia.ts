@@ -221,14 +221,36 @@ export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): P
   return resposta || null;
 }
 
-export async function votoIA(ctx: ContextoBotIA, acusadoApelido: string): Promise<boolean | null> {
+export async function votoIA(
+  ctx: ContextoBotIA,
+  acusadoApelido: string,
+  custoErroAlto = false,
+): Promise<boolean | null> {
   const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
+  const aviso = !ctx.souEspia && custoErroAlto
+    ? ` ATENÇÃO: se ${acusadoApelido} for inocente e for eliminado, o grupo PERDE imediatamente (ou está no limite de eliminações erradas) — só vote SIM com evidência MUITO forte de que ele não conhece o cenário.`
+    : "";
   const out = await decidir<{ aprovado: boolean }>(
     ctx,
-    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. ${ctx.souEspia ? "Como espia, vote de forma a desviar a atenção de você (eliminar um inocente favorece o espia)." : `Confronte as falas de ${acusadoApelido} com o evento/local real: vote a favor só se as palavras/respostas dele realmente NÃO baterem com o cenário. Eliminar um inocente favorece o espia.`}\n${resumo ? resumo + "\n" : ""}Responda em JSON: {"raciocinio": "<a fala de ${acusadoApelido} bate ou não com o cenário?>", "aprovado": true ou false}`,
+    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. ${ctx.souEspia ? "Como espia, vote de forma a desviar a atenção de você (eliminar um inocente favorece o espia)." : `Confronte as falas de ${acusadoApelido} com o evento/local real: vote a favor só se as palavras/respostas dele realmente NÃO baterem com o cenário. Eliminar um inocente favorece o espia.${aviso}`}\n${resumo ? resumo + "\n" : ""}Responda em JSON: {"raciocinio": "<a fala de ${acusadoApelido} bate ou não com o cenário?>", "aprovado": true ou false}`,
     TEMP_ANALITICA,
   );
   return typeof out?.aprovado === "boolean" ? out.aprovado : null;
+}
+
+/**
+ * Alvo de acusação do ESPIA: não busca o culpado (ele não conhece o cenário),
+ * mas quem acusar para desviar a suspeita de si e parecer engajado.
+ */
+export async function acusarDeflexaoIA(ctx: ContextoBotIA): Promise<{ acusado_id: string } | null> {
+  if (ctx.jogadores.length === 0) return null;
+  const resumo = resumoPorJogador(ctx);
+  const out = await decidir<{ acusado_id: string }>(
+    ctx,
+    `Você é o espia. Acusar alguém AGORA pode desviar a suspeita de você e te fazer parecer um caçador engajado do grupo. Escolha o melhor alvo para se proteger: de preferência alguém que o grupo já desconfia ou que esteja te pressionando com perguntas. Evite acusar quem demonstra claramente conhecer o cenário — você só reforçaria que ele é inocente e gastaria a acusação à toa.\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<por que esse alvo te protege>", "acusado_id": "<id da lista>"}`,
+    TEMP_ANALITICA,
+  );
+  return out && ctx.jogadores.some((j) => j.id === out.acusado_id) ? { acusado_id: out.acusado_id } : null;
 }
 
 /**

@@ -15,7 +15,7 @@ import { limiteEliminacoesErradas } from "../lib/espias.ts";
 import { EVENTOS } from "../lib/eventos.ts";
 import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, RESPOSTAS_BOT } from "../lib/bot.ts";
 import {
-  acusadoIA, adivinhacaoIA, palavraIA, perguntaIA, respostaIA, votoIA,
+  acusadoIA, acusarDeflexaoIA, adivinhacaoIA, palavraIA, perguntaIA, respostaIA, votoIA,
   type ContextoBotIA,
 } from "../lib/bot-ia.ts";
 import { dizerPalavra } from "./dizer-palavra.ts";
@@ -34,6 +34,7 @@ import type { BotAgirPayload, Jogador } from "../lib/types.ts";
 const LIMIAR_ADIVINHAR_ESPIA = 70; // confiança mínima para o espia arriscar
 const LIMIAR_ACUSAR_BASE = 65;     // confiança mínima para acusar (grupo com folga)
 const LIMIAR_ACUSAR_SEM_TOLERANCIA = 85; // exigência maior quando 1 erro encerra o jogo
+const CHANCE_ESPIA_ACUSAR = 0.12;  // por turno do espia: acusa para desviar suspeita de si
 
 // Chances do fallback aleatório, usadas só quando a IA está indisponível.
 const CHANCE_ADIVINHAR_ESPIA = 0.25; // por turno do bot espia, a partir da 3ª volta
@@ -137,6 +138,16 @@ export async function botAgir(userId: string, payload: unknown) {
       }
     }
 
+    // Espia: ocasionalmente acusa para desviar a suspeita de si e se misturar.
+    if (
+      souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
+      !isPrimeiroTurno(estado) && Math.random() < CHANCE_ESPIA_ACUSAR
+    ) {
+      const alvo = (await acusarDeflexaoIA(contexto(bot)))?.acusado_id ?? aleatorio(alvos).id;
+      await acusar(userId, { rodada_id, acusado_id: alvo, bot_id: bot.id });
+      return { agiu: true, acao: "acusar" };
+    }
+
     if (modo === "presencial" || alvos.length === 0) {
       await proximoTurno(userId, { rodada_id });
       return { agiu: true, acao: "proximo_turno" };
@@ -173,7 +184,11 @@ export async function botAgir(userId: string, payload: unknown) {
     const pendente = bots.find((b) => b.ativo && b.id !== estado.acusado_id && !jaVotaram.has(b.id));
     if (!pendente) return { agiu: false };
     const acusadoApelido = ativos.find((j) => j.id === estado.acusado_id)?.apelido ?? "?";
-    const aprovado = (await votoIA(contexto(pendente), acusadoApelido)) ?? (Math.random() < CHANCE_VOTO_SIM);
+    // Custo alto: um erro agora encerra o jogo (ou já está no limite de erros).
+    const totalRodada = estado.ordem_turnos.length || ativos.length;
+    const limite = limiteEliminacoesErradas(totalRodada, estado.espia_ids.length);
+    const custoErroAlto = (estado.eliminacoes_erradas ?? 0) >= limite;
+    const aprovado = (await votoIA(contexto(pendente), acusadoApelido, custoErroAlto)) ?? (Math.random() < CHANCE_VOTO_SIM);
     await votar(userId, { rodada_id, aprovado, bot_id: pendente.id });
     return { agiu: true, acao: "votar" };
   }
