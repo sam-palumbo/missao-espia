@@ -11,6 +11,7 @@
 import { getDb } from "../lib/db.ts";
 import { getRodadaWithSala, getJogadoresAtivos, forbidden } from "../lib/queries.ts";
 import { isPrimeiroTurno } from "../lib/regras.ts";
+import { limiteEliminacoesErradas } from "../lib/espias.ts";
 import { EVENTOS } from "../lib/eventos.ts";
 import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, RESPOSTAS_BOT } from "../lib/bot.ts";
 import {
@@ -27,6 +28,14 @@ import { adivinhar } from "./adivinhar.ts";
 import { adivinharFimTempo } from "./adivinhar-fim-tempo.ts";
 import type { BotAgirPayload, Jogador } from "../lib/types.ts";
 
+// Quando a IA está disponível, ela decide POR CONFIANÇA: o espia só
+// adivinha e o grupo só acusa quando a confiança supera o limiar abaixo —
+// alinhado à estratégia de pontos (esconder-se vale 2; errar custa 0).
+const LIMIAR_ADIVINHAR_ESPIA = 70; // confiança mínima para o espia arriscar
+const LIMIAR_ACUSAR_BASE = 65;     // confiança mínima para acusar (grupo com folga)
+const LIMIAR_ACUSAR_SEM_TOLERANCIA = 85; // exigência maior quando 1 erro encerra o jogo
+
+// Chances do fallback aleatório, usadas só quando a IA está indisponível.
 const CHANCE_ADIVINHAR_ESPIA = 0.25; // por turno do bot espia, a partir da 3ª volta
 const CHANCE_ACUSAR = 0.2;           // por turno do bot, quando acusação é permitida
 const CHANCE_VOTO_SIM = 0.6;
@@ -88,21 +97,35 @@ export async function botAgir(userId: string, payload: unknown) {
 
     const souEspia = estado.espia_ids.includes(bot.id);
 
-    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < CHANCE_ADIVINHAR_ESPIA) {
-      const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
-      await adivinhar(userId, { rodada_id, evento_id, bot_id: bot.id });
-      return { agiu: true, acao: "adivinhar" };
+    // Espia: a partir da 3ª volta, a IA estima confiança e só arrisca se for
+    // alta o bastante; sem IA, cai no sorteio de chance fixa.
+    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3) {
+      const palpite = await adivinhacaoIA(contexto(bot));
+      const deveAdivinhar = palpite
+        ? palpite.confianca >= LIMIAR_ADIVINHAR_ESPIA
+        : Math.random() < CHANCE_ADIVINHAR_ESPIA;
+      if (deveAdivinhar) {
+        await adivinhar(userId, { rodada_id, evento_id: palpite?.evento_id ?? eventoAleatorioId(), bot_id: bot.id });
+        return { agiu: true, acao: "adivinhar" };
+      }
     }
 
     const alvos = ativos.filter((j) => j.id !== bot.id);
 
-    if (
-      !souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
-      !isPrimeiroTurno(estado) && Math.random() < CHANCE_ACUSAR
-    ) {
-      const acusado_id = (await acusadoIA(contexto(bot))) ?? aleatorio(alvos).id;
-      await acusar(userId, { rodada_id, acusado_id, bot_id: bot.id });
-      return { agiu: true, acao: "acusar" };
+    // Grupo: a IA aponta o suspeito e sua confiança; o limiar sobe quando o
+    // grupo não tem tolerância a erro (4 jogadores). Sem IA, sorteio fixo.
+    if (!souEspia && alvos.length > 0 && !estado.acusou_neste_turno && !isPrimeiroTurno(estado)) {
+      const suspeito = await acusadoIA(contexto(bot));
+      const totalRodada = estado.ordem_turnos.length || ativos.length;
+      const limite = limiteEliminacoesErradas(totalRodada, estado.espia_ids.length);
+      const limiar = limite === 0 ? LIMIAR_ACUSAR_SEM_TOLERANCIA : LIMIAR_ACUSAR_BASE;
+      const deveAcusar = suspeito
+        ? suspeito.confianca >= limiar
+        : Math.random() < CHANCE_ACUSAR;
+      if (deveAcusar) {
+        await acusar(userId, { rodada_id, acusado_id: suspeito?.acusado_id ?? aleatorio(alvos).id, bot_id: bot.id });
+        return { agiu: true, acao: "acusar" };
+      }
     }
 
     if (modo === "presencial" || alvos.length === 0) {
@@ -150,7 +173,7 @@ export async function botAgir(userId: string, payload: unknown) {
   if (fase === "adivinhacao") {
     const bot = estado.acusado_id ? botPorId.get(estado.acusado_id) : undefined;
     if (!bot || !estado.espia_ids.includes(bot.id)) return { agiu: false };
-    const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
+    const evento_id = (await adivinhacaoIA(contexto(bot)))?.evento_id ?? eventoAleatorioId();
     await adivinhar(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar" };
   }
@@ -161,7 +184,7 @@ export async function botAgir(userId: string, payload: unknown) {
       .filter(([id, guess]) => guess == null && botPorId.has(id));
     if (pendentes.length === 0) return { agiu: false };
     const bot = botPorId.get(pendentes[0][0])!;
-    const evento_id = (await adivinhacaoIA(contexto(bot))) ?? eventoAleatorioId();
+    const evento_id = (await adivinhacaoIA(contexto(bot)))?.evento_id ?? eventoAleatorioId();
     await adivinharFimTempo(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar_fim_tempo" };
   }
