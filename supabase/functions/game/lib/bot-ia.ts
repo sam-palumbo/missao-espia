@@ -1,13 +1,13 @@
 // ============================================================
-// BOT com IA (Groq) do Missão Espia
+// BOT com IA (NVIDIA) do Missão Espia
 // ============================================================
 // Decide as jogadas dos bots a partir do estado real da rodada:
 // palavra do turno de palavras, pergunta + destinatário, resposta,
 // voto, alvo de acusação e adivinhação do espia.
 //
-// Usa a API da Groq (compatível com OpenAI, via fetch) em modo JSON.
-// Cada função retorna null quando a IA está indisponível (sem
-// GROQ_API_KEY) ou quando a chamada falha — o bot-agir usa o
+// Usa a API da NVIDIA (DeepSeek, compatível com OpenAI, via fetch)
+// em modo JSON. Cada função retorna null quando a IA está indisponível
+// (sem NVIDIA_API_KEY) ou quando a chamada falha — o bot-agir usa o
 // fallback aleatório de bot.ts, então o jogo nunca trava por causa
 // da IA.
 //
@@ -22,8 +22,8 @@
 import { EVENTOS } from "./eventos.ts";
 import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL_PADRAO = "llama-3.3-70b-versatile";
+const NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const MODEL_PADRAO = "deepseek-ai/deepseek-v4-pro";
 
 const TEMP_CRIATIVA = 0.8;   // palavra, pergunta, resposta
 const TEMP_ANALITICA = 0.3;  // voto, acusação, adivinhação
@@ -140,20 +140,20 @@ function clampConfianca(valor: unknown): number {
 }
 
 /**
- * Uma decisão = uma chamada à Groq em modo JSON. Qualquer falha (sem chave,
+ * Uma decisão = uma chamada à NVIDIA em modo JSON. Qualquer falha (sem chave,
  * timeout, erro HTTP, JSON inválido) vira null.
  *
- * A Groq impõe limite de tokens/minuto (TPM); sob carga de jogo isso devolve
- * HTTP 429. Quando o 429 traz um `retry-after` curto (≤ 3s), espera e tenta
- * uma vez mais antes de desistir — reduz quanto os bots caem no fallback.
+ * Sob carga de jogo a API pode devolver HTTP 429 (rate limit). Quando o 429
+ * traz um `retry-after` curto (≤ 3s), espera e tenta uma vez mais antes de
+ * desistir — reduz quanto os bots caem no fallback.
  */
 async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: number): Promise<T | null> {
-  const apiKey = Deno.env.get("GROQ_API_KEY");
+  const apiKey = Deno.env.get("NVIDIA_API_KEY");
   if (!apiKey) return null;
   const corpo = JSON.stringify({
-    model: Deno.env.get("GROQ_MODEL") ?? MODEL_PADRAO,
+    model: Deno.env.get("NVIDIA_MODEL") ?? MODEL_PADRAO,
     temperature: temperatura,
-    max_completion_tokens: 256,
+    max_tokens: 256,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
@@ -162,7 +162,7 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
   });
   for (let tentativa = 0; tentativa < 2; tentativa++) {
     try {
-      const res = await fetch(GROQ_URL, {
+      const res = await fetch(NVIDIA_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: corpo,
@@ -175,7 +175,7 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
         continue;
       }
       if (!res.ok) {
-        console.error(`[bot-ia] Groq HTTP ${res.status}:`, (await res.text()).slice(0, 300));
+        console.error(`[bot-ia] NVIDIA HTTP ${res.status}:`, (await res.text()).slice(0, 300));
         return null;
       }
       const data = await res.json();

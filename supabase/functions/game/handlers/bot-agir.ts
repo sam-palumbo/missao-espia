@@ -4,7 +4,7 @@
 // anfitrião chama esta action periodicamente enquanto a rodada está ativa;
 // o ritmo das chamadas é o que dá a cadência "humana" aos bots.
 //
-// As decisões vêm da IA (lib/bot-ia.ts, Groq) quando GROQ_API_KEY está
+// As decisões vêm da IA (lib/bot-ia.ts, NVIDIA) quando NVIDIA_API_KEY está
 // configurada, com fallback aleatório (lib/bot.ts) em qualquer falha; a
 // execução reusa os handlers normais via bot_id, que validam as regras do
 // jogo como para qualquer jogador.
