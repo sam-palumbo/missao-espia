@@ -84,9 +84,12 @@ function renderPergunta(h: HistoricoPergunta, key: string | number, isLast: bool
   );
 }
 
-function renderPerguntaPendente(p: PerguntaAtual) {
+function renderPerguntaPendente(p: PerguntaAtual, comSeparador: boolean) {
+  const separador = comSeparador
+    ? { paddingTop: 10, marginTop: 2, borderTop: `1px solid ${T.hairline}` }
+    : {};
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 10, marginTop: 2, borderTop: `1px solid ${T.hairline}` }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, ...separador }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <MEAvatar size={18} initial={p.perguntador_apelido.slice(0, 1)} variant="light" />
         <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: T.ink }}>{p.perguntador_apelido}</span>
@@ -197,7 +200,10 @@ function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtu
   // A cada avanço do jogo (nova volta, pergunta em andamento, resposta ou
   // votação) salta para a aba ativa enquanto estiver acompanhando.
   useEffect(() => {
-    setSelectedTab((prev) => (followLatest.current ? target : Math.min(prev, lastIndex)));
+    setSelectedTab((prev) => {
+      const next = followLatest.current ? target : prev;
+      return Math.max(0, Math.min(next, lastIndex));
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups.length, historico.length, hasPending, turnoNumeroAtual]);
 
@@ -297,7 +303,7 @@ function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtu
           }
           return renderPergunta(item as HistoricoPergunta, i, isLast);
         })}
-        {perguntaAtual && activeGroup.numero === turnoNumeroAtual && renderPerguntaPendente(perguntaAtual)}
+        {perguntaAtual && activeGroup.numero === turnoNumeroAtual && renderPerguntaPendente(perguntaAtual, activeGroup.items.length > 0)}
       </div>
     );
   } else if (activeGroup?.kind === "votacao") {

@@ -14,6 +14,7 @@ import type {
   HistoricoPergunta,
   HistoricoVotacao,
   HistoricoTurnoPresencial,
+  PerguntaAtual,
 } from "@/lib/types";
 
 // ── Fixture builders ───────────────────────────────────────────
@@ -43,6 +44,16 @@ function makeTP(apelido: string, turno_numero = 1): HistoricoTurnoPresencial {
     tipo: "turno_presencial" as const,
     turno_numero,
     jogador_apelido: apelido,
+  };
+}
+
+function makePA(perguntador: string, destinatario: string, texto = "Pergunta em andamento?"): PerguntaAtual {
+  return {
+    perguntador_id: "p-" + perguntador,
+    perguntador_apelido: perguntador,
+    destinatario_id: "d-" + destinatario,
+    destinatario_apelido: destinatario,
+    texto,
   };
 }
 
@@ -243,5 +254,109 @@ describe("HistoricoTabs", () => {
     expect(screen.getByText("Turno 1")).toBeInTheDocument();
     expect(screen.queryByText("Turno 2")).not.toBeInTheDocument();
     expect(screen.getByText(/luz/)).toBeInTheDocument();
+  });
+
+  // ── Pergunta em andamento ──────────────────────────────────────
+
+  it("pergunta em andamento sem aba ainda → cria aba, seleciona e mostra 'X está respondendo'", () => {
+    const palavras = [{ jogador_id: "j1", apelido: "Ana", palavra: "luz" }];
+    render(
+      <HistoricoTabs
+        historico={[]}
+        palavrasTurno={palavras}
+        perguntaAtual={makePA("Ana", "Bruno", "Você vê água?")}
+        turnoNumeroAtual={1}
+      />
+    );
+
+    // aba sintética da volta atual (Turno 2 por causa do offset das palavras)
+    expect(screen.getByText("Turno 2")).toBeInTheDocument();
+    // selecionada automaticamente → pergunta e indicador visíveis
+    expect(screen.getByText(/Você vê água\?/)).toBeInTheDocument();
+    expect(screen.getByText(/Bruno está respondendo/)).toBeInTheDocument();
+  });
+
+  it("pergunta em andamento após respostas na mesma volta → aparece ao fim da aba", () => {
+    render(
+      <HistoricoTabs
+        historico={[makeP("Alice", 1)]}
+        palavrasTurno={[]}
+        perguntaAtual={makePA("Bruno", "Carla", "Tem muralhas?")}
+        turnoNumeroAtual={1}
+      />
+    );
+
+    expect(screen.getByText("Resposta")).toBeInTheDocument(); // pergunta já respondida
+    expect(screen.getByText(/Tem muralhas\?/)).toBeInTheDocument();
+    expect(screen.getByText(/Carla está respondendo/)).toBeInTheDocument();
+  });
+
+  it("ao responder, indicador some e a pergunta vira item do histórico", () => {
+    const { rerender } = render(
+      <HistoricoTabs
+        historico={[]}
+        palavrasTurno={[{ jogador_id: "j1", apelido: "Ana", palavra: "luz" }]}
+        perguntaAtual={makePA("Ana", "Bruno", "É de noite?")}
+        turnoNumeroAtual={1}
+      />
+    );
+    expect(screen.getByText(/Bruno está respondendo/)).toBeInTheDocument();
+
+    rerender(
+      <HistoricoTabs
+        historico={[{ tipo: "pergunta", turno_numero: 1, perguntador_apelido: "Ana", destinatario_apelido: "Bruno", pergunta: "É de noite?", resposta: "Sim" }]}
+        palavrasTurno={[{ jogador_id: "j1", apelido: "Ana", palavra: "luz" }]}
+        perguntaAtual={null}
+        turnoNumeroAtual={1}
+      />
+    );
+    expect(screen.queryByText(/está respondendo/)).not.toBeInTheDocument();
+    expect(screen.getByText("Sim")).toBeInTheDocument();
+  });
+
+  it("nova volta com pergunta em andamento → aba avança automaticamente", () => {
+    const h1 = [makeP("Alice", 1)];
+    const { rerender } = render(
+      <HistoricoTabs historico={h1} palavrasTurno={[]} />
+    );
+    expect(screen.getByText("Resposta")).toBeInTheDocument();
+
+    // Volta 2 começa: pergunta em andamento, ainda sem item respondido
+    rerender(
+      <HistoricoTabs
+        historico={h1}
+        palavrasTurno={[]}
+        perguntaAtual={makePA("Bruno", "Carla", "Cidade grande?")}
+        turnoNumeroAtual={2}
+      />
+    );
+    expect(screen.getByText("Turno 2")).toBeInTheDocument();
+    expect(screen.getByText(/Cidade grande\?/)).toBeInTheDocument();
+    expect(screen.getByText(/Carla está respondendo/)).toBeInTheDocument();
+  });
+
+  it("clicar numa aba antiga pausa o acompanhamento; clicar na aba ativa retoma", () => {
+    const h1 = [makeP("Alice", 1), makeP("Bruno", 2)];
+    const { rerender } = render(
+      <HistoricoTabs historico={h1} palavrasTurno={[]} />
+    );
+
+    // Pausa: volta para Turno 1
+    fireEvent.click(screen.getByText("Turno 1"));
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+
+    // Chega Turno 3 → continua pausado em Turno 1
+    const h2 = [...h1, makeP("Davi", 3)];
+    rerender(<HistoricoTabs historico={h2} palavrasTurno={[]} />);
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+
+    // Toca na aba ativa (Turno 3) → retoma acompanhamento
+    fireEvent.click(screen.getByText("Turno 3"));
+    expect(screen.getByText("Davi")).toBeInTheDocument();
+
+    // Chega Turno 4 → segue automaticamente
+    const h3 = [...h2, makeP("Eva", 4)];
+    rerender(<HistoricoTabs historico={h3} palavrasTurno={[]} />);
+    expect(screen.getByText("Eva")).toBeInTheDocument();
   });
 });
