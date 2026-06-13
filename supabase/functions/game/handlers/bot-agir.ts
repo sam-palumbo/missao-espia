@@ -13,7 +13,7 @@ import { getRodadaWithSala, getJogadoresAtivos, forbidden } from "../lib/queries
 import { isPrimeiroTurno } from "../lib/regras.ts";
 import { limiteEliminacoesErradas } from "../lib/espias.ts";
 import { EVENTOS } from "../lib/eventos.ts";
-import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, RESPOSTAS_BOT } from "../lib/bot.ts";
+import { aleatorio, eventoAleatorioId, PALAVRAS_BOT, PERGUNTAS_BOT, respostaFallback } from "../lib/bot.ts";
 import {
   acusadoIA, acusarDeflexaoIA, adivinhacaoIA, palavraIA, perguntaIA, respostaIA, votoIA,
   type ContextoBotIA,
@@ -105,8 +105,10 @@ export async function botAgir(userId: string, payload: unknown) {
     const souEspia = estado.espia_ids.includes(bot.id);
 
     // Espia: a partir da 3ª volta, a IA estima confiança e só arrisca se for
-    // alta o bastante; sem IA, cai no sorteio de chance fixa.
-    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3) {
+    // alta o bastante; sem IA, cai no sorteio de chance fixa. A consulta à IA
+    // (que reenvia os 32 eventos) é a mais cara em tokens, então só roda em
+    // parte dos turnos — poupa o limite de tokens/minuto da Groq.
+    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < 0.4) {
       const palpite = await adivinhacaoIA(contexto(bot));
       const deveAdivinhar = palpite
         ? palpite.confianca >= LIMIAR_ADIVINHAR_ESPIA
@@ -168,7 +170,8 @@ export async function botAgir(userId: string, payload: unknown) {
     const perguntaAtual = estado.pergunta_atual;
     const bot = perguntaAtual ? botPorId.get(perguntaAtual.destinatario_id) : undefined;
     if (!bot || !perguntaAtual) return { agiu: false };
-    const resposta = (await respostaIA(contexto(bot), perguntaAtual)) ?? aleatorio(RESPOSTAS_BOT);
+    const resposta = (await respostaIA(contexto(bot), perguntaAtual))
+      ?? respostaFallback(estado.espia_ids.includes(bot.id));
     await responderPergunta(userId, { rodada_id, resposta, bot_id: bot.id });
     return { agiu: true, acao: "responder_pergunta" };
   }

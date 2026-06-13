@@ -41,23 +41,34 @@ export const PERGUNTAS_BOT = [
   "Isso tem alguma conexão com o passado?",
 ] as const;
 
-export const RESPOSTAS_BOT = [
-  "Não tenho certeza...",
-  "Acho que sim.",
-  "Talvez.",
-  "Não sei ao certo.",
-  "É possível.",
-  "Não posso dizer com certeza.",
-  "Depende.",
-  "Não é tão simples assim.",
-  "Não tenho informações suficientes.",
-  "Prefiro não comentar.",
-  "É complicado explicar.",
-  "Não posso revelar muito.",
-  "Não sei o que pensar.",
-  "É uma boa pergunta.",
-  "Não tenho certeza sobre isso.",
+// Fallbacks de resposta usados quando a IA está indisponível ou limitada
+// (rate limit da Groq). Propositalmente NÃO-evasivos: respostas vazias como
+// "não sei/talvez/depende" entregam o espia e fazem o não-espia parecer espia.
+// Sem o contexto do evento são genéricas, mas soam engajadas/plausíveis.
+export const RESPOSTAS_GRUPO_BOT = [
+  "Sim, lembro bem — foi um momento marcante.",
+  "Estava tudo muito intenso ali, vi de perto.",
+  "Nunca vou esquecer o que aconteceu naquele lugar.",
+  "Senti que algo grande estava acontecendo.",
+  "Tinha gente por todo lado, foi impressionante.",
+  "Foi uma das cenas mais fortes que já vi.",
+  "Dava para sentir a tensão no ar.",
+  "Cheguei e logo entendi a importância daquilo.",
 ] as const;
+
+export const RESPOSTAS_ESPIA_BOT = [
+  "Foi uma experiência e tanto, sinceramente.",
+  "Você tinha que estar lá para entender.",
+  "Aconteceu tanta coisa que nem sei por onde começar.",
+  "Foi bem mais do que eu esperava.",
+  "Olha, marcou bastante, isso eu garanto.",
+  "Tem coisas ali que ficam com a gente.",
+  "No fim, valeu cada segundo.",
+] as const;
+
+export function respostaFallback(souEspia: boolean): string {
+  return aleatorio(souEspia ? RESPOSTAS_ESPIA_BOT : RESPOSTAS_GRUPO_BOT);
+}
 
 export function aleatorio<T>(lista: readonly T[]): T {
   return lista[Math.floor(Math.random() * lista.length)];

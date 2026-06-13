@@ -41,27 +41,17 @@ export interface ContextoBotIA {
   tempoRestanteSeg: number | null;
 }
 
-const SYSTEM = `Você é um jogador de "Missão Espia", jogo de dedução social com temática bíblica (estilo Spyfall). Em cada rodada sorteia-se um par EVENTO + LOCAL da Bíblia; todos o conhecem, menos o(s) espia(s), que precisa(m) descobri-lo sem se entregar.
+const SYSTEM = `Você joga "Missão Espia" (Spyfall bíblico): sorteia-se um par EVENTO+LOCAL; todos o conhecem, menos o(s) espia(s). A lista dos 32 pares é PÚBLICA, então o espia joga por ELIMINAÇÃO (corta os pares que não batem com as falas).
 
-FATO-CHAVE: a lista dos 32 pares evento+local é PÚBLICA — todos, inclusive o espia, sabem quais pares são possíveis. O jogo é de ELIMINAÇÃO: o espia não adivinha do nada, ele vai cortando os pares que não batem com as respostas.
+NÃO-espia: responda como quem ESTEVE LÁ — um detalhe concreto e coerente com o cenário, mas que ainda sirva para vários pares (nem específico demais, que entrega o local, nem vago). Pergunte coisas que distinguem locais parecidos (há vários montes, rios, palácios, prisões, túmulos). Desconfie de quem não encaixa no evento ou se contradiz.
 
-Se você NÃO é o espia (grupo):
-- Faça perguntas que um conhecedor responde com naturalidade, mas que um espia teria de blefar. As melhores perguntas DISTINGUEM locais parecidos (a lista tem vários montes, rios, palácios, prisões e túmulos) — forçam o espia a se comprometer.
-- Ao responder, mire o ponto certo: coerente com o evento, mas que ainda sirva para VÁRIOS pares. Específico demais entrega o local ao espia; vago demais faz você parecer o espia.
-- Desconfie de quem dá respostas que não encaixam no evento, se contradiz, ou é genérico a ponto de servir para tudo.
+Espia: deduza Testamento → categoria do local → par exato. Respostas e perguntas plausíveis e amplas, que caibam em muitos pares, usando as falas dos outros como pista.
 
-Se você É o espia, pense por ELIMINAÇÃO:
-- Primeiro deduza o Testamento (nomes e linguagem denunciam Antigo x Novo), depois a CATEGORIA do local (água/rio, monte/deserto, palácio, prisão/perigo, templo, túmulo, casa) e só então o par exato.
-- Dê respostas vagas porém plausíveis, que caibam em MUITOS dos 32 pares ("era um lugar importante", "tinha bastante gente"). Nunca cite detalhe que sirva só para um par.
-- Faça perguntas que triangulam mas soam naturais: "tinha água por perto?", "era de dia ou de noite?", "tinha multidão?", "você sentiu medo?".
+PROIBIDO (todos): evasivas vazias ("não sei", "talvez", "depende") — entregam o espia e fazem o não-espia parecer espia. Sempre dê algo concreto/plausível.
 
-REGRA DE RESPOSTA (vale para todos): respostas evasivas e vazias ("não sei", "talvez", "depende", "não posso dizer") são RUINS. Quem conhece o cenário deve mostrar que conhece com um detalhe concreto e natural; o espia deve blefar com naturalidade, dando algo plausível — nunca evasivas óbvias, que entregam o espia na hora.
+Pontos: espia escondido=2, adivinha certo=3, adivinha errado=0+eliminado (só arrisque se MUITO confiante). Eliminar inocente é caro (com 4 jogadores, 1 erro perde o jogo) — acuse só com evidência forte.
 
-Estratégia de PONTOS (decida com base nisto):
-- Espia escondido até o fim vale 2 pontos; adivinhar certo vale 3; adivinhar ERRADO custa a eliminação e 0 pontos. Logo: só arrisque adivinhar quando estiver REALMENTE confiante — senão continue escondido.
-- Eliminar um inocente é caro para o grupo (com 4 jogadores, um único erro encerra o jogo). Só acuse com evidência forte; quanto menor o grupo, mais certeza exija.
-
-Fale sempre em português brasileiro, tom natural e curto, como entre amigos. Responda SEMPRE só com um objeto JSON válido no formato pedido, sem texto fora do JSON. Quando o formato pedir "raciocinio", pense ali em 1-2 frases ANTES de decidir.`;
+Português brasileiro, curto e natural. Responda SÓ com JSON válido no formato pedido. No campo "raciocinio", pense em 1 frase antes de decidir.`;
 
 export function descreverContexto(ctx: ContextoBotIA): string {
   const linhas: string[] = [`Você é "${ctx.apelido}".`];
@@ -146,37 +136,51 @@ function clampConfianca(valor: unknown): number {
 /**
  * Uma decisão = uma chamada à Groq em modo JSON. Qualquer falha (sem chave,
  * timeout, erro HTTP, JSON inválido) vira null.
+ *
+ * A Groq impõe limite de tokens/minuto (TPM); sob carga de jogo isso devolve
+ * HTTP 429. Quando o 429 traz um `retry-after` curto (≤ 3s), espera e tenta
+ * uma vez mais antes de desistir — reduz quanto os bots caem no fallback.
  */
 async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: number): Promise<T | null> {
   const apiKey = Deno.env.get("GROQ_API_KEY");
   if (!apiKey) return null;
-  try {
-    const res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: Deno.env.get("GROQ_MODEL") ?? MODEL_PADRAO,
-        temperature: temperatura,
-        max_completion_tokens: 512,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: `${descreverContexto(ctx)}\n\n${instrucao}` },
-        ],
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) {
-      console.error(`[bot-ia] Groq HTTP ${res.status}:`, (await res.text()).slice(0, 300));
+  const corpo = JSON.stringify({
+    model: Deno.env.get("GROQ_MODEL") ?? MODEL_PADRAO,
+    temperature: temperatura,
+    max_completion_tokens: 256,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `${descreverContexto(ctx)}\n\n${instrucao}` },
+    ],
+  });
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    try {
+      const res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: corpo,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (res.status === 429 && tentativa === 0) {
+        const espera = Math.min(3, Number(res.headers.get("retry-after")) || 1) * 1000;
+        await res.text();
+        await new Promise((r) => setTimeout(r, espera));
+        continue;
+      }
+      if (!res.ok) {
+        console.error(`[bot-ia] Groq HTTP ${res.status}:`, (await res.text()).slice(0, 300));
+        return null;
+      }
+      const data = await res.json();
+      const texto: string | undefined = data.choices?.[0]?.message?.content;
+      return texto ? (JSON.parse(texto) as T) : null;
+    } catch (err) {
+      console.error("[bot-ia] decisão falhou:", err instanceof Error ? err.message : err);
       return null;
     }
-    const data = await res.json();
-    const texto: string | undefined = data.choices?.[0]?.message?.content;
-    return texto ? (JSON.parse(texto) as T) : null;
-  } catch (err) {
-    console.error("[bot-ia] decisão falhou:", err instanceof Error ? err.message : err);
-    return null;
   }
+  return null;
 }
 
 export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
