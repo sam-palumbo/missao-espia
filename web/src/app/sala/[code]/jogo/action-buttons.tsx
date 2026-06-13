@@ -42,7 +42,18 @@ export function ActionButtons({ isSpy, ehMeuTurno, meuEliminado, fase, turnoPala
   );
 
   return (
-    <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{
+      position: "sticky",
+      bottom: 0,
+      zIndex: 20,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      paddingTop: 16,
+      paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+      marginTop: "auto",
+      background: `linear-gradient(to top, ${T.bg} 70%, transparent)`,
+    }}>
       <div style={{ display: "flex", gap: 10 }}>
         <motion.button {...tap} {...hover} onClick={onMinhaCarta} style={{ flex: 1, background: T.card, color: T.inkSoft, border: `1.5px solid ${T.hairlineStrong}`, borderRadius: 999, padding: "13px 16px", fontFamily: F.sans, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}>
           Minha Carta
