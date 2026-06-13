@@ -61,17 +61,12 @@ export interface ContextoBotIA {
   tempoRestanteSeg: number | null;
 }
 
-const SYSTEM = `Você joga "Missão Espia" (Spyfall bíblico): sorteia-se um par EVENTO+LOCAL; todos o conhecem, menos o(s) espia(s). A lista dos 32 pares é PÚBLICA, então o espia joga por ELIMINAÇÃO (corta os pares que não batem com as falas).
-
-NÃO-espia: responda como quem ESTEVE LÁ — um detalhe concreto e coerente com o cenário, mas que ainda sirva para vários pares (nem específico demais, que entrega o local, nem vago). Pergunte coisas que distinguem locais parecidos (há vários montes, rios, palácios, prisões, túmulos). Desconfie de quem não encaixa no evento ou se contradiz.
-
-Espia: deduza Testamento → categoria do local → par exato. Respostas e perguntas plausíveis e amplas, que caibam em muitos pares, usando as falas dos outros como pista.
-
-PROIBIDO (todos): evasivas vazias ("não sei", "talvez", "depende") — entregam o espia e fazem o não-espia parecer espia. Sempre dê algo concreto/plausível.
-
-Pontos: espia escondido=2, adivinha certo=3, adivinha errado=0+eliminado (só arrisque se MUITO confiante). Eliminar inocente é caro (com 4 jogadores, 1 erro perde o jogo) — acuse só com evidência forte.
-
-Português brasileiro, curto e natural. Responda SÓ com JSON válido no formato pedido. No campo "raciocinio", pense em 1 frase antes de decidir.`;
+const SYSTEM = `"Missão Espia" (Spyfall bíblico): há um par EVENTO+LOCAL que todos conhecem, menos o(s) espia(s). A lista dos 32 pares é PÚBLICA — o espia joga por ELIMINAÇÃO (corta os pares que não batem com as falas).
+NÃO-espia: fale como quem ESTEVE LÁ — detalhe concreto e coerente, mas que ainda caiba em vários pares (nem entrega o local, nem é vago). Desconfie de quem não encaixa ou se contradiz.
+ESPIA: deduza Testamento→local→par; perguntas/respostas amplas que caibam em muitos pares, usando as falas dos outros como pista.
+NUNCA dê evasiva vazia ("não sei/talvez/depende") — entrega o jogo. Sempre algo concreto/plausível.
+Pontos: espia escondido=2, adivinha certo=3, errado=0 e eliminado. Eliminar inocente é caro — acuse só com evidência forte.
+Português brasileiro, curto e natural. Responda SÓ com JSON válido no formato pedido; em "raciocinio", 1 frase antes de decidir.`;
 
 export function descreverContexto(ctx: ContextoBotIA): string {
   const linhas: string[] = [`Você é "${ctx.apelido}".`];
@@ -159,13 +154,21 @@ function clampConfianca(valor: unknown): number {
   return Math.max(0, Math.min(100, n));
 }
 
+// Quanto tempo, no máximo, vale a pena esperar um 429 antes de desistir.
+// O teto por MINUTO da Groq reseta em poucos segundos (header
+// x-ratelimit-reset-tokens) — esperar recupera a chamada. Já um teto longo
+// (ex.: tokens/DIA, retry-after em minutos) não vale esperar: cai no fallback.
+const MAX_ESPERA_429_SEG = 9;
+const MAX_TENTATIVAS = 3;
+
 /**
  * Uma decisão = uma chamada ao provedor de IA em modo JSON. Qualquer falha
  * (sem chave, timeout, erro HTTP, JSON inválido) vira null.
  *
- * Sob carga de jogo a API pode devolver HTTP 429 (rate limit). Quando o 429
- * traz um `retry-after` curto (≤ 3s), espera e tenta uma vez mais antes de
- * desistir — reduz quanto os bots caem no fallback.
+ * Sob carga de jogo a API devolve HTTP 429 (rate limit). Quando o `retry-after`
+ * é curto (teto por minuto), espera e tenta de novo — até MAX_TENTATIVAS — para
+ * recuperar a chamada em vez de cair no fallback. Se a espera for longa (teto
+ * diário), desiste na hora, pois esperar não adiantaria.
  */
 async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: number): Promise<T | null> {
   const { url, model, apiKey } = config();
@@ -173,14 +176,14 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
   const corpo = JSON.stringify({
     model,
     temperature: temperatura,
-    max_tokens: 256,
+    max_tokens: 192,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: `${descreverContexto(ctx)}\n\n${instrucao}` },
     ],
   });
-  for (let tentativa = 0; tentativa < 2; tentativa++) {
+  for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -188,10 +191,11 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
         body: corpo,
         signal: AbortSignal.timeout(20_000),
       });
-      if (res.status === 429 && tentativa === 0) {
-        const espera = Math.min(3, Number(res.headers.get("retry-after")) || 1) * 1000;
+      if (res.status === 429 && tentativa < MAX_TENTATIVAS - 1) {
+        const espera = Number(res.headers.get("retry-after")) || 2;
         await res.text();
-        await new Promise((r) => setTimeout(r, espera));
+        if (espera > MAX_ESPERA_429_SEG) return null; // teto longo (dia): não vale esperar
+        await new Promise((r) => setTimeout(r, espera * 1000));
         continue;
       }
       if (!res.ok) {
@@ -213,9 +217,9 @@ export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
   const out = await decidir<{ palavra: string }>(
     ctx,
     (ctx.souEspia
-      ? "É o turno de palavras: cada jogador diz UMA única palavra relacionada ao evento. Como espia, diga uma palavra genérica de tema bíblico que não destoe das já ditas."
-      : 'É o turno de palavras: diga UMA palavra. REGRA DE OURO: imagine que VOCÊ é o espia ouvindo essa palavra — se ela permitiria adivinhar o evento ou o local, ela é óbvia DEMAIS, escolha outra. PROIBIDO: palavras que aparecem no nome do evento/local, sinônimos diretos, ou termos que só fazem sentido neste cenário. Escolha uma palavra temática e oblíqua, que caiba em VÁRIOS eventos bíblicos e esteja só de leve ligada ao seu — o objetivo é provar sutilmente que você conhece, sem entregar nada ao espia.') +
-      '\nResponda em JSON: {"raciocinio": "<1-2 frases>", "palavra": "<uma única palavra, sem espaços>"}',
+      ? "Turno de palavras: cada um diz UMA palavra ligada ao evento. Como espia, diga uma palavra genérica de tema bíblico que não destoe das já ditas."
+      : 'Turno de palavras: diga UMA palavra. REGRA: se ela permitiria adivinhar o evento/local, é óbvia demais — troque. Proibido: palavras do nome do evento/local, sinônimos diretos ou termos que só fazem sentido neste cenário. Escolha algo temático e oblíquo, que caiba em vários eventos bíblicos e só de leve ligado ao seu.') +
+      '\nResponda em JSON: {"raciocinio": "<1 frase>", "palavra": "<uma única palavra, sem espaços>"}',
     TEMP_CRIATIVA,
   );
   const palavra = out?.palavra?.toString().trim().split(/\s+/)[0]?.replace(/[.,!?"']/g, "").slice(0, 50);
@@ -226,8 +230,8 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
   if (ctx.jogadores.length === 0) return null;
   const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
   const instrucao = ctx.souEspia
-    ? `É a sua vez de perguntar. Você é o espia e NÃO conhece o local — faça UMA pergunta AMPLA que ajude a TRIANGULAR o cenário (extrair pistas: ambiente, quem está presente, perigo, época, o que se faz ali) sem revelar que você não sabe. Foque na dimensão ainda AMBÍGUA: se as falas já sugerem o ambiente, pergunte sobre quem está presente ou a época; não repita o ângulo que já foi respondido. Espalhe as perguntas: evite insistir sempre no mesmo jogador. Máx. 200 caracteres.`
-    : `É a sua vez de perguntar. Você CONHECE o cenário — use a pergunta para DESMASCARAR o espia. Se alguém já deu uma resposta vaga, genérica ou que NÃO bate com o evento/local, APROFUNDE nela: faça um acompanhamento que force um detalhe verificável e exponha a contradição. Senão, faça uma pergunta-armadilha ligada ao cenário real que só quem é de dentro responde com naturalidade. Mire de preferência o jogador mais suspeito, pressionando-o. NÃO revele o evento/local nem facilite para o espia. Máx. 200 caracteres.`;
+    ? `Sua vez de perguntar. Você é o espia e NÃO sabe o local — faça UMA pergunta AMPLA que triangule pistas (ambiente, quem está, perigo, época) sem revelar que não sabe. Mire a dimensão ainda ambígua; não repita ângulo já respondido nem insista no mesmo jogador. Máx. 200 caracteres.`
+    : `Sua vez de perguntar. Você CONHECE o cenário — pergunte para DESMASCARAR o espia. Se alguém deu resposta vaga ou que não bate, aprofunde nela forçando um detalhe verificável; senão, faça uma pergunta-armadilha que só quem é de dentro responde natural. Mire o mais suspeito. Não entregue o evento/local. Máx. 200 caracteres.`;
   const out = await decidir<{ destinatario_id: string; pergunta: string }>(
     ctx,
     `${instrucao}\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
@@ -240,11 +244,11 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
 
 export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): Promise<string | null> {
   const instrucaoPapel = ctx.souEspia
-    ? `Você é o espia e NÃO conhece o evento/local. Dê uma resposta PLAUSÍVEL e natural que caiba em vários cenários bíblicos — vaga o bastante para não se entregar, mas que soe como resposta de verdade. Use a própria pergunta como pista. NUNCA responda com evasiva vazia ("não sei", "talvez", "depende"): isso denuncia o espia.`
-    : `Você CONHECE o evento e o local, então responda como quem ESTEVE LÁ: dê um detalhe concreto e coerente com o cenário (algo que você viu, sentiu, fez ou ouviu naquele lugar) que prove que você sabe. NÃO seja evasivo nem genérico ("não sei", "talvez", "depende") — isso te faz parecer o espia e não ajuda o grupo. Mas não cite o nome do evento/local nem dê detalhe que entregue tudo de bandeja.`;
+    ? `Você é o espia e NÃO sabe o evento/local. Dê uma resposta PLAUSÍVEL e natural que caiba em vários cenários bíblicos — vaga o bastante para não se entregar, mas soando real. Use a pergunta como pista. NUNCA evasiva vazia ("não sei/talvez/depende"): denuncia o espia.`
+    : `Você CONHECE o evento/local — responda como quem ESTEVE LÁ: um detalhe concreto e coerente (algo que viu, sentiu, fez ou ouviu) que prove que sabe. Nada de evasiva ou genérico (te faz parecer o espia), mas não cite o nome do evento/local nem entregue tudo.`;
   const out = await decidir<{ resposta: string }>(
     ctx,
-    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Mantenha COERÊNCIA com o que você já disse antes (veja o histórico) — não se contradiga e, se já falou antes, acrescente um detalhe NOVO em vez de repetir as mesmas palavras, para construir um testemunho consistente. Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
+    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Mantenha COERÊNCIA com o histórico — não se contradiga e, se já falou, acrescente um detalhe NOVO. Máx. 200 caracteres.\nResponda em JSON: {"raciocinio": "<1 frase>", "resposta": "<sua resposta>"}`,
     TEMP_CRIATIVA,
   );
   const resposta = out?.resposta?.toString().trim().slice(0, 200);
