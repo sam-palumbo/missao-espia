@@ -5,11 +5,12 @@
 // palavra do turno de palavras, pergunta + destinatário, resposta,
 // voto, alvo de acusação e adivinhação do espia.
 //
-// Usa a API da NVIDIA (DeepSeek, compatível com OpenAI, via fetch)
-// em modo JSON. Cada função retorna null quando a IA está indisponível
-// (sem NVIDIA_API_KEY) ou quando a chamada falha — o bot-agir usa o
-// fallback aleatório de bot.ts, então o jogo nunca trava por causa
-// da IA.
+// Usa uma API compatível com OpenAI (NVIDIA/DeepSeek por padrão, mas
+// Groq, OpenAI etc. funcionam só trocando env — ver PROVEDORES abaixo),
+// via fetch em modo JSON. Cada função retorna null quando a IA está
+// indisponível (sem IA_API_KEY) ou quando a chamada falha — o bot-agir
+// usa o fallback aleatório de bot.ts, então o jogo nunca trava por
+// causa da IA.
 //
 // Estratégia: o SYSTEM ensina a tática específica do jogo (lista
 // pública = jogo de eliminação, distinguir locais parecidos,
@@ -22,8 +23,27 @@
 import { EVENTOS } from "./eventos.ts";
 import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
-const NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
-const MODEL_PADRAO = "deepseek-ai/deepseek-v4-pro";
+// Presets de provedores compatíveis com OpenAI. Para trocar de provedor
+// basta definir as envs (sem mexer no código):
+//   IA_PROVIDER  — chave de PROVEDORES abaixo (padrão "nvidia")
+//   IA_API_KEY   — a chave do provedor escolhido
+//   IA_MODEL     — opcional, sobrescreve o modelo padrão do provedor
+//   IA_API_URL   — opcional, sobrescreve a URL (ex.: provedor não listado)
+const PROVEDORES: Record<string, { url: string; model: string }> = {
+  nvidia: { url: "https://integrate.api.nvidia.com/v1/chat/completions", model: "deepseek-ai/deepseek-v4-pro" },
+  groq: { url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile" },
+  openai: { url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+};
+
+function config(): { url: string; model: string; apiKey: string | undefined } {
+  const provedor = PROVEDORES[Deno.env.get("IA_PROVIDER") ?? "nvidia"] ?? PROVEDORES.nvidia;
+  return {
+    url: Deno.env.get("IA_API_URL") ?? provedor.url,
+    model: Deno.env.get("IA_MODEL") ?? provedor.model,
+    // Aceita IA_API_KEY (genérica) ou NVIDIA_API_KEY (compat. com o secret atual).
+    apiKey: Deno.env.get("IA_API_KEY") ?? Deno.env.get("NVIDIA_API_KEY"),
+  };
+}
 
 const TEMP_CRIATIVA = 0.8;   // palavra, pergunta, resposta
 const TEMP_ANALITICA = 0.3;  // voto, acusação, adivinhação
@@ -140,18 +160,18 @@ function clampConfianca(valor: unknown): number {
 }
 
 /**
- * Uma decisão = uma chamada à NVIDIA em modo JSON. Qualquer falha (sem chave,
- * timeout, erro HTTP, JSON inválido) vira null.
+ * Uma decisão = uma chamada ao provedor de IA em modo JSON. Qualquer falha
+ * (sem chave, timeout, erro HTTP, JSON inválido) vira null.
  *
  * Sob carga de jogo a API pode devolver HTTP 429 (rate limit). Quando o 429
  * traz um `retry-after` curto (≤ 3s), espera e tenta uma vez mais antes de
  * desistir — reduz quanto os bots caem no fallback.
  */
 async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: number): Promise<T | null> {
-  const apiKey = Deno.env.get("NVIDIA_API_KEY");
+  const { url, model, apiKey } = config();
   if (!apiKey) return null;
   const corpo = JSON.stringify({
-    model: Deno.env.get("NVIDIA_MODEL") ?? MODEL_PADRAO,
+    model,
     temperature: temperatura,
     max_tokens: 256,
     response_format: { type: "json_object" },
@@ -162,7 +182,7 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
   });
   for (let tentativa = 0; tentativa < 2; tentativa++) {
     try {
-      const res = await fetch(NVIDIA_URL, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: corpo,
@@ -175,7 +195,7 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
         continue;
       }
       if (!res.ok) {
-        console.error(`[bot-ia] NVIDIA HTTP ${res.status}:`, (await res.text()).slice(0, 300));
+        console.error(`[bot-ia] IA HTTP ${res.status}:`, (await res.text()).slice(0, 300));
         return null;
       }
       const data = await res.json();
