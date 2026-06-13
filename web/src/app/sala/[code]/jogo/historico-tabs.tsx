@@ -149,6 +149,30 @@ function renderVotacao(h: HistoricoVotacao) {
   );
 }
 
+// ── targetTabIndex ─────────────────────────────────────────────
+// Aba onde a ação mais recente acontece — nem sempre é a última: numa votação
+// no meio da volta, a pergunta seguinte volta para o grupo do turno (índice
+// anterior ao da votação).
+
+function targetTabIndex(
+  groups: TabGroup[],
+  historico: HistoricoItem[],
+  perguntaAtual: PerguntaAtual | null | undefined,
+  turnoNumeroAtual: number | undefined,
+): number {
+  if (perguntaAtual && turnoNumeroAtual != null) {
+    const idx = groups.findIndex(g => g.kind === "turno" && g.numero === turnoNumeroAtual);
+    if (idx !== -1) return idx;
+  }
+  const last = historico[historico.length - 1];
+  if (last && last.tipo !== "votacao") {
+    const tn = (last as HistoricoPergunta | HistoricoTurnoPresencial).turno_numero ?? 1;
+    const idx = groups.findIndex(g => g.kind === "turno" && g.numero === tn);
+    if (idx !== -1) return idx;
+  }
+  return groups.length - 1;
+}
+
 // ── HistoricoTabs ──────────────────────────────────────────────
 
 function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtual }: Props) {
@@ -161,29 +185,26 @@ function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtu
   }
 
   const hasPalavrasTab = groups[0]?.kind === "palavras";
+  const lastIndex = groups.length - 1;
+  const target = targetTabIndex(groups, historico, perguntaAtual, turnoNumeroAtual);
 
   const [selectedTab, setSelectedTab] = useState<number>(0);
-  const prevFrontier = useRef(0);
+  // Por padrão acompanhamos a aba ativa; só paramos se o usuário tocar numa
+  // aba que não é a ativa (e voltamos a acompanhar quando ele toca na ativa).
+  const followLatest = useRef(true);
   const hasPending = !!perguntaAtual;
 
-  // Mantém o usuário acompanhando a aba mais recente conforme o jogo avança
-  // (nova volta, pergunta em andamento ou resposta registrada). Só "puxa" quando
-  // ele já estava na fronteira anterior — se voltou para uma aba antiga, respeita.
+  // A cada avanço do jogo (nova volta, pergunta em andamento, resposta ou
+  // votação) salta para a aba ativa enquanto estiver acompanhando.
   useEffect(() => {
-    const frontier = groups.length - 1;
-    setSelectedTab((prev) => {
-      if (frontier > prevFrontier.current && prev === prevFrontier.current) return frontier;
-      // Preso numa aba de votação após ela resolver → vai para o último turno.
-      if (groups[prev]?.kind === "votacao") {
-        for (let i = groups.length - 1; i >= 0; i--) {
-          if (groups[i].kind === "turno") return i;
-        }
-      }
-      return Math.min(prev, frontier);
-    });
-    prevFrontier.current = frontier;
+    setSelectedTab((prev) => (followLatest.current ? target : Math.min(prev, lastIndex)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historico.length, hasPending, turnoNumeroAtual]);
+  }, [groups.length, historico.length, hasPending, turnoNumeroAtual]);
+
+  function handleTabClick(i: number) {
+    setSelectedTab(i);
+    followLatest.current = i === target;
+  }
 
   if (groups.length === 0) {
     return null;
@@ -220,7 +241,7 @@ function HistoricoTabs({ historico, palavrasTurno, perguntaAtual, turnoNumeroAtu
         return (
           <button
             key={key}
-            onClick={() => setSelectedTab(i)}
+            onClick={() => handleTabClick(i)}
             style={{
               background: isActive ? T.sienna : T.cardWarm,
               color: isActive ? "white" : T.inkSoft,
