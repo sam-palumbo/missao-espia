@@ -13,20 +13,24 @@ interface EncerrarPayload {
   espia_adivinhador_id?: string;
   /** Evento_id que o espia adivinhou (armazenado no estado para o frontend exibir). */
   adivinhou_evento_id?: number;
+  /** Evento_id que o espia chutou e ERROU (frontend exibe o palpite errado). */
+  palpite_errado_evento_id?: number;
 }
 
 /** Monta o estado final da rodada — função pura para facilitar testes. */
 export function montarEstadoResultado(
   estado: Record<string, unknown>,
   adivinhou_evento_id?: number,
+  palpite_errado_evento_id?: number,
 ): Record<string, unknown> {
-  return adivinhou_evento_id != null
-    ? { ...estado, fase: "resultado", adivinhou_evento_id }
-    : { ...estado, fase: "resultado" };
+  const base: Record<string, unknown> = { ...estado, fase: "resultado" };
+  if (adivinhou_evento_id != null) base.adivinhou_evento_id = adivinhou_evento_id;
+  if (palpite_errado_evento_id != null) base.palpite_errado_evento_id = palpite_errado_evento_id;
+  return base;
 }
 
 export async function encerrarRodada(_userId: string, payload: unknown) {
-  const { rodada_id, espia_pego, espia_adivinhou, espia_pego_id, espia_adivinhador_id, adivinhou_evento_id } =
+  const { rodada_id, espia_pego, espia_adivinhou, espia_pego_id, espia_adivinhador_id, adivinhou_evento_id, palpite_errado_evento_id } =
     payload as EncerrarPayload;
   if (!rodada_id) throw new Error("rodada_id obrigatório");
 
@@ -73,7 +77,7 @@ export async function encerrarRodada(_userId: string, payload: unknown) {
     }
   }
 
-  const novoEstado = montarEstadoResultado(estado, adivinhou_evento_id);
+  const novoEstado = montarEstadoResultado(estado, adivinhou_evento_id, palpite_errado_evento_id);
 
   await atualizarEstadoComVersao(
     db, rodada_id, rodada.versao,

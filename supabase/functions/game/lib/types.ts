@@ -101,6 +101,8 @@ export interface EstadoRodada {
   turno_numero_atual: number;
   timer_adivinhacao_end?: string;
   adivinhacoes_fim_tempo?: Record<string, number | null>;
+  /** Evento que o espia chutou e ERROU — frontend exibe o palpite errado. */
+  palpite_errado_evento_id?: number;
 }
 
 export interface Rodada {

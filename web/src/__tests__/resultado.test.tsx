@@ -24,7 +24,10 @@ vi.mock("@/lib/supabase", () => ({
 vi.mock("@/hooks/usePlayers");
 vi.mock("@/hooks/useGameState");
 vi.mock("@/lib/eventos", () => ({
-  EVENTOS: [{ id: 1, evento: "Criação", local: "Jardim do Éden", testament: "AT" }],
+  EVENTOS: [
+    { id: 1, evento: "Criação", local: "Jardim do Éden", testament: "AT" },
+    { id: 2, evento: "Dilúvio", local: "Arca de Noé", testament: "AT" },
+  ],
 }));
 vi.mock("motion/react", async () => (await import("./helpers")).motionMock);
 vi.mock("@/components/ui/design", async () => (await import("./helpers")).designMock);
@@ -91,6 +94,31 @@ describe("Página Resultado", () => {
     await waitFor(() => {
       expect(screen.getByText("Missão cumprida")).toBeInTheDocument();
     });
+  });
+
+  it("mostra o palpite errado quando o espia chutou errado", async () => {
+    vi.mocked(useGameState).mockReturnValue(
+      makeRodada({ evento_id: 1 }, { espia_ids: ["jogador-2"], palpite_errado_evento_id: 2 })
+    );
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB_PEGO]);
+
+    await act(async () => { renderResultado(); });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Chutou:.*Arca de Noé.*Dilúvio/)).toBeInTheDocument();
+    });
+  });
+
+  it("não mostra palpite errado quando o espia adivinhou certo", async () => {
+    vi.mocked(useGameState).mockReturnValue(espiaPegoRodada(true));
+    vi.mocked(usePlayers).mockReturnValue([ALICE, BOB_PEGO]);
+
+    await act(async () => { renderResultado(); });
+
+    await waitFor(() => {
+      expect(screen.getByText("Missão cumprida")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Chutou:/)).not.toBeInTheDocument();
   });
 
   it("mostra o apelido do espia", async () => {

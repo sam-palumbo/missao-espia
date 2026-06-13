@@ -106,6 +106,7 @@ export async function adivinhar(userId: string, payload: unknown) {
       espia_pego: true,
       espia_adivinhou: false,
       espia_pego_id: jogador.id,
+      palpite_errado_evento_id: evento_id,
     });
   }
 

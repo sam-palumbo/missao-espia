@@ -71,6 +71,20 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
   const adivinhacoesFimTempo = rodada?.estado.adivinhacoes_fim_tempo;
   const isFimTempo = adivinhacoesFimTempo !== undefined && adivinhacoesFimTempo !== null;
 
+  // Palpite que o espia chutou e errou — no fim-de-tempo vem do mapa de
+  // adivinhações; nos demais casos, do campo palpite_errado_evento_id.
+  const palpiteErradoId: number | null = (() => {
+    if (espias.length === 0 || !rodada) return null;
+    if (isFimTempo) {
+      const g = adivinhacoesFimTempo?.[espias[0].id] ?? null;
+      return g != null && g !== rodada.evento_id ? g : null;
+    }
+    return rodada.estado.palpite_errado_evento_id ?? null;
+  })();
+  const eventoPalpiteErrado = palpiteErradoId != null
+    ? EVENTOS.find(e => e.id === palpiteErradoId) ?? null
+    : null;
+
   const badgeFimTempo = (espiaId: string): string => {
     if (!adivinhacoesFimTempo || !rodada) return "+2 pt";
     // Espia ausente do mapa foi eliminado antes do fim do tempo — não pontua.
@@ -136,6 +150,11 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
                 <Eyebrow color={T.brick} size={10}>{isFimTempo
                   ? (badgeFimTempo(espias[0].id) === "+3 pt" ? "Adivinhou o local" : "Não adivinhou o local")
                   : (espiaAdivinhou ? "Adivinhou o local" : "Não adivinhou o local")}</Eyebrow>
+                {eventoPalpiteErrado && (
+                  <div style={{ fontFamily: F.sans, fontSize: 11, color: T.muted, marginTop: 3 }}>
+                    Chutou: {eventoPalpiteErrado.local} — {eventoPalpiteErrado.evento}
+                  </div>
+                )}
               </div>
               <div style={{ background: espiaAdivinhou ? T.siennaSoft : T.brickSoft, color: espiaAdivinhou ? T.sienna : T.brick, padding: "5px 10px", borderRadius: 999, fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>
                 {badgePontos(espias[0].id)}
