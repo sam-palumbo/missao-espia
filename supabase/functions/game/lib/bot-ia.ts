@@ -97,6 +97,33 @@ function listarJogadores(ctx: ContextoBotIA): string {
   return ctx.jogadores.map((j) => `${j.id} — ${j.apelido}`).join("\n");
 }
 
+/**
+ * Agrupa por jogador tudo o que ele disse (palavra + respostas), para que a
+ * IA confronte cada um com o cenário: o grupo procura quem não bate; o espia
+ * cruza as falas para deduzir o par. Vazio se ninguém falou ainda.
+ */
+function resumoPorJogador(ctx: ContextoBotIA): string {
+  const porJogador = new Map<string, { palavra?: string; respostas: string[] }>();
+  const get = (apelido: string) => {
+    let e = porJogador.get(apelido);
+    if (!e) { e = { respostas: [] }; porJogador.set(apelido, e); }
+    return e;
+  };
+  for (const p of ctx.palavras) get(p.apelido).palavra = p.palavra;
+  for (const h of ctx.historico) {
+    if ("pergunta" in h && h.resposta) get(h.destinatario_apelido).respostas.push(h.resposta);
+  }
+  if (porJogador.size === 0) return "";
+  const linhas: string[] = [];
+  for (const [apelido, e] of porJogador) {
+    const partes: string[] = [];
+    if (e.palavra) partes.push(`palavra "${e.palavra}"`);
+    if (e.respostas.length) partes.push(`respostas: ${e.respostas.map((r) => `"${r}"`).join(", ")}`);
+    linhas.push(`- ${apelido}: ${partes.join("; ") || "(ainda não falou)"}`);
+  }
+  return "Análise por jogador (confronte cada fala com o cenário real):\n" + linhas.join("\n");
+}
+
 /** Garante um inteiro de confiança entre 0 e 100. */
 function clampConfianca(valor: unknown): number {
   const n = Math.round(Number(valor));
@@ -145,7 +172,7 @@ export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
     ctx,
     (ctx.souEspia
       ? "É o turno de palavras: cada jogador diz UMA única palavra relacionada ao evento. Como espia, diga uma palavra genérica de tema bíblico que não destoe das já ditas."
-      : "É o turno de palavras: diga UMA única palavra sutilmente relacionada ao evento/local — nem óbvia demais (ajudaria o espia) nem desconectada (você pareceria o espia).") +
+      : 'É o turno de palavras: diga UMA palavra. REGRA DE OURO: imagine que VOCÊ é o espia ouvindo essa palavra — se ela permitiria adivinhar o evento ou o local, ela é óbvia DEMAIS, escolha outra. PROIBIDO: palavras que aparecem no nome do evento/local, sinônimos diretos, ou termos que só fazem sentido neste cenário. Escolha uma palavra temática e oblíqua, que caiba em VÁRIOS eventos bíblicos e esteja só de leve ligada ao seu — o objetivo é provar sutilmente que você conhece, sem entregar nada ao espia.') +
       '\nResponda em JSON: {"raciocinio": "<1-2 frases>", "palavra": "<uma única palavra, sem espaços>"}',
     TEMP_CRIATIVA,
   );
@@ -176,9 +203,10 @@ export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): P
 }
 
 export async function votoIA(ctx: ContextoBotIA, acusadoApelido: string): Promise<boolean | null> {
+  const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
   const out = await decidir<{ aprovado: boolean }>(
     ctx,
-    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. Com base no histórico, vote a favor só se a suspeita se sustentar. Lembre: eliminar um inocente favorece o espia${ctx.souEspia ? "; como espia, vote de forma a desviar a atenção de você" : ""}.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "aprovado": true ou false}`,
+    `Há uma votação para eliminar ${acusadoApelido} sob acusação de ser o espia. ${ctx.souEspia ? "Como espia, vote de forma a desviar a atenção de você (eliminar um inocente favorece o espia)." : `Confronte as falas de ${acusadoApelido} com o evento/local real: vote a favor só se as palavras/respostas dele realmente NÃO baterem com o cenário. Eliminar um inocente favorece o espia.`}\n${resumo ? resumo + "\n" : ""}Responda em JSON: {"raciocinio": "<a fala de ${acusadoApelido} bate ou não com o cenário?>", "aprovado": true ou false}`,
     TEMP_ANALITICA,
   );
   return typeof out?.aprovado === "boolean" ? out.aprovado : null;
@@ -191,9 +219,10 @@ export async function votoIA(ctx: ContextoBotIA, acusadoApelido: string): Promis
  */
 export async function acusadoIA(ctx: ContextoBotIA): Promise<{ acusado_id: string; confianca: number } | null> {
   if (ctx.jogadores.length === 0) return null;
+  const resumo = resumoPorJogador(ctx);
   const out = await decidir<{ acusado_id: string; confianca: number }>(
     ctx,
-    `Avalie se vale a pena acusar alguém de ser o espia AGORA. Com base nas palavras e no histórico, escolha o jogador mais suspeito (respostas vagas, incoerentes ou que não demonstram conhecer o local) e estime sua confiança de 0 a 100 de que ele é mesmo o espia. Acusar e errar elimina um inocente — só vale com confiança alta.\nJogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "acusado_id": "<id da lista>", "confianca": <0 a 100>}`,
+    `Sua tarefa: achar o espia. Você CONHECE o evento e o local; o espia NÃO. Para CADA jogador, confronte a palavra e as respostas dele com o que de fato aconteceu no evento/local: quem conhece dá pistas coerentes com o cenário; o espia tende a ser genérico, evasivo, ou diz algo que NÃO bate com o evento real. Aponte o mais incoerente e estime sua confiança de 0 a 100 de que ele é o espia. Acusar e errar elimina um inocente — só tenha confiança alta com evidência concreta.\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<aponte a fala que não bate com o cenário>", "acusado_id": "<id da lista>", "confianca": <0 a 100>}`,
     TEMP_ANALITICA,
   );
   if (!out || !ctx.jogadores.some((j) => j.id === out.acusado_id)) return null;
@@ -206,9 +235,10 @@ export async function acusadoIA(ctx: ContextoBotIA): Promise<{ acusado_id: strin
  */
 export async function adivinhacaoIA(ctx: ContextoBotIA): Promise<{ evento_id: number; confianca: number } | null> {
   const lista = EVENTOS.map((e) => `${e.id}: ${e.evento} (${e.local})`).join("\n");
+  const resumo = resumoPorJogador(ctx);
   const out = await decidir<{ evento_id: number | string; confianca: number }>(
     ctx,
-    `Você é o espia tentando identificar o par evento/local. Raciocine por eliminação: primeiro o Testamento, depois a categoria do local, depois o par exato. Escolha o evento mais provável e estime sua confiança de 0 a 100. Lembre: adivinhar errado te elimina (0 pontos); ficar escondido vale 2 — só vale arriscar com confiança alta.\nLista de pares possíveis:\n${lista}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "evento_id": <número do evento>, "confianca": <0 a 100>}`,
+    `Você é o espia e NÃO conhece o evento/local. Mas os OUTROS conhecem — cada palavra e resposta deles é uma PISTA que aponta para o par certo. Cruze TODAS as pistas: qual par evento/local explica ao mesmo tempo as palavras ditas e as respostas dadas? Raciocine por eliminação: Testamento → categoria do local → par exato, descartando os pares que contradizem alguma pista. Escolha o mais provável e estime sua confiança de 0 a 100. Lembre: adivinhar errado te elimina (0 pontos); ficar escondido vale 2 — só arrisque com confiança alta.\n${resumo ? resumo + "\n" : ""}Lista de pares possíveis:\n${lista}\nResponda em JSON: {"raciocinio": "<quais pistas levam ao par e quais pares você descartou>", "evento_id": <número do evento>, "confianca": <0 a 100>}`,
     TEMP_ANALITICA,
   );
   const eventoId = Number(out?.evento_id);
