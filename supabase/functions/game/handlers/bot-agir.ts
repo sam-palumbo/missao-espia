@@ -66,6 +66,11 @@ export async function botAgir(userId: string, payload: unknown) {
   const ativos = await getJogadoresAtivos(db, rodada.sala_id);
   const eventoRodada = EVENTOS.find((e) => e.id === rodada.evento_id) ?? null;
 
+  const tempoRestanteSeg = estado.timer_end
+    ? (new Date(estado.timer_end).getTime() - Date.now()) / 1000
+    : null;
+  const tempoAcabando = tempoRestanteSeg != null && tempoRestanteSeg < 90;
+
   // Contexto que a IA enxerga ao decidir por um bot — o espia nunca recebe o evento.
   function contexto(bot: Jogador): ContextoBotIA {
     const souEspia = estado.espia_ids.includes(bot.id);
@@ -76,6 +81,7 @@ export async function botAgir(userId: string, payload: unknown) {
       jogadores: ativos.filter((j) => j.id !== bot.id).map((j) => ({ id: j.id, apelido: j.apelido })),
       palavras: estado.palavras_turno ?? [],
       historico: estado.historico ?? [],
+      tempoRestanteSeg,
     };
   }
 
@@ -118,7 +124,10 @@ export async function botAgir(userId: string, payload: unknown) {
       const suspeito = await acusadoIA(contexto(bot));
       const totalRodada = estado.ordem_turnos.length || ativos.length;
       const limite = limiteEliminacoesErradas(totalRodada, estado.espia_ids.length);
-      const limiar = limite === 0 ? LIMIAR_ACUSAR_SEM_TOLERANCIA : LIMIAR_ACUSAR_BASE;
+      // Com o tempo acabando, o grupo precisa agir antes do estouro — afrouxa
+      // o limiar (mas nunca abaixo de 45, e nunca quando não há tolerância a erro).
+      const reducaoTempo = tempoAcabando && limite > 0 ? 15 : 0;
+      const limiar = (limite === 0 ? LIMIAR_ACUSAR_SEM_TOLERANCIA : LIMIAR_ACUSAR_BASE) - reducaoTempo;
       const deveAcusar = suspeito
         ? suspeito.confianca >= limiar
         : Math.random() < CHANCE_ACUSAR;

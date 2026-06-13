@@ -9,6 +9,7 @@ function ctxBase(overrides: Partial<ContextoBotIA> = {}): ContextoBotIA {
     jogadores: [{ id: "j1", apelido: "Sam" }, { id: "j2", apelido: "Ester" }],
     palavras: [],
     historico: [],
+    tempoRestanteSeg: null,
     ...overrides,
   };
 }
@@ -38,4 +39,14 @@ Deno.test("descreverContexto: inclui palavras e histórico de perguntas e votaç
   assertStringIncludes(texto, 'Sam: "água"');
   assertStringIncludes(texto, "Você vê animais?");
   assertStringIncludes(texto, "votação contra Ester");
+});
+
+Deno.test("descreverContexto: avisa quando o tempo está acabando", () => {
+  const texto = descreverContexto(ctxBase({ tempoRestanteSeg: 40 }));
+  assertStringIncludes(texto, "ACABANDO");
+});
+
+Deno.test("descreverContexto: tempo restante nulo não inclui a linha de tempo", () => {
+  const texto = descreverContexto(ctxBase({ tempoRestanteSeg: null }));
+  assert(!texto.includes("Tempo restante"));
 });

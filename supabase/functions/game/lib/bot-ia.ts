@@ -37,6 +37,8 @@ export interface ContextoBotIA {
   jogadores: { id: string; apelido: string }[];
   palavras: PalavraTurno[];
   historico: HistoricoItem[];
+  /** Segundos até o fim da rodada (null se não aplicável). */
+  tempoRestanteSeg: number | null;
 }
 
 const SYSTEM = `Você é um jogador de "Missão Espia", jogo de dedução social com temática bíblica (estilo Spyfall). Em cada rodada sorteia-se um par EVENTO + LOCAL da Bíblia; todos o conhecem, menos o(s) espia(s), que precisa(m) descobri-lo sem se entregar.
@@ -72,6 +74,14 @@ export function descreverContexto(ctx: ContextoBotIA): string {
 
   if (ctx.jogadores.length > 0) {
     linhas.push(`Outros jogadores ativos: ${ctx.jogadores.map((j) => j.apelido).join(", ")}.`);
+  }
+
+  if (ctx.tempoRestanteSeg != null) {
+    const seg = Math.max(0, Math.round(ctx.tempoRestanteSeg));
+    linhas.push(
+      `Tempo restante na rodada: ~${seg}s.` +
+        (seg < 90 ? " O tempo está ACABANDO: se o grupo não desmascarar o espia, ele vence por estouro de tempo." : ""),
+    );
   }
 
   if (ctx.palavras.length > 0) {
@@ -184,9 +194,13 @@ export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
 
 export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id: string; texto: string } | null> {
   if (ctx.jogadores.length === 0) return null;
+  const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
+  const instrucao = ctx.souEspia
+    ? `É a sua vez de perguntar. Você é o espia e NÃO conhece o local — faça UMA pergunta AMPLA que ajude a TRIANGULAR o cenário (extrair pistas: ambiente, quem está presente, perigo, época, o que se faz ali) sem revelar que você não sabe. Espalhe as perguntas: evite insistir sempre no mesmo jogador. Máx. 200 caracteres.`
+    : `É a sua vez de perguntar. Você CONHECE o cenário — use a pergunta para DESMASCARAR o espia: faça uma pergunta-armadilha ligada ao evento/local real que só quem é de dentro responde com naturalidade (um detalhe específico do cenário), e mire de preferência o jogador mais suspeito, pressionando-o. NÃO revele o evento/local nem facilite para o espia. Máx. 200 caracteres.`;
   const out = await decidir<{ destinatario_id: string; pergunta: string }>(
     ctx,
-    `É a sua vez de perguntar. Escolha um jogador (prefira quem ainda não foi questionado ou quem pareceu suspeito) e faça UMA pergunta curta (máx. 200 caracteres) sobre a experiência dele no local, sem revelar o evento/local.\nJogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
+    `${instrucao}\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
     TEMP_CRIATIVA,
   );
   const texto = out?.pergunta?.toString().trim().slice(0, 200);
@@ -200,7 +214,7 @@ export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): P
     : `Você CONHECE o evento e o local, então responda como quem ESTEVE LÁ: dê um detalhe concreto e coerente com o cenário (algo que você viu, sentiu, fez ou ouviu naquele lugar) que prove que você sabe. NÃO seja evasivo nem genérico ("não sei", "talvez", "depende") — isso te faz parecer o espia e não ajuda o grupo. Mas não cite o nome do evento/local nem dê detalhe que entregue tudo de bandeja.`;
   const out = await decidir<{ resposta: string }>(
     ctx,
-    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
+    `${pergunta.perguntador_apelido} perguntou a você: "${pergunta.texto}". ${instrucaoPapel} Mantenha COERÊNCIA com o que você já disse antes (veja o histórico) — não se contradiga. Responda em no máximo 200 caracteres.\nResponda em JSON: {"raciocinio": "<1-2 frases>", "resposta": "<sua resposta>"}`,
     TEMP_CRIATIVA,
   );
   const resposta = out?.resposta?.toString().trim().slice(0, 200);
