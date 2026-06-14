@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { gameActions } from "@/lib/game-actions";
 import { EVENTOS } from "@/lib/eventos";
+import { numEspias } from "@shared/espias";
+import { calcularMinutosRodada } from "@shared/utils";
 import { toast } from "sonner";
 import { PageShell, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
@@ -16,13 +18,10 @@ const atMax = Math.max(...atEvents.map(e => e.id));
 const ntMin = Math.min(...ntEvents.map(e => e.id));
 const ntMax = Math.max(...ntEvents.map(e => e.id));
 
-function numEspias(n: number) {
-  if (n <= 6) return 1;
-  if (n <= 9) return 2;
-  return 3;
-}
+// Prévia da duração padrão: mesma fórmula do servidor (@shared/utils), para o
+// slider abrir já no valor que iniciar_rodada usaria se a duração não for tocada.
 function duracaoRecomendada(maxJog: number) {
-  return 5 + maxJog - numEspias(maxJog);
+  return calcularMinutosRodada(null, maxJog, numEspias(maxJog));
 }
 
 function ConfigSlider({ label, value, min, max, onChange, unit, badge }: {

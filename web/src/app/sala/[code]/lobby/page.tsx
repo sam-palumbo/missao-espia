@@ -10,6 +10,7 @@ import { gameActions } from "@/lib/game-actions";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { PageShell, InsetFrame, MEAvatar, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
+import { numEspias } from "@shared/espias";
 
 const playerListVariants = {
   show: { transition: { staggerChildren: 0.07 } },
@@ -19,11 +20,6 @@ const playerItemVariants = {
   show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 380, damping: 26 } },
 };
 
-function numEspias(n: number) {
-  if (n <= 6) return 1;
-  if (n <= 9) return 2;
-  return 3;
-}
 
 export default function LobbyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
