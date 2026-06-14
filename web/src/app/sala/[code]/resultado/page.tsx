@@ -9,6 +9,7 @@ import { useGameState } from "@/hooks/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { gameActions } from "@/lib/game-actions";
 import { useSala } from "@/hooks/useSala";
+import { calcularPontuacao } from "@shared/pontuacao";
 import { PageShell, InsetFrame, MEMedallion, MEAvatar, MERule, MEIcon, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
 const listVariants = { show: { transition: { staggerChildren: 0.07, delayChildren: 0.25 } } };
@@ -85,20 +86,25 @@ export default function ResultadoPage({ params }: { params: Promise<{ code: stri
     ? EVENTOS.find(e => e.id === palpiteErradoId) ?? null
     : null;
 
+  // Pontos do espia: a regra (0/1/2/3 por pego × adivinhou) é a de @shared/pontuacao,
+  // mesma do servidor — aqui só traduzimos a situação de cada espia em pego/adivinhou.
+  const fmtPonto = (p: number) => (p > 0 ? `+${p} pt` : "0 pt");
+  const badgeEspia = (pego: boolean, adivinhou: boolean) =>
+    fmtPonto(calcularPontuacao({ espiaPego: pego, espiaAdivinhou: adivinhou }).pontoEspia);
+
   const badgeFimTempo = (espiaId: string): string => {
-    if (!adivinhacoesFimTempo || !rodada) return "+2 pt";
+    if (!adivinhacoesFimTempo || !rodada) return badgeEspia(false, false);
     // Espia ausente do mapa foi eliminado antes do fim do tempo — não pontua.
-    if (!(espiaId in adivinhacoesFimTempo)) return "0 pt";
+    if (!(espiaId in adivinhacoesFimTempo)) return badgeEspia(true, false);
     const guess = adivinhacoesFimTempo[espiaId] ?? null;
-    return (guess !== null && guess === rodada.evento_id) ? "+3 pt" : "+2 pt";
+    return badgeEspia(false, guess !== null && guess === rodada.evento_id);
   };
 
   const badgePontos = (espiaId: string): string => {
     if (isFimTempo) return badgeFimTempo(espiaId);
     const espia = players.find(p => p.id === espiaId);
     const thisPego = espia ? !espia.ativo : espiaPego;
-    if (!espiaAdivinhou) return thisPego ? "0 pt" : "+2 pt";
-    return thisPego ? "+1 pt" : "+3 pt";
+    return badgeEspia(thisPego, espiaAdivinhou);
   };
 
   if (!rodada || players.length === 0) {
