@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import type { RodadaAtual } from "@/lib/types";
 
@@ -13,6 +13,11 @@ export type {
 
 export function useGameState(salaId: string | null) {
   const [rodada, setRodada] = useState<RodadaAtual | null>(null);
+  // O poll de 3s e o realtime podem trazer dados idênticos ao estado atual.
+  // Sem essa guarda, cada fetch criaria um novo objeto e re-renderizaria toda a
+  // árvore do jogo a cada 3s, mesmo sem mudança. Comparamos o payload serializado
+  // e só atualizamos quando algo de fato mudou.
+  const lastJsonRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!salaId) return;
@@ -26,7 +31,11 @@ export function useGameState(salaId: string | null) {
         .order("numero", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (data) setRodada(data as RodadaAtual);
+      if (!data) return;
+      const json = JSON.stringify(data);
+      if (json === lastJsonRef.current) return;
+      lastJsonRef.current = json;
+      setRodada(data as RodadaAtual);
     }
 
     fetchRodadaAtual();

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Player } from "@/lib/types";
 
@@ -7,6 +7,10 @@ export type { Player } from "@/lib/types";
 
 export function usePlayers(salaId: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
+  // Mesma guarda do useGameState: o poll de 3s traz a mesma lista a maior parte
+  // do tempo; só atualizamos o estado quando o payload muda de fato, evitando
+  // re-renders desnecessários da grade de jogadores e da árvore do jogo.
+  const lastJsonRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!salaId) return;
@@ -16,8 +20,13 @@ export function usePlayers(salaId: string | null) {
       const { data } = await supabase
         .from("jogadores")
         .select("id, apelido, pontuacao, ativo, conectado, user_id, is_bot")
-        .eq("sala_id", salaId!);
-      if (data) setPlayers(data as Player[]);
+        .eq("sala_id", salaId!)
+        .order("id", { ascending: true });
+      if (!data) return;
+      const json = JSON.stringify(data);
+      if (json === lastJsonRef.current) return;
+      lastJsonRef.current = json;
+      setPlayers(data as Player[]);
     }
 
     fetch();
