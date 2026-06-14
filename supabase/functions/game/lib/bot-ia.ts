@@ -5,8 +5,8 @@
 // palavra do turno de palavras, pergunta + destinatário, resposta,
 // voto, alvo de acusação e adivinhação do espia.
 //
-// Usa uma API compatível com OpenAI (NVIDIA/DeepSeek por padrão, mas
-// Groq, OpenAI etc. funcionam só trocando env — ver PROVEDORES abaixo),
+// Usa uma API compatível com OpenAI (Groq por padrão, mas NVIDIA/DeepSeek,
+// OpenAI etc. funcionam só trocando env — ver PROVEDORES abaixo),
 // via fetch em modo JSON. Cada função retorna null quando a IA está
 // indisponível (sem IA_API_KEY) ou quando a chamada falha — o bot-agir
 // usa o fallback aleatório de bot.ts, então o jogo nunca trava por
@@ -25,7 +25,7 @@ import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
 // Presets de provedores compatíveis com OpenAI. Para trocar de provedor
 // basta definir as envs (sem mexer no código):
-//   IA_PROVIDER  — chave de PROVEDORES abaixo (padrão "nvidia")
+//   IA_PROVIDER  — chave de PROVEDORES abaixo (padrão "groq")
 //   IA_API_KEY   — a chave do provedor escolhido
 //   IA_MODEL     — opcional, sobrescreve o modelo padrão do provedor
 //   IA_API_URL   — opcional, sobrescreve a URL (ex.: provedor não listado)
@@ -36,7 +36,7 @@ const PROVEDORES: Record<string, { url: string; model: string }> = {
 };
 
 function config(): { url: string; model: string; apiKey: string | undefined } {
-  const provedor = PROVEDORES[Deno.env.get("IA_PROVIDER") ?? "nvidia"] ?? PROVEDORES.nvidia;
+  const provedor = PROVEDORES[Deno.env.get("IA_PROVIDER") ?? "groq"] ?? PROVEDORES.groq;
   return {
     url: Deno.env.get("IA_API_URL") ?? provedor.url,
     model: Deno.env.get("IA_MODEL") ?? provedor.model,
@@ -161,6 +161,38 @@ function clampConfianca(valor: unknown): number {
 const MAX_ESPERA_429_SEG = 9;
 const MAX_TENTATIVAS = 3;
 
+// Interpreta uma duração no formato dos headers de rate limit ("7.66s",
+// "1m2.5s", "500ms" ou segundos puros como "12") em segundos. null se vazio
+// ou não reconhecido.
+export function parseDuracaoSeg(valor: string | null): number | null {
+  if (!valor) return null;
+  const puro = Number(valor);
+  if (Number.isFinite(puro)) return puro; // ex.: retry-after = "12"
+  const re = /([\d.]+)\s*(ms|s|m|h)/g;
+  let total = 0;
+  let achou = false;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(valor))) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n)) continue;
+    achou = true;
+    total += m[2] === "ms" ? n / 1000 : m[2] === "s" ? n : m[2] === "m" ? n * 60 : n * 3600;
+  }
+  return achou ? total : null;
+}
+
+// Segundos a esperar após um 429. Prefere retry-after; quando ele falta (caso
+// típico do teto por minuto da Groq), usa x-ratelimit-reset-tokens, conforme
+// descrito acima. Default 2s se nenhum header informar.
+function segundosEspera429(res: Response): number {
+  return (
+    parseDuracaoSeg(res.headers.get("retry-after")) ??
+    parseDuracaoSeg(res.headers.get("x-ratelimit-reset-tokens")) ??
+    parseDuracaoSeg(res.headers.get("x-ratelimit-reset-requests")) ??
+    2
+  );
+}
+
 /**
  * Uma decisão = uma chamada ao provedor de IA em modo JSON. Qualquer falha
  * (sem chave, timeout, erro HTTP, JSON inválido) vira null.
@@ -192,7 +224,7 @@ async function decidir<T>(ctx: ContextoBotIA, instrucao: string, temperatura: nu
         signal: AbortSignal.timeout(20_000),
       });
       if (res.status === 429 && tentativa < MAX_TENTATIVAS - 1) {
-        const espera = Number(res.headers.get("retry-after")) || 2;
+        const espera = segundosEspera429(res);
         await res.text();
         if (espera > MAX_ESPERA_429_SEG) return null; // teto longo (dia): não vale esperar
         await new Promise((r) => setTimeout(r, espera * 1000));
