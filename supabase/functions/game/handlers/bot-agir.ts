@@ -4,10 +4,12 @@
 // anfitrião chama esta action periodicamente enquanto a rodada está ativa;
 // o ritmo das chamadas é o que dá a cadência "humana" aos bots.
 //
-// As decisões vêm da IA (lib/bot-ia.ts, NVIDIA) quando NVIDIA_API_KEY está
-// configurada, com fallback aleatório (lib/bot.ts) em qualquer falha; a
-// execução reusa os handlers normais via bot_id, que validam as regras do
-// jogo como para qualquer jogador.
+// As decisões vêm da IA (lib/bot-ia.ts) quando a chave está configurada; em
+// qualquer falha caem na heurística offline (lib/bot-heuristica.ts) e só então
+// no sorteio puro (lib/bot.ts) — padrão `(await xIA()) ?? xHeuristica() ?? aleatório`.
+// As decisões analíticas (adivinhar/acusar) devolvem {confianca} igual à IA,
+// então os MESMOS limiares abaixo valem para ambas. A execução reusa os
+// handlers normais via bot_id, que validam as regras como para qualquer jogador.
 import { getDb } from "../lib/db.ts";
 import { getRodadaWithSala, getJogadoresAtivos, forbidden } from "../lib/queries.ts";
 import { isPrimeiroTurno } from "../lib/regras.ts";
@@ -18,6 +20,10 @@ import {
   acusadoIA, acusarDeflexaoIA, adivinhacaoIA, palavraIA, perguntaIA, respostaIA, votoIA,
   type ContextoBotIA,
 } from "../lib/bot-ia.ts";
+import {
+  acusadoHeuristica, acusarDeflexaoHeuristica, adivinhacaoHeuristica,
+  palavraHeuristica, perguntaHeuristica, respostaHeuristica, votoHeuristica,
+} from "../lib/bot-heuristica.ts";
 import { dizerPalavra } from "./dizer-palavra.ts";
 import { fazerPergunta } from "./fazer-pergunta.ts";
 import { responderPergunta } from "./responder-pergunta.ts";
@@ -97,7 +103,8 @@ export async function botAgir(userId: string, payload: unknown) {
         await proximoTurno(userId, { rodada_id });
         return { agiu: true, acao: "proximo_turno" };
       }
-      const palavra = (await palavraIA(contexto(bot))) ?? aleatorio(PALAVRAS_BOT);
+      const ctxBot = contexto(bot);
+      const palavra = (await palavraIA(ctxBot)) ?? palavraHeuristica(ctxBot) ?? aleatorio(PALAVRAS_BOT);
       await dizerPalavra(userId, { rodada_id, palavra, bot_id: bot.id });
       return { agiu: true, acao: "dizer_palavra" };
     }
@@ -109,7 +116,8 @@ export async function botAgir(userId: string, payload: unknown) {
     // (que reenvia os 32 eventos) é a mais cara em tokens, então só roda em
     // parte dos turnos — poupa o limite de tokens/minuto da Groq.
     if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < 0.4) {
-      const palpite = await adivinhacaoIA(contexto(bot));
+      const ctxBot = contexto(bot);
+      const palpite = (await adivinhacaoIA(ctxBot)) ?? adivinhacaoHeuristica(ctxBot);
       const deveAdivinhar = palpite
         ? palpite.confianca >= LIMIAR_ADIVINHAR_ESPIA
         : Math.random() < CHANCE_ADIVINHAR_ESPIA;
@@ -124,7 +132,8 @@ export async function botAgir(userId: string, payload: unknown) {
     // Grupo: a IA aponta o suspeito e sua confiança; o limiar sobe quando o
     // grupo não tem tolerância a erro (4 jogadores). Sem IA, sorteio fixo.
     if (!souEspia && alvos.length > 0 && !estado.acusou_neste_turno && !isPrimeiroTurno(estado)) {
-      const suspeito = await acusadoIA(contexto(bot));
+      const ctxBot = contexto(bot);
+      const suspeito = (await acusadoIA(ctxBot)) ?? acusadoHeuristica(ctxBot);
       const totalRodada = estado.ordem_turnos.length || ativos.length;
       const limite = limiteEliminacoesErradas(totalRodada, estado.espia_ids.length);
       // Com o tempo acabando, o grupo precisa agir antes do estouro — afrouxa
@@ -145,7 +154,10 @@ export async function botAgir(userId: string, payload: unknown) {
       souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
       !isPrimeiroTurno(estado) && Math.random() < CHANCE_ESPIA_ACUSAR
     ) {
-      const alvo = (await acusarDeflexaoIA(contexto(bot)))?.acusado_id ?? aleatorio(alvos).id;
+      const ctxBot = contexto(bot);
+      const alvo = (await acusarDeflexaoIA(ctxBot))?.acusado_id
+        ?? acusarDeflexaoHeuristica(ctxBot)?.acusado_id
+        ?? aleatorio(alvos).id;
       await acusar(userId, { rodada_id, acusado_id: alvo, bot_id: bot.id });
       return { agiu: true, acao: "acusar" };
     }
@@ -155,7 +167,8 @@ export async function botAgir(userId: string, payload: unknown) {
       return { agiu: true, acao: "proximo_turno" };
     }
 
-    const pergunta = await perguntaIA(contexto(bot));
+    const ctxBot = contexto(bot);
+    const pergunta = (await perguntaIA(ctxBot)) ?? perguntaHeuristica(ctxBot);
     await fazerPergunta(userId, {
       rodada_id,
       destinatario_id: pergunta?.destinatario_id ?? aleatorio(alvos).id,
@@ -170,7 +183,9 @@ export async function botAgir(userId: string, payload: unknown) {
     const perguntaAtual = estado.pergunta_atual;
     const bot = perguntaAtual ? botPorId.get(perguntaAtual.destinatario_id) : undefined;
     if (!bot || !perguntaAtual) return { agiu: false };
-    const resposta = (await respostaIA(contexto(bot), perguntaAtual))
+    const ctxBot = contexto(bot);
+    const resposta = (await respostaIA(ctxBot, perguntaAtual))
+      ?? respostaHeuristica(ctxBot)
       ?? respostaFallback(estado.espia_ids.includes(bot.id));
     await responderPergunta(userId, { rodada_id, resposta, bot_id: bot.id });
     return { agiu: true, acao: "responder_pergunta" };
@@ -191,7 +206,10 @@ export async function botAgir(userId: string, payload: unknown) {
     const totalRodada = estado.ordem_turnos.length || ativos.length;
     const limite = limiteEliminacoesErradas(totalRodada, estado.espia_ids.length);
     const custoErroAlto = (estado.eliminacoes_erradas ?? 0) >= limite;
-    const aprovado = (await votoIA(contexto(pendente), acusadoApelido, custoErroAlto)) ?? (Math.random() < CHANCE_VOTO_SIM);
+    const ctxBot = contexto(pendente);
+    const aprovado = (await votoIA(ctxBot, acusadoApelido, custoErroAlto))
+      ?? votoHeuristica(ctxBot, acusadoApelido, custoErroAlto)
+      ?? (Math.random() < CHANCE_VOTO_SIM);
     await votar(userId, { rodada_id, aprovado, bot_id: pendente.id });
     return { agiu: true, acao: "votar" };
   }
@@ -200,7 +218,10 @@ export async function botAgir(userId: string, payload: unknown) {
   if (fase === "adivinhacao") {
     const bot = estado.acusado_id ? botPorId.get(estado.acusado_id) : undefined;
     if (!bot || !estado.espia_ids.includes(bot.id)) return { agiu: false };
-    const evento_id = (await adivinhacaoIA(contexto(bot)))?.evento_id ?? eventoAleatorioId();
+    const ctxBot = contexto(bot);
+    const evento_id = (await adivinhacaoIA(ctxBot))?.evento_id
+      ?? adivinhacaoHeuristica(ctxBot)?.evento_id
+      ?? eventoAleatorioId();
     await adivinhar(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar" };
   }
@@ -211,7 +232,10 @@ export async function botAgir(userId: string, payload: unknown) {
       .filter(([id, guess]) => guess == null && botPorId.has(id));
     if (pendentes.length === 0) return { agiu: false };
     const bot = botPorId.get(pendentes[0][0])!;
-    const evento_id = (await adivinhacaoIA(contexto(bot)))?.evento_id ?? eventoAleatorioId();
+    const ctxBot = contexto(bot);
+    const evento_id = (await adivinhacaoIA(ctxBot))?.evento_id
+      ?? adivinhacaoHeuristica(ctxBot)?.evento_id
+      ?? eventoAleatorioId();
     await adivinharFimTempo(userId, { rodada_id, evento_id, bot_id: bot.id });
     return { agiu: true, acao: "adivinhar_fim_tempo" };
   }
