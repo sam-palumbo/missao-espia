@@ -69,6 +69,43 @@ Grupo vence: 1 ponto por membro ativo (eliminados não pontuam).
 
 ---
 
+## Arquitetura & Verificação
+
+O projeto tem dois alvos, testados em diretórios distintos:
+
+- **Web (Next 16):** rode de `web/` — `npx vitest run`, `npx tsc --noEmit`, `npx next build`.
+- **Edge (Deno):** rode de `supabase/functions/game/` — `deno test --allow-all`, `deno check lib/<arquivo>.ts`.
+
+> **Gotcha:** o diretório de trabalho do Bash reseta para a raiz do repo entre turnos. Rodar `npx tsc`/`npx vitest` da raiz falha de forma enganosa — sempre prefixe com o `cd` absoluto correto.
+
+**Fonte única das regras:** lógica de jogo mora em `@shared/*` (= `supabase/functions/game/lib/*`, via path alias no tsconfig do web): `numEspias`/`limiteEliminacoesErradas` em `@shared/espias`, `calcularMinutosRodada` em `@shared/utils`, `calcularPontuacao` em `@shared/pontuacao`, `EVENTOS` em `@shared/eventos`. Ao mexer em regra, edite só o `@shared` — o web reexporta de lá.
+
+## Deploy
+
+- **Edge function (manual, sem CI):** `supabase functions deploy game --project-ref eochshqchhcxnpadlrir`. **Não há** `.github/workflows` — `git push` **não** deploya nada. Confira a versão deployada com `supabase functions list` (colunas VERSION/UPDATED_AT).
+- **Web:** Vercel (`https://missao-espia.vercel.app`).
+- **Config do Supabase:** `supabase config push` envia o **`config.toml` inteiro** (não só a seção editada) e não tem `--dry-run` — revise o diff COMPLETO que ele imprime antes de confirmar, para não clobrar settings remotos. (`functions deploy` só sobe o código da função, sem esse risco.)
+
+## Bots / IA
+
+Os bots decidem em três degraus, em `supabase/functions/game/handlers/bot-agir.ts`:
+
+```
+(await xIA(ctx)) ?? xHeuristica(ctx) ?? <sorteio aleatório>
+```
+
+- **IA (`lib/bot-ia.ts`):** chama uma API compatível com OpenAI. Provedor/modelo/chave parametrizados por env (`IA_PROVIDER`/`IA_API_KEY`/`IA_MODEL`/`IA_API_URL`; presets groq/nvidia/openai). Default de código: Groq `llama-3.3-70b-versatile`; produção pode sobrescrever via secret.
+- **Heurística (`lib/bot-heuristica.ts` + `lib/bot-lexico.ts`):** decisão **offline** por casamento de palavras-chave contra um léxico por evento. Espelha as assinaturas da IA (inclui `{confianca}`), então os mesmos limiares de `bot-agir` valem para ambas.
+- **Sorteio (`lib/bot.ts`):** pools fixos, último recurso.
+
+> **Gotcha ao auditar transcrições:** a heurística e o sorteio foram feitos para "soar engajados". A IA (Groq free) é gargalada por rate limit — sob carga retorna HTTP 429 e a decisão cai para a heurística/sorteio. Sintoma: "bots genéricos". Suspeite de 429 **antes** de culpar o prompt. Respostas da heurística usam moldes fixos (`MOLDES_RESPOSTA`), ex.: *"Dava pra notar ___ sem esforço."* + termo do léxico — on-theme, mas sem acompanhar a pergunta.
+>
+> A NVIDIA DeepSeek hospedada foi testada e descartada: 20–60s por chamada (acima do timeout de 20s) joga tudo no fallback. Ficamos no Groq.
+
+**Testar end-to-end:** `node scripts/test-bots.mjs` roda um jogo completo (host + 3 bots) contra o backend deployado e imprime a transcrição. Ele dispara a cada 150ms (rajada = pior caso para o 429), então exagera o fallback vs. um jogo em ritmo humano.
+
+---
+
 ## Regras de Uso
 
 - **Sempre pedir autorização** antes de executar `git commit` ou `git push`. Nunca executar esses comandos sem confirmação explícita do usuário.
