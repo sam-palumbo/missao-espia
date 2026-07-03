@@ -26,7 +26,8 @@ import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
 // Presets de provedores compatíveis com OpenAI. Para trocar de provedor
 // basta definir as envs (sem mexer no código):
-//   IA_PROVIDER  — chave de PROVEDORES abaixo (padrão "groq")
+//   IA_PROVIDER  — chave de PROVEDORES abaixo (padrão "groq");
+//                  "off" DESLIGA a IA sem apagar a chave: bots 100% heurística
 //   IA_API_KEY   — a chave do provedor escolhido
 //   IA_MODEL     — opcional, sobrescreve o modelo padrão do provedor
 //   IA_API_URL   — opcional, sobrescreve a URL (ex.: provedor não listado)
@@ -37,12 +38,15 @@ const PROVEDORES: Record<string, { url: string; model: string }> = {
 };
 
 function config(): { url: string; model: string; apiKey: string | undefined } {
-  const provedor = PROVEDORES[Deno.env.get("IA_PROVIDER") ?? "groq"] ?? PROVEDORES.groq;
+  const nome = Deno.env.get("IA_PROVIDER") ?? "groq";
+  const provedor = PROVEDORES[nome] ?? PROVEDORES.groq;
   return {
     url: Deno.env.get("IA_API_URL") ?? provedor.url,
     model: Deno.env.get("IA_MODEL") ?? provedor.model,
+    // Sem apiKey toda decisão vira null e o bot cai direto na heurística —
+    // "off" desliga a IA por env sem precisar apagar o secret da chave.
     // Aceita IA_API_KEY (genérica) ou NVIDIA_API_KEY (compat. com o secret atual).
-    apiKey: Deno.env.get("IA_API_KEY") ?? Deno.env.get("NVIDIA_API_KEY"),
+    apiKey: nome === "off" ? undefined : Deno.env.get("IA_API_KEY") ?? Deno.env.get("NVIDIA_API_KEY"),
   };
 }
 
