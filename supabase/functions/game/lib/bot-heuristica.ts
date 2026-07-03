@@ -220,6 +220,18 @@ function palavrasObvias(ctx: ContextoBotIA): Set<string> {
   return new Set(normalizar(`${ctx.evento.evento} ${ctx.evento.local}`).split(" ").filter(Boolean));
 }
 
+/** O termo é "primo" morfológico de alguma palavra proibida? Pega derivações
+ * que o filtro exato deixa passar: "crucificar" ~ "crucificação",
+ * "multiplicar" ~ "multiplicação" — dizê-las quase soletra o evento. */
+function quaseObvio(termo: string, evitar: Set<string>): boolean {
+  for (const obvia of evitar) {
+    let n = 0;
+    while (n < termo.length && n < obvia.length && termo[n] === obvia[n]) n++;
+    if (n >= 5 && n / Math.max(termo.length, obvia.length) >= 0.6) return true;
+  }
+  return false;
+}
+
 function jaFaladas(ctx: ContextoBotIA): Set<string> {
   return new Set(ctx.palavras.map((p) => normalizar(p.palavra)));
 }
@@ -235,7 +247,9 @@ export function palavraHeuristica(ctx: ContextoBotIA): string | null {
   const evitar = new Set([...palavrasObvias(ctx), ...jaFaladas(ctx)]);
   const candidatos = (origem: number | null): string[] => {
     if (origem == null) return [];
-    return (LEXICO.get(origem) ?? []).filter((t) => !t.includes(" ") && t.length >= 4 && !evitar.has(t));
+    return (LEXICO.get(origem) ?? []).filter((t) =>
+      !t.includes(" ") && t.length >= 4 && !evitar.has(t) && !quaseObvio(t, evitar)
+    );
   };
 
   if (ctx.souEspia) {
@@ -287,7 +301,7 @@ const PALPITE_RESPOSTA_MARGEM = 1.5;
 function termosCitaveis(ctx: ContextoBotIA, eventoId: number, evitar: Set<string>): string[] {
   const ditos = bagPropria(ctx);
   const base = (LEXICO.get(eventoId) ?? [])
-    .filter((t) => t.length >= 4 && !evitar.has(t) && !NAO_CITAVEIS.has(t));
+    .filter((t) => t.length >= 4 && !evitar.has(t) && !NAO_CITAVEIS.has(t) && !quaseObvio(t, evitar));
   const ineditos = base.filter((t) => !contemTermo(ditos, t));
   return ineditos.length ? ineditos : base;
 }

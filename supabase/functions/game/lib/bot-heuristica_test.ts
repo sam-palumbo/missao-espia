@@ -145,6 +145,14 @@ Deno.test("palavraHeuristica: não-espia prefere palavra discreta à que entrega
   }
 });
 
+Deno.test("palavraHeuristica: bloqueia primo morfológico do nome ('crucificar' na Crucificação)", () => {
+  const base = ctx({ evento: { evento: "Crucificação de Jesus", local: "Gólgota" } });
+  for (let i = 0; i < 30; i++) {
+    const p = normalizar(palavraHeuristica(base)!);
+    assert(p !== "crucificar", "quase soletrou o evento");
+  }
+});
+
 Deno.test("perguntaHeuristica: devolve destinatário válido e texto", () => {
   const q = perguntaHeuristica(ctx());
   assert(q);
