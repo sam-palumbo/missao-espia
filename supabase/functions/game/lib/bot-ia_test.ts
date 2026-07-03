@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "std/assert";
-import { descreverContexto, parseDuracaoSeg, type ContextoBotIA } from "./bot-ia.ts";
+import { descreverContexto, parseDuracaoSeg, vazouNomeEvento, type ContextoBotIA } from "./bot-ia.ts";
 
 function ctxBase(overrides: Partial<ContextoBotIA> = {}): ContextoBotIA {
   return {
@@ -49,6 +49,23 @@ Deno.test("descreverContexto: avisa quando o tempo está acabando", () => {
 Deno.test("descreverContexto: tempo restante nulo não inclui a linha de tempo", () => {
   const texto = descreverContexto(ctxBase({ tempoRestanteSeg: null }));
   assert(!texto.includes("Tempo restante"));
+});
+
+Deno.test("vazouNomeEvento: detecta palavra do nome do evento/local, com plural e sem acento", () => {
+  const ctx = ctxBase(); // Dilúvio / Arca de Noé
+  assert(vazouNomeEvento(ctx, "Você acha que o diluvio vai durar muito?"));
+  assert(vazouNomeEvento(ctx, "Quantas arcas você já viu na vida?"));
+  assert(!vazouNomeEvento(ctx, "Você viu os animais entrando em pares?"));
+});
+
+Deno.test("vazouNomeEvento: não confunde prefixo com palavra do nome", () => {
+  const ctx = ctxBase({ evento: { evento: "Travessia do Mar Vermelho", local: "Mar Vermelho" } });
+  assert(!vazouNomeEvento(ctx, "Foi um momento marcante pra você?")); // "mar" ≠ "marcante"
+  assert(vazouNomeEvento(ctx, "O mar estava agitado?"));
+});
+
+Deno.test("vazouNomeEvento: espia não conhece o par, nada a vazar", () => {
+  assert(!vazouNomeEvento(ctxBase({ souEspia: true, evento: null }), "diluvio"));
 });
 
 Deno.test("parseDuracaoSeg: segundos puros (formato retry-after)", () => {

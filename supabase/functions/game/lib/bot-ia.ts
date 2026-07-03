@@ -21,6 +21,7 @@
 // ============================================================
 
 import { EVENTOS } from "./eventos.ts";
+import { normalizar, tokens } from "./bot-lexico.ts";
 import type { HistoricoItem, PalavraTurno, PerguntaAtual } from "./types.ts";
 
 // Presets de provedores compatíveis com OpenAI. Para trocar de provedor
@@ -147,6 +148,20 @@ function resumoPorJogador(ctx: ContextoBotIA): string {
   return "Análise por jogador (confronte cada fala com o cenário real):\n" + linhas.join("\n");
 }
 
+/**
+ * A fala cita alguma palavra do NOME do evento/local? O prompt já proíbe, mas
+ * o modelo às vezes vaza mesmo assim (ex.: perguntar sobre "a criação de
+ * Adão" na rodada da Criação) — e uma fala dessas é a maior pista possível
+ * para o espia. Vazou → descarta a saída da IA e cai na heurística.
+ * Só se aplica ao não-espia: o espia não conhece o par (ctx.evento null).
+ */
+export function vazouNomeEvento(ctx: ContextoBotIA, texto: string): boolean {
+  if (!ctx.evento) return false;
+  const bag = normalizar(texto);
+  return tokens(normalizar(`${ctx.evento.evento} ${ctx.evento.local}`))
+    .some((t) => new RegExp(`\\b${t}s?\\b`).test(bag));
+}
+
 /** Garante um inteiro de confiança entre 0 e 100. */
 function clampConfianca(valor: unknown): number {
   const n = Math.round(Number(valor));
@@ -255,7 +270,8 @@ export async function palavraIA(ctx: ContextoBotIA): Promise<string | null> {
     TEMP_CRIATIVA,
   );
   const palavra = out?.palavra?.toString().trim().split(/\s+/)[0]?.replace(/[.,!?"']/g, "").slice(0, 50);
-  return palavra || null;
+  if (!palavra || vazouNomeEvento(ctx, palavra)) return null;
+  return palavra;
 }
 
 export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id: string; texto: string } | null> {
@@ -263,7 +279,7 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
   const resumo = ctx.souEspia ? "" : resumoPorJogador(ctx);
   const instrucao = ctx.souEspia
     ? `Sua vez de perguntar. Você é o espia e NÃO sabe o local — faça UMA pergunta AMPLA que triangule pistas (ambiente, quem está, perigo, época) sem revelar que não sabe. Mire a dimensão ainda ambígua; não repita ângulo já respondido nem insista no mesmo jogador. Máx. 200 caracteres.`
-    : `Sua vez de perguntar. Você CONHECE o cenário — pergunte para DESMASCARAR o espia. Se alguém deu resposta vaga ou que não bate, aprofunde nela forçando um detalhe verificável; senão, faça uma pergunta-armadilha que só quem é de dentro responde natural. Mire o mais suspeito. Não entregue o evento/local. Máx. 200 caracteres.`;
+    : `Sua vez de perguntar. Você CONHECE o cenário — pergunte para DESMASCARAR o espia. Se alguém deu resposta vaga ou que não bate, aprofunde nela forçando um detalhe verificável; senão, faça uma pergunta-armadilha que só quem é de dentro responde natural. Mire o mais suspeito. PROIBIDO citar palavras do nome do evento/local, personagens ou detalhes que só existem nesse cenário — sua pergunta seria a maior pista para o espia. Máx. 200 caracteres.`;
   const out = await decidir<{ destinatario_id: string; pergunta: string }>(
     ctx,
     `${instrucao}\n${resumo ? resumo + "\n" : ""}Jogadores disponíveis (id — apelido):\n${listarJogadores(ctx)}\nResponda em JSON: {"raciocinio": "<1-2 frases>", "destinatario_id": "<id da lista>", "pergunta": "<sua pergunta>"}`,
@@ -271,6 +287,7 @@ export async function perguntaIA(ctx: ContextoBotIA): Promise<{ destinatario_id:
   );
   const texto = out?.pergunta?.toString().trim().slice(0, 200);
   if (!texto || !ctx.jogadores.some((j) => j.id === out!.destinatario_id)) return null;
+  if (vazouNomeEvento(ctx, texto)) return null;
   return { destinatario_id: out!.destinatario_id, texto };
 }
 
@@ -284,7 +301,8 @@ export async function respostaIA(ctx: ContextoBotIA, pergunta: PerguntaAtual): P
     TEMP_CRIATIVA,
   );
   const resposta = out?.resposta?.toString().trim().slice(0, 200);
-  return resposta || null;
+  if (!resposta || vazouNomeEvento(ctx, resposta)) return null;
+  return resposta;
 }
 
 export async function votoIA(
