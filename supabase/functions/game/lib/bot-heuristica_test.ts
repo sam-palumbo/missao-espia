@@ -187,6 +187,15 @@ Deno.test("respostaHeuristica: espia sem pistas cita termo concreto seguro, nunc
   assert(TERMOS_SEGUROS.some((t) => contemTermo(bag, t)), `resposta vazia de conteúdo: ${r}`);
 });
 
+Deno.test("respostaHeuristica: nunca cita verbo solto (agramatical nos moldes)", () => {
+  // Léxico da Conversão de Paulo tem "perseguir" — pontua, mas não se cita.
+  const base = ctx({ evento: { evento: "Conversão de Paulo", local: "Caminho de Damasco" } });
+  for (let i = 0; i < 30; i++) {
+    const bag = normalizar(respostaHeuristica(base, perguntaAo("Bot", "E então?"))!);
+    assert(!/\bperseguir\b/.test(bag), `citou verbo: ${bag}`);
+  }
+});
+
 Deno.test("respostaHeuristica: não-espia prefere termos discretos aos que entregam o evento", () => {
   // "funda" e "gigante" são exclusivos de Davi/Golias — entregam o par ao espia.
   for (let i = 0; i < 30; i++) {

@@ -179,7 +179,20 @@ for (let tick = 0; tick < 400 && !rodada.encerrada_em; tick++) {
         await callGame(hostToken, "bot_agir", { rodada_id: rodada.id });
       }
     } else if (fase === "adivinhacao" || fase === "adivinhacao_fim_tempo") {
-      await callGame(hostToken, "bot_agir", { rodada_id: rodada.id });
+      // Host espia pego por votação (ou no fim do tempo): adivinha errado para
+      // encerrar de forma determinística — sem isso a fase espera os 30s.
+      const hostDeveAdivinhar = hostEhEspia && (
+        (fase === "adivinhacao" && estado.acusado_id === hostJogadorId) ||
+        (fase === "adivinhacao_fim_tempo" && estado.adivinhacoes_fim_tempo?.[hostJogadorId] == null)
+      );
+      if (hostDeveAdivinhar) {
+        const eventoErrado = rodada.evento_id === 1 ? 2 : 1;
+        const action = fase === "adivinhacao" ? "adivinhar" : "adivinhar_fim_tempo";
+        await callGameRaw(hostToken, action, { rodada_id: rodada.id, evento_id: eventoErrado });
+        encerrouPor = encerrouPor ?? "host espia pego adivinhou errado";
+      } else {
+        await callGame(hostToken, "bot_agir", { rodada_id: rodada.id });
+      }
     }
   } catch (e) {
     // 409 do lock otimista ou corrida de fase: o próximo tique relê o estado

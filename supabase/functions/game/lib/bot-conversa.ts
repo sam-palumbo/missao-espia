@@ -11,9 +11,70 @@
 // prefere um ângulo ainda não perguntado àquele destinatário.
 // ============================================================
 
-import { normalizar } from "./bot-lexico.ts";
+import { displayTermo, normalizar } from "./bot-lexico.ts";
 import { aleatorio, PERGUNTAS_BOT, RESPOSTAS_ESPIA_BOT } from "./bot.ts";
 import type { HistoricoItem } from "./types.ts";
+
+// ── Flexão do termo citado ────────────────────────────────────
+// Os moldes recebem o termo já flexionado (artigo por gênero/número e
+// contrações com "de"/"em"), para a frase sair natural: "vi a funda",
+// "lembro do gigante", "minha atenção ficou nas trombetas". Nenhum molde
+// usa o termo como SUJEITO de verbo — assim plural nunca quebra concordância.
+
+export interface TermoFlex {
+  /** Com artigo: "a funda", "o Egito", "Maria". */
+  com: string;
+  /** Contraído com "de": "da funda", "do Egito", "de Maria". */
+  de: string;
+  /** Contraído com "em": "na funda", "no Egito", "em Maria". */
+  em: string;
+}
+
+// Nomes próprios do léxico: citados capitalizados; a maioria dispensa artigo.
+const PROPRIOS_SEM_ARTIGO = new Set([
+  "adao", "arao", "atenas", "baal", "belem", "dario", "deus", "eli", "eva",
+  "filipos", "israel", "jesus", "jose", "judas", "maria", "nabucodonosor",
+  "ninive", "patmos", "samaria",
+]);
+const PROPRIOS_COM_O = new Set(["egito", "calvario", "areopago", "ararate", "pentecostes"]);
+
+// Gênero que a regra da terminação erraria.
+const MASCULINOS = new Set(["dia", "dias", "profeta", "profetas"]);
+const FEMININOS = new Set([
+  "arvore", "bencao", "cidade", "confusao", "conversao", "correntes", "cruz",
+  "destruicao", "escravidao", "fe", "fome", "grades", "lei", "luz", "morte",
+  "mulher", "mulheres", "multidao", "noite", "oracao", "prisao",
+  "ressurreicao", "revelacao", "sede", "serpente", "tempestade", "traicao",
+  "visao", "voz",
+]);
+
+/** Artigo do termo (null = dispensa artigo, caso dos nomes próprios). */
+function artigoDe(termo: string): string | null {
+  if (PROPRIOS_SEM_ARTIGO.has(termo)) return null;
+  if (PROPRIOS_COM_O.has(termo)) return "o";
+  const palavra = termo.split(" ").pop()!; // em frases, o artigo segue a última palavra
+  const plural = palavra.endsWith("s");
+  if (MASCULINOS.has(palavra)) return plural ? "os" : "o";
+  if (FEMININOS.has(palavra)) return plural ? "as" : "a";
+  if (plural) return palavra.endsWith("as") ? "as" : "os";
+  return palavra.endsWith("a") ? "a" : "o";
+}
+
+function capitalizar(s: string): string {
+  return s.split(" ").map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+}
+
+/** Flexiona um termo normalizado do léxico para citação nos moldes. */
+export function comFormas(termo: string): TermoFlex {
+  const proprio = PROPRIOS_SEM_ARTIGO.has(termo) || PROPRIOS_COM_O.has(termo);
+  const display = proprio ? capitalizar(displayTermo(termo)) : displayTermo(termo);
+  const artigo = artigoDe(termo);
+  return {
+    com: artigo ? `${artigo} ${display}` : display,
+    de: artigo ? `d${artigo} ${display}` : `de ${display}`,
+    em: artigo ? `n${artigo} ${display}` : `em ${display}`,
+  };
+}
 
 interface Angulo {
   nome: string;
@@ -23,7 +84,7 @@ interface Angulo {
   /** Perguntas prontas deste ângulo (servem a grupo e espia). */
   perguntas: string[];
   /** Respostas do não-espia: encaixam um termo concreto do cenário. */
-  moldes: ((kw: string) => string)[];
+  moldes: ((t: TermoFlex) => string)[];
   /** Respostas do espia sem palpite: plausíveis, jamais evasivas. */
   respostasEspia: string[];
 }
@@ -39,9 +100,9 @@ const ANGULOS: Angulo[] = [
       "Teve algum detalhe que só você percebeu?",
     ],
     moldes: [
-      (kw) => `Vi ${kw} logo que cheguei, impossível ignorar.`,
-      (kw) => `O que saltava aos olhos era ${kw}.`,
-      (kw) => `De onde eu estava dava pra ver ${kw} claramente.`,
+      (t) => `Vi ${t.com} logo que cheguei, impossível ignorar.`,
+      (t) => `Não tinha como não reparar ${t.em}.`,
+      (t) => `De onde eu estava, dava pra ver ${t.com} claramente.`,
     ],
     respostasEspia: [
       "Tinha tanta coisa acontecendo que era difícil focar num ponto só.",
@@ -57,8 +118,8 @@ const ANGULOS: Angulo[] = [
       "Como estavam as pessoas ao seu redor?",
     ],
     moldes: [
-      (kw) => `Tinha gente ali, mas minha atenção ficou em ${kw}.`,
-      (kw) => `Todo mundo em volta só comentava sobre ${kw}.`,
+      (t) => `Tinha gente ali, mas minha atenção ficou ${t.em}.`,
+      (t) => `Todo mundo em volta só falava ${t.de}.`,
     ],
     respostasEspia: [
       "Tinha mais gente do que eu esperava por ali.",
@@ -74,8 +135,8 @@ const ANGULOS: Angulo[] = [
       "O que mexeu mais com você nisso tudo?",
     ],
     moldes: [
-      (kw) => `Senti um aperto quando percebi ${kw}.`,
-      (kw) => `Fiquei sem palavras diante de ${kw}.`,
+      (t) => `Senti um aperto quando vi ${t.com}.`,
+      (t) => `Fiquei sem palavras diante ${t.de}.`,
     ],
     respostasEspia: [
       "Um misto de espanto e respeito, pra ser sincero.",
@@ -91,8 +152,8 @@ const ANGULOS: Angulo[] = [
       "Você precisou tomar cuidado com alguma coisa?",
     ],
     moldes: [
-      (kw) => `Tranquilo não era — ainda mais com ${kw} ali.`,
-      (kw) => `O maior cuidado era por causa de ${kw}.`,
+      (t) => `Tranquilo não era — ainda mais com ${t.com} ali.`,
+      (t) => `O maior cuidado era por causa ${t.de}.`,
     ],
     respostasEspia: [
       "Relaxar por completo ali não dava, isso eu garanto.",
@@ -108,8 +169,8 @@ const ANGULOS: Angulo[] = [
       "O que aconteceu logo antes de você chegar?",
     ],
     moldes: [
-      (kw) => `Tudo girava em torno de ${kw}, ninguém ficou parado.`,
-      (kw) => `Minha primeira reação foi por causa de ${kw}.`,
+      (t) => `Tudo girava em torno ${t.de}, ninguém ficou parado.`,
+      (t) => `Minha primeira reação foi por causa ${t.de}.`,
     ],
     respostasEspia: [
       "Cada um reagiu de um jeito — eu preferi observar primeiro.",
@@ -125,8 +186,8 @@ const ANGULOS: Angulo[] = [
       "Como você descreveria o ambiente ao redor?",
     ],
     moldes: [
-      (kw) => `O lugar se resumia numa coisa: ${kw}.`,
-      (kw) => `Por todo lado ali se via ${kw}.`,
+      (t) => `Não dava pra descrever aquele lugar sem falar ${t.de}.`,
+      (t) => `Logo que se chegava, já se esbarrava ${t.em}.`,
     ],
     respostasEspia: [
       "Era diferente de tudo que eu já tinha visto, difícil comparar.",
@@ -142,8 +203,8 @@ const ANGULOS: Angulo[] = [
       "Isso te lembra alguma coisa do passado?",
     ],
     moldes: [
-      (kw) => `O que ficou gravado pra mim foi ${kw}.`,
-      (kw) => `Até hoje, penso naquilo e lembro de ${kw}.`,
+      (t) => `Até hoje penso naquilo e lembro ${t.de}.`,
+      (t) => `Nunca mais me esqueci ${t.de}.`,
     ],
     respostasEspia: [
       "Tem coisas dali que não saem da cabeça, mesmo querendo.",
@@ -162,11 +223,11 @@ const GERAL: Angulo = {
     "Isso faz parte de algo maior?",
   ],
   moldes: [
-    (kw) => `Sim, ${kw} estava bem ali, vi de perto.`,
-    (kw) => `Dava pra notar ${kw} sem esforço.`,
-    (kw) => `O que mais me marcou foi ${kw}.`,
-    (kw) => `Lembro de ${kw} como se fosse agora.`,
-    (kw) => `Tinha a ver com ${kw}, isso eu garanto.`,
+    (t) => `Sim, vi ${t.com} bem de perto.`,
+    (t) => `Dava pra notar ${t.com} sem esforço.`,
+    (t) => `Lembro ${t.de} como se fosse agora.`,
+    (t) => `Aquilo tinha tudo a ver com ${t.com}, isso eu garanto.`,
+    (t) => `Não dava pra tirar os olhos ${t.de}.`,
   ],
   respostasEspia: [...RESPOSTAS_ESPIA_BOT],
 };
@@ -192,9 +253,9 @@ export function classificarPergunta(texto: string): Angulo {
   return melhor;
 }
 
-/** Resposta que ACOMPANHA a pergunta: molde do ângulo dela + termo concreto. */
-export function moldarResposta(pergunta: string, kw: string): string {
-  return aleatorio(classificarPergunta(pergunta).moldes)(kw);
+/** Resposta que ACOMPANHA a pergunta: molde do ângulo dela + termo flexionado. */
+export function moldarResposta(pergunta: string, termo: string): string {
+  return aleatorio(classificarPergunta(pergunta).moldes)(comFormas(termo));
 }
 
 /** Resposta do espia sem palpite: plausível no ângulo da pergunta, sem termo. */

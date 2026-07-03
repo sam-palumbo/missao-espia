@@ -89,6 +89,34 @@ export const LEXICO: Map<number, string[]> = new Map(
   }),
 );
 
+// Forma de exibição (com acentos) de cada termo, indexada pela forma
+// normalizada — para os bots CITAREM "árvore", não "arvore". Só cobre os
+// termos EXTRA do LEXICO_RAW; palavras do nome não são citáveis mesmo.
+const DISPLAY: Map<string, string> = new Map();
+for (const lista of Object.values(LEXICO_RAW)) {
+  for (const raw of lista) {
+    const chave = normalizar(raw);
+    if (chave && !DISPLAY.has(chave)) DISPLAY.set(chave, raw);
+  }
+}
+
+/** Forma acentuada de um termo do léxico (ou o próprio termo, se não houver). */
+export function displayTermo(termo: string): string {
+  return DISPLAY.get(termo) ?? termo;
+}
+
+// Termos que PONTUAM normalmente, mas não servem para citar numa resposta:
+// verbos soltos, números e adjetivos ficam agramaticais nos moldes ("o que
+// me marcou foi perseguir"). A heurística os pula ao escolher o termo.
+export const NAO_CITAVEIS: Set<string> = new Set([
+  "abrir", "adorar", "alagar", "atravessar", "beber", "cair", "cantar",
+  "chamar", "comer", "construir", "crucificar", "derrubar", "dormir",
+  "engolir", "espalhar", "falar", "fechar", "fundir", "gritar",
+  "interpretar", "libertar", "louvar", "mancar", "marchar", "multiplicar",
+  "olhar para tras", "partilhar", "perseguir", "pregar", "subir", "ver",
+  "tres", "cinco", "dez", "baixo", "ultima", "vazia", "vivo",
+]);
+
 /** Resolve o id de um evento pelo seu nome (como vem do ContextoBotIA). */
 export function eventoIdPorNome(nome: string): number | null {
   const alvo = normalizar(nome);

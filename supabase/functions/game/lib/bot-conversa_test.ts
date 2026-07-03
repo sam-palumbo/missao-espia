@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "std/assert";
 import {
   classificarPergunta,
+  comFormas,
   escolherPergunta,
   moldarResposta,
   respostaEspiaSemPalpite,
@@ -34,10 +35,30 @@ Deno.test("classificarPergunta: as perguntas de cada ângulo classificam nele me
   }
 });
 
-Deno.test("moldarResposta: embute o termo e segue o ângulo da pergunta", () => {
+Deno.test("moldarResposta: embute o termo flexionado e segue o ângulo da pergunta", () => {
   const r = moldarResposta("O que você está sentindo agora?", "trombetas");
   assert(r.includes("trombetas"), `termo ausente: ${r}`);
-  assert(classificarPergunta("O que você está sentindo agora?").moldes.some((m) => m("trombetas") === r));
+  const t = comFormas("trombetas");
+  assert(classificarPergunta("O que você está sentindo agora?").moldes.some((m) => m(t) === r));
+});
+
+Deno.test("comFormas: artigo por gênero/número, contrações e acentos", () => {
+  assertEquals(comFormas("funda"), { com: "a funda", de: "da funda", em: "na funda" });
+  assertEquals(comFormas("gigante"), { com: "o gigante", de: "do gigante", em: "no gigante" });
+  assertEquals(comFormas("trombetas").com, "as trombetas");
+  assertEquals(comFormas("soldados").de, "dos soldados");
+  // Display devolve a forma acentuada; gênero irregular vem da lista.
+  assertEquals(comFormas("multidao").com, "a multidão");
+  assertEquals(comFormas("arvore").em, "na árvore");
+  assertEquals(comFormas("noite").com, "a noite");
+  // Frases flexionam pela última palavra.
+  assertEquals(comFormas("tres dias").com, "os três dias");
+});
+
+Deno.test("comFormas: nomes próprios capitalizados, com e sem artigo", () => {
+  assertEquals(comFormas("maria"), { com: "Maria", de: "de Maria", em: "em Maria" });
+  assertEquals(comFormas("egito"), { com: "o Egito", de: "do Egito", em: "no Egito" });
+  assertEquals(comFormas("deus").de, "de Deus");
 });
 
 Deno.test("respostaEspiaSemPalpite: plausível dentro do ângulo da pergunta", () => {

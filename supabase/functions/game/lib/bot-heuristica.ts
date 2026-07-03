@@ -20,8 +20,10 @@ import type { ContextoBotIA } from "./bot-ia.ts";
 import type { PerguntaAtual } from "./types.ts";
 import {
   contemTermo,
+  displayTermo,
   eventoIdPorNome,
   LEXICO,
+  NAO_CITAVEIS,
   normalizar,
   PALAVRAS_NOME,
   pesoTermo,
@@ -221,12 +223,12 @@ export function palavraHeuristica(ctx: ContextoBotIA): string | null {
   if (ctx.souEspia) {
     const ranking = rankearEventos(bagGeral(ctx));
     const lista = ranking[0]?.score ? candidatos(ranking[0].id) : [];
-    return lista.length ? aleatorio(lista) : aleatorio(PALAVRAS_BOT);
+    return lista.length ? displayTermo(aleatorio(lista)) : aleatorio(PALAVRAS_BOT);
   }
 
   const id = ctx.evento ? eventoIdPorNome(ctx.evento.evento) : null;
   const lista = candidatos(id);
-  return lista.length ? aleatorio(lista) : null;
+  return lista.length ? displayTermo(aleatorio(lista)) : null;
 }
 
 /**
@@ -257,11 +259,13 @@ export function perguntaHeuristica(ctx: ContextoBotIA): { destinatario_id: strin
 const PALPITE_RESPOSTA_SCORE = 2.5;
 const PALPITE_RESPOSTA_MARGEM = 1.5;
 
-/** Termos do evento que o bot pode citar: concretos, não-óbvios e INÉDITOS na
- * boca dele (cada resposta acrescenta um detalhe novo). */
+/** Termos do evento que o bot pode citar: concretos, não-óbvios, gramaticais
+ * nos moldes (sem verbos/números soltos) e INÉDITOS na boca dele (cada
+ * resposta acrescenta um detalhe novo). */
 function termosCitaveis(ctx: ContextoBotIA, eventoId: number, evitar: Set<string>): string[] {
   const ditos = bagPropria(ctx);
-  const base = (LEXICO.get(eventoId) ?? []).filter((t) => t.length >= 4 && !evitar.has(t));
+  const base = (LEXICO.get(eventoId) ?? [])
+    .filter((t) => t.length >= 4 && !evitar.has(t) && !NAO_CITAVEIS.has(t));
   const ineditos = base.filter((t) => !contemTermo(ditos, t));
   return ineditos.length ? ineditos : base;
 }
@@ -273,7 +277,7 @@ function termosCitaveis(ctx: ContextoBotIA, eventoId: number, evitar: Set<string
  */
 function termoSeguroEspia(ctx: ContextoBotIA): string | null {
   const ditos = bagPropria(ctx);
-  const pool = TERMOS_SEGUROS.filter((t) => !contemTermo(ditos, t));
+  const pool = TERMOS_SEGUROS.filter((t) => !NAO_CITAVEIS.has(t) && !contemTermo(ditos, t));
   if (pool.length === 0) return null;
   const topIds = rankearEventos(bagGeral(ctx))
     .slice(0, 3)
