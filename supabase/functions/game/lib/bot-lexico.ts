@@ -40,38 +40,38 @@ export function normalizar(texto: string): string {
 // Termos EXTRA por evento (além das palavras do nome do evento/local).
 // Escritos com acentuação natural; normalizados no carregamento do módulo.
 const LEXICO_RAW: Record<number, string[]> = {
-  1: ["luz", "dia", "noite", "adão", "eva", "árvore", "fruto", "serpente", "animais", "paraíso", "céu", "terra"],
-  2: ["chuva", "água", "animais", "casais", "pomba", "barco", "pares", "alagar", "monte", "ararate", "quarenta dias"],
-  3: ["tijolos", "construir", "línguas", "idiomas", "confusão", "céu", "altura", "povo", "espalhar", "obra"],
-  4: ["fogo", "enxofre", "anjos", "fuga", "destruição", "sal", "esposa", "cidade", "pecado", "olhar para tras"],
-  5: ["anjo", "luta", "rio", "noite", "coxa", "israel", "benção", "mancar", "amanhecer", "abraço", "nome"],
-  6: ["sonho", "vacas", "espigas", "interpretar", "egito", "fome", "abundância", "prisão", "governador", "celeiros"],
-  7: ["mar", "faraó", "egito", "escravidão", "fuga", "água", "abrir", "atravessar", "exército", "vara", "praga"],
-  8: ["tábuas", "lei", "mandamentos", "pedra", "deus", "fogo", "nuvem", "subir", "dez", "monte", "cume"],
-  9: ["bezerro", "ouro", "ídolo", "adorar", "deserto", "arão", "povo", "festa", "ira", "fundir", "joias"],
-  10: ["sacerdote", "véu", "santuário", "sangue", "bode", "sacrifício", "perdão", "altar", "incenso", "templo"],
-  11: ["muralha", "trombetas", "volta", "marchar", "cair", "exército", "arca", "gritar", "sete voltas", "cerco"],
-  12: ["templo", "colunas", "força", "cabelo", "filisteus", "cego", "derrubar", "multidão", "vingança", "olhos"],
-  13: ["voz", "deus", "chamar", "noite", "eli", "dormir", "menino", "falar", "sacerdote", "templo", "lâmpada"],
-  14: ["gigante", "funda", "pedra", "vale", "filisteus", "pastor", "desafio", "espada", "exército", "testa"],
-  15: ["rainha", "sabedoria", "presentes", "ouro", "perguntas", "riqueza", "visita", "especiarias", "camelos"],
-  16: ["baal", "profetas", "altar", "fogo", "céu", "sacrifício", "monte", "água", "deus", "chuva", "seca", "boi"],
-  17: ["peixe", "ventre", "mar", "navio", "tempestade", "nínive", "engolir", "três dias", "fuga", "oração", "tormenta"],
-  18: ["fornalha", "fogo", "cativeiro", "nabucodonosor", "três", "jovens", "ídolo", "anjo", "chamas", "adorar", "forno"],
-  19: ["cova", "leões", "rei", "oração", "fome", "anjo", "noite", "dario", "fechar", "boca", "fé", "pedra"],
-  20: ["nascimento", "manjedoura", "maria", "josé", "belém", "estrela", "pastores", "anjos", "estábulo", "bebê", "presépio"],
-  21: ["água", "vinho", "casamento", "festa", "milagre", "talhas", "maria", "banquete", "noivos", "jarras"],
-  22: ["poço", "água", "sede", "mulher", "beber", "vida", "conversa", "balde", "samaria", "marido"],
-  23: ["pães", "peixes", "multidão", "fome", "cestos", "mar", "multiplicar", "milagre", "cinco", "comer", "sobras"],
-  24: ["árvore", "multidão", "cobrador", "impostos", "baixo", "subir", "ver", "casa", "sicômoro", "galho", "publicano"],
-  25: ["ceia", "pão", "vinho", "discípulos", "mesa", "traição", "judas", "copo", "última", "partilhar", "corpo"],
-  26: ["cruz", "crucificar", "pregos", "soldados", "espinhos", "morte", "calvário", "ladrões", "lança", "sangue", "coroa"],
-  27: ["ressurreição", "tumba", "vazia", "pedra", "anjo", "mulheres", "manhã", "vivo", "sepulcro", "terceiro dia", "lençol"],
-  28: ["pentecostes", "espírito", "fogo", "línguas", "ruas", "discípulos", "vento", "pregar", "multidão", "batismo"],
-  29: ["caminho", "luz", "cego", "voz", "conversão", "queda", "cavalo", "perseguir", "chão", "brilho"],
-  30: ["prisão", "cantar", "cela", "filipos", "terremoto", "correntes", "carcereiro", "noite", "louvar", "libertar", "grades"],
-  31: ["atenas", "areópago", "pregar", "deus", "desconhecido", "gregos", "filósofos", "ídolos", "altar", "discurso"],
-  32: ["apocalipse", "visão", "patmos", "ilha", "revelação", "anjo", "livro", "selos", "besta", "céu", "fim", "trombeta"],
+  1: ["luz", "dia", "noite", "adão", "eva", "árvore", "fruto", "serpente", "animais", "paraíso", "céu", "terra", "costela", "barro", "sopro", "firmamento", "estrelas", "rios", "descanso"],
+  2: ["chuva", "água", "animais", "casais", "pomba", "barco", "pares", "alagar", "monte", "ararate", "quarenta dias", "corvo", "oliveira", "ramo", "madeira", "quarenta noites"],
+  3: ["tijolos", "construir", "línguas", "idiomas", "confusão", "céu", "altura", "povo", "espalhar", "obra", "argamassa", "nações", "operários", "gritaria"],
+  4: ["fogo", "enxofre", "anjos", "fuga", "destruição", "sal", "esposa", "cidade", "pecado", "olhar para tras", "cinzas", "fumaça", "madrugada", "visitantes", "estátua de sal"],
+  5: ["anjo", "luta", "rio", "noite", "coxa", "israel", "benção", "mancar", "amanhecer", "abraço", "nome", "quadril", "madrugada", "corpo a corpo"],
+  6: ["sonho", "vacas", "espigas", "interpretar", "egito", "fome", "abundância", "prisão", "governador", "celeiros", "sete anos", "copeiro", "padeiro", "trono", "anel", "colheita"],
+  7: ["mar", "faraó", "egito", "escravidão", "fuga", "água", "abrir", "atravessar", "exército", "vara", "praga", "carruagens", "cavalos", "coluna de fogo", "chão seco"],
+  8: ["tábuas", "lei", "mandamentos", "pedra", "deus", "fogo", "nuvem", "subir", "dez", "monte", "cume", "trovões", "relâmpagos", "fumaça", "tremor"],
+  9: ["bezerro", "ouro", "ídolo", "adorar", "deserto", "arão", "povo", "festa", "ira", "fundir", "joias", "brincos", "dança", "estátua", "cantoria"],
+  10: ["sacerdote", "véu", "santuário", "sangue", "bode", "sacrifício", "perdão", "altar", "incenso", "templo", "linho", "cortina", "bode expiatório"],
+  11: ["muralha", "trombetas", "volta", "marchar", "cair", "exército", "arca", "gritar", "sete voltas", "cerco", "sete dias", "poeira", "escombros", "sacerdotes", "desabamento"],
+  12: ["templo", "colunas", "força", "cabelo", "filisteus", "cego", "derrubar", "multidão", "vingança", "olhos", "correntes", "zombaria", "prisioneiro", "escombros"],
+  13: ["voz", "deus", "chamar", "noite", "eli", "dormir", "menino", "falar", "sacerdote", "templo", "lâmpada", "cama", "escuridão", "silêncio", "madrugada"],
+  14: ["gigante", "funda", "pedra", "vale", "filisteus", "pastor", "desafio", "espada", "exército", "testa", "armadura", "escudo", "ovelhas", "riacho", "capacete"],
+  15: ["rainha", "sabedoria", "presentes", "ouro", "perguntas", "riqueza", "visita", "especiarias", "camelos", "caravana", "trono", "enigmas", "servos", "pedras preciosas"],
+  16: ["baal", "profetas", "altar", "fogo", "céu", "sacrifício", "monte", "água", "deus", "chuva", "seca", "boi", "vala", "lenha", "nuvem", "joelhos"],
+  17: ["peixe", "ventre", "mar", "navio", "tempestade", "nínive", "engolir", "três dias", "fuga", "oração", "tormenta", "marinheiros", "ondas", "praia", "porão"],
+  18: ["fornalha", "fogo", "cativeiro", "nabucodonosor", "três", "jovens", "ídolo", "anjo", "chamas", "adorar", "forno", "cordas", "calor", "estátua", "música"],
+  19: ["cova", "leões", "rei", "oração", "fome", "anjo", "noite", "dario", "fechar", "boca", "fé", "pedra", "rugido", "juba", "decreto", "selo", "janela"],
+  20: ["nascimento", "manjedoura", "maria", "josé", "belém", "estrela", "pastores", "anjos", "estábulo", "bebê", "presépio", "panos", "feno", "rebanho", "magos", "mirra"],
+  21: ["água", "vinho", "casamento", "festa", "milagre", "talhas", "maria", "banquete", "noivos", "jarras", "convidados", "servos", "copos"],
+  22: ["poço", "água", "sede", "mulher", "beber", "vida", "conversa", "balde", "samaria", "marido", "cântaro", "meio-dia", "água viva", "corda"],
+  23: ["pães", "peixes", "multidão", "fome", "cestos", "mar", "multiplicar", "milagre", "cinco", "comer", "sobras", "grama", "menino", "doze cestos"],
+  24: ["árvore", "multidão", "cobrador", "impostos", "baixo", "subir", "ver", "casa", "sicômoro", "galho", "publicano", "moedas", "hóspede", "murmúrio"],
+  25: ["ceia", "pão", "vinho", "discípulos", "mesa", "traição", "judas", "copo", "última", "partilhar", "corpo", "cálice", "bacia", "toalha", "aposento"],
+  26: ["cruz", "crucificar", "pregos", "soldados", "espinhos", "morte", "calvário", "ladrões", "lança", "sangue", "coroa", "madeiro", "vinagre", "trevas", "dados", "túnica"],
+  27: ["ressurreição", "tumba", "vazia", "pedra", "anjo", "mulheres", "manhã", "vivo", "sepulcro", "terceiro dia", "lençol", "perfumes", "guardas", "terremoto", "alvorada"],
+  28: ["pentecostes", "espírito", "fogo", "línguas", "ruas", "discípulos", "vento", "pregar", "multidão", "batismo", "sopro", "estrangeiros", "línguas de fogo"],
+  29: ["caminho", "luz", "cego", "voz", "conversão", "queda", "cavalo", "perseguir", "chão", "brilho", "clarão", "escamas", "cartas", "companheiros"],
+  30: ["prisão", "cantar", "cela", "filipos", "terremoto", "correntes", "carcereiro", "noite", "louvar", "libertar", "grades", "hinos", "açoites", "tronco", "meia-noite", "portas"],
+  31: ["atenas", "areópago", "pregar", "deus", "desconhecido", "gregos", "filósofos", "ídolos", "altar", "discurso", "estátuas", "praça", "debate", "colina"],
+  32: ["apocalipse", "visão", "patmos", "ilha", "revelação", "anjo", "livro", "selos", "besta", "céu", "fim", "trombeta", "cordeiro", "trono", "dragão", "cavaleiros", "candelabros"],
 };
 
 /** Tokeniza um texto normalizado em palavras úteis (sem stopwords/curtas). */
@@ -140,11 +140,27 @@ export function contemTermo(bag: string, termo: string): boolean {
   return new RegExp(`\\b${termo}`).test(bag);
 }
 
-// DF (document frequency): em quantos eventos cada termo aparece. "fogo" está
-// em meia dúzia de léxicos e quase não discrimina; "funda" só existe num.
+/** Dois termos são flexões um do outro? ("pastor"/"pastores", "nação"/"nações"). */
+function mesmaFamilia(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [curto, longo] = a.length < b.length ? [a, b] : [b, a];
+  return longo === curto + "s" || longo === curto + "es" ||
+    (curto.endsWith("ao") && longo === curto.slice(0, -2) + "oes");
+}
+
+// DF (document frequency): em quantos eventos cada termo aparece — contando
+// flexões como o mesmo termo ("pastor" em Davi e "pastores" no Nascimento é
+// UMA família em dois eventos). "fogo" está em meia dúzia de léxicos e quase
+// não discrimina; "funda" só existe num.
 const DF: Map<string, number> = new Map();
-for (const termos of LEXICO.values()) {
-  for (const t of termos) DF.set(t, (DF.get(t) ?? 0) + 1);
+{
+  const porEvento = [...LEXICO.values()];
+  for (const termos of porEvento) {
+    for (const t of termos) {
+      if (DF.has(t)) continue;
+      DF.set(t, porEvento.filter((lista) => lista.some((outro) => mesmaFamilia(t, outro))).length);
+    }
+  }
 }
 
 /** Peso de evidência de um termo: exclusivo vale 1; compartilhado cai até 0.25. */

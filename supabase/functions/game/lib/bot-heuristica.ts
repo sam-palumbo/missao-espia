@@ -105,11 +105,19 @@ export function adivinhacaoHeuristica(ctx: ContextoBotIA): { evento_id: number; 
   return { evento_id: top.id, confianca };
 }
 
+/** Maior aderência da fala a um evento que NÃO é o verdadeiro: sinal de
+ * contradição ativa — quem fala de OUTRA cena provavelmente é o espia
+ * chutando errado, evidência mais forte que o simples silêncio. */
+function contradicao(bag: string, verdadeiroId: number): number {
+  return rankearEventos(bag).find((r) => r.id !== verdadeiroId)?.score ?? 0;
+}
+
 /**
  * Quem o GRUPO suspeita: o não-espia conhece o evento, então mede quanto a fala
  * de cada um adere ao léxico VERDADEIRO. O espia tende a pontuar ~0 (não sabe o
  * cenário). Suspeito = menor aderência; confiança sobe quando ele já falou
- * bastante (zero aderência apesar de falar é forte) e os outros pontuam.
+ * bastante (zero aderência apesar de falar é forte), quando os outros pontuam
+ * e quando a fala dele adere a OUTRO evento (contradição ativa).
  */
 export function acusadoHeuristica(ctx: ContextoBotIA): { acusado_id: string; confianca: number } | null {
   if (!ctx.evento || ctx.jogadores.length === 0) return null;
@@ -120,7 +128,13 @@ export function acusadoHeuristica(ctx: ContextoBotIA): { acusado_id: string; con
   const pontuados = ctx.jogadores
     .map((j) => {
       const f = falas.get(j.apelido);
-      return { id: j.id, qtd: f?.qtd ?? 0, score: pontuarEvento(bagDe(ctx, j.apelido), verdadeiroId) };
+      const bag = bagDe(ctx, j.apelido);
+      return {
+        id: j.id,
+        qtd: f?.qtd ?? 0,
+        score: pontuarEvento(bag, verdadeiroId),
+        outro: contradicao(bag, verdadeiroId),
+      };
     })
     .filter((p) => p.qtd >= 1);
   if (pontuados.length === 0) return null;
@@ -132,7 +146,8 @@ export function acusadoHeuristica(ctx: ContextoBotIA): { acusado_id: string; con
 
   let confianca: number;
   if (suspeito.score === 0) {
-    confianca = 40 + suspeito.qtd * 12 + (mediaDemais >= 1 ? 20 : 0) + (pontuados.length >= 3 ? 10 : 0);
+    confianca = 40 + suspeito.qtd * 12 + (mediaDemais >= 1 ? 20 : 0) +
+      (pontuados.length >= 3 ? 10 : 0) + (suspeito.outro >= 1.5 ? 15 : 0);
   } else {
     // Demonstrou conhecer o cenário — acusar é arriscado.
     confianca = Math.max(0, 25 - suspeito.score * 10);
@@ -144,7 +159,8 @@ export function acusadoHeuristica(ctx: ContextoBotIA): { acusado_id: string; con
  * Voto do bot numa acusação em andamento.
  * - Espia: eliminar inocente o favorece → tende a aprovar.
  * - Não-espia: aprova só se a fala do acusado NÃO bate com o cenário (score 0).
- *   Sem falas do acusado não há evidência → rejeita. Custo alto exige mais.
+ *   Sem falas do acusado não há evidência → rejeita. Custo alto exige mais:
+ *   ou o acusado já falou bastante, ou a fala dele adere a OUTRO evento.
  */
 export function votoHeuristica(
   ctx: ContextoBotIA,
@@ -159,8 +175,10 @@ export function votoHeuristica(
   const falas = falasPorApelido(ctx).get(acusadoApelido);
   const qtd = falas?.qtd ?? 0;
   if (qtd === 0) return false; // sem evidência, não elimina
-  const score = pontuarEvento(bagDe(ctx, acusadoApelido), verdadeiroId);
-  return custoErroAlto ? score === 0 && qtd >= 2 : score === 0;
+  const bag = bagDe(ctx, acusadoApelido);
+  const score = pontuarEvento(bag, verdadeiroId);
+  if (score > 0) return false;
+  return custoErroAlto ? qtd >= 2 || contradicao(bag, verdadeiroId) >= 1.5 : true;
 }
 
 /**
@@ -228,7 +246,11 @@ export function palavraHeuristica(ctx: ContextoBotIA): string | null {
 
   const id = ctx.evento ? eventoIdPorNome(ctx.evento.evento) : null;
   const lista = candidatos(id);
-  return lista.length ? displayTermo(aleatorio(lista)) : null;
+  if (lista.length === 0) return null;
+  // Como nas respostas: prefere termo compartilhado — a palavra é pública e
+  // um termo exclusivo ("funda") entregaria o par ao espia logo na abertura.
+  const discretas = lista.filter((t) => pesoTermo(t) <= 0.75);
+  return displayTermo(aleatorio(discretas.length ? discretas : lista));
 }
 
 /**

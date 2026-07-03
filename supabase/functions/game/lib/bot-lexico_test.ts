@@ -53,6 +53,18 @@ Deno.test("pesoTermo: termo exclusivo pesa 1; termo comum a vários eventos pesa
   assert(pesoTermo("anjo") <= 0.5, `"anjo" deveria pesar pouco: ${pesoTermo("anjo")}`);
 });
 
+Deno.test("pesoTermo: flexões contam como o mesmo termo entre eventos", () => {
+  // "pastor" (Davi/Golias) e "pastores" (Nascimento) são a mesma família.
+  assert(pesoTermo("pastor") < 1, `"pastor" deveria ser compartilhado: ${pesoTermo("pastor")}`);
+  assert(pesoTermo("pastores") < 1, `"pastores" deveria ser compartilhado: ${pesoTermo("pastores")}`);
+});
+
+Deno.test("LEXICO: expansão traz os termos novos", () => {
+  assert(LEXICO.get(14)!.includes("armadura"));
+  assert(LEXICO.get(26)!.includes("vinagre"));
+  assert(LEXICO.get(32)!.includes("dragao")); // normalizado
+});
+
 Deno.test("pontuarEvento: casa plural por início de palavra (peixe → peixes)", () => {
   assert(pontuarEvento(normalizar("vi muitos peixes no mar"), 17) >= 1);
 });

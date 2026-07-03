@@ -83,6 +83,22 @@ Deno.test("acusadoHeuristica: null quando ninguém falou ainda", () => {
   assertEquals(acusadoHeuristica(ctx()), null);
 });
 
+Deno.test("acusadoHeuristica: contradição ativa (fala de OUTRO evento) pesa mais que silêncio", () => {
+  // Ester descreve claramente o Dilúvio numa rodada de Davi/Golias: espia
+  // chutando o cenário errado — evidência mais forte que só ser genérico.
+  const grupo = ctx({
+    palavras: [{ jogador_id: "j1", apelido: "Sam", palavra: "pedra" }],
+    historico: [
+      resp("Sam", "?", "o gigante caiu no vale"),
+      resp("Ester", "?", "o barco balançou quando a pomba voltou com o ramo de oliveira"),
+    ],
+  });
+  const out = acusadoHeuristica(grupo);
+  assert(out);
+  assertEquals(out!.acusado_id, "j2"); // Ester
+  assert(out!.confianca >= 80, `contradição deveria elevar a confiança: ${out!.confianca}`);
+});
+
 Deno.test("votoHeuristica: grupo aprova eliminar acusado off-theme, rejeita on-theme", () => {
   const base = ctx({
     historico: [
@@ -120,6 +136,13 @@ Deno.test("palavraHeuristica: não-espia evita palavras do nome do evento/local"
   assert(p, "deveria escolher palavra");
   // "davi", "golias", "vale", "ela" são óbvias (vêm do nome) e não podem sair.
   assert(!["davi", "golias", "vale", "ela"].includes(p!), `palavra óbvia: ${p}`);
+});
+
+Deno.test("palavraHeuristica: não-espia prefere palavra discreta à que entrega o par", () => {
+  for (let i = 0; i < 30; i++) {
+    const p = palavraHeuristica(ctx())!;
+    assert(!["funda", "gigante"].includes(normalizar(p)), `palavra entregou o evento: ${p}`);
+  }
 });
 
 Deno.test("perguntaHeuristica: devolve destinatário válido e texto", () => {

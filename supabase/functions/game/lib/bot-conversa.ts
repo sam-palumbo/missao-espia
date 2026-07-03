@@ -39,23 +39,34 @@ const PROPRIOS_SEM_ARTIGO = new Set([
 const PROPRIOS_COM_O = new Set(["egito", "calvario", "areopago", "ararate", "pentecostes"]);
 
 // Gênero que a regra da terminação erraria.
-const MASCULINOS = new Set(["dia", "dias", "profeta", "profetas"]);
-const FEMININOS = new Set([
-  "arvore", "bencao", "cidade", "confusao", "conversao", "correntes", "cruz",
-  "destruicao", "escravidao", "fe", "fome", "grades", "lei", "luz", "morte",
-  "mulher", "mulheres", "multidao", "noite", "oracao", "prisao",
-  "ressurreicao", "revelacao", "sede", "serpente", "tempestade", "traicao",
-  "visao", "voz",
+const MASCULINOS = new Set([
+  "dia", "dias", "profeta", "profetas", "guardas", "enigmas", "idioma", "idiomas",
 ]);
+const FEMININOS = new Set([
+  "arvore", "bencao", "carruagens", "cidade", "confusao", "conversao",
+  "correntes", "cruz", "destruicao", "escravidao", "escuridao", "fe", "fome",
+  "grades", "lei", "luz", "morte", "mulher", "mulheres", "multidao", "nacao",
+  "noite", "nuvem", "oracao", "prisao", "ressurreicao", "revelacao", "sede",
+  "serpente", "tempestade", "traicao", "visao", "voz",
+]);
+
+/** Consulta uma lista de gênero aceitando a flexão plural ("noites" → "noite"). */
+function generoNaLista(palavra: string, lista: Set<string>): boolean {
+  return lista.has(palavra) || lista.has(palavra.replace(/s$/, "")) ||
+    lista.has(palavra.replace(/oes$/, "ao"));
+}
 
 /** Artigo do termo (null = dispensa artigo, caso dos nomes próprios). */
 function artigoDe(termo: string): string | null {
   if (PROPRIOS_SEM_ARTIGO.has(termo)) return null;
   if (PROPRIOS_COM_O.has(termo)) return "o";
-  const palavra = termo.split(" ").pop()!; // em frases, o artigo segue a última palavra
+  // Em frases o artigo segue o núcleo: a primeira palavra quando há "de"
+  // ("a coluna de fogo"), senão a última ("os três dias").
+  const partes = termo.split(" ");
+  const palavra = partes.length > 1 && partes.includes("de") ? partes[0] : partes[partes.length - 1];
   const plural = palavra.endsWith("s");
-  if (MASCULINOS.has(palavra)) return plural ? "os" : "o";
-  if (FEMININOS.has(palavra)) return plural ? "as" : "a";
+  if (generoNaLista(palavra, MASCULINOS)) return plural ? "os" : "o";
+  if (generoNaLista(palavra, FEMININOS)) return plural ? "as" : "a";
   if (plural) return palavra.endsWith("as") ? "as" : "os";
   return palavra.endsWith("a") ? "a" : "o";
 }

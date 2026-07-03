@@ -55,6 +55,13 @@ Deno.test("comFormas: artigo por gênero/número, contrações e acentos", () =>
   assertEquals(comFormas("tres dias").com, "os três dias");
 });
 
+Deno.test("comFormas: frases flexionam pelo núcleo e plurais femininos acertam o artigo", () => {
+  assertEquals(comFormas("coluna de fogo").com, "a coluna de fogo"); // núcleo antes do "de"
+  assertEquals(comFormas("quarenta noites").com, "as quarenta noites"); // "noites" → "noite" (feminino)
+  assertEquals(comFormas("guardas").com, "os guardas"); // masculino apesar do -as
+  assertEquals(comFormas("carruagens").com, "as carruagens");
+});
+
 Deno.test("comFormas: nomes próprios capitalizados, com e sem artigo", () => {
   assertEquals(comFormas("maria"), { com: "Maria", de: "de Maria", em: "em Maria" });
   assertEquals(comFormas("egito"), { com: "o Egito", de: "do Egito", em: "no Egito" });
