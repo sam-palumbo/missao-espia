@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "std/assert";
+import { contemTermo, LEXICO, normalizar, TERMOS_SEGUROS } from "./bot-lexico.ts";
 import type { ContextoBotIA } from "./bot-ia.ts";
 import {
   acusadoHeuristica,
@@ -26,6 +27,17 @@ function ctx(overrides: Partial<ContextoBotIA> = {}): ContextoBotIA {
 // Helper: monta uma resposta no histórico.
 function resp(destinatario_apelido: string, pergunta: string, resposta: string) {
   return { turno_numero: 2, perguntador_apelido: "Bot", destinatario_apelido, pergunta, resposta };
+}
+
+// Helper: pergunta pendente dirigida ao bot.
+function perguntaAo(botApelido: string, texto: string) {
+  return {
+    perguntador_id: "j1",
+    perguntador_apelido: "Sam",
+    destinatario_id: "bot",
+    destinatario_apelido: botApelido,
+    texto,
+  };
 }
 
 Deno.test("adivinhacaoHeuristica: sem pistas retorna null (espia segue escondido)", () => {
@@ -117,7 +129,68 @@ Deno.test("perguntaHeuristica: devolve destinatário válido e texto", () => {
   assert(q!.texto.length > 0);
 });
 
-Deno.test("respostaHeuristica: não-espia produz texto não-vazio", () => {
-  const r = respostaHeuristica(ctx());
+Deno.test("perguntaHeuristica: não repete pergunta já feita na rodada", () => {
+  const base = ctx({
+    historico: [resp("Sam", "Há alguém com você?", "tinha muita água e chuva")],
+  });
+  for (let i = 0; i < 20; i++) {
+    assert(perguntaHeuristica(base)!.texto !== "Há alguém com você?");
+  }
+});
+
+Deno.test("respostaHeuristica: não-espia cita termo do cenário e acompanha a pergunta", () => {
+  const r = respostaHeuristica(ctx(), perguntaAo("Bot", "O que você está sentindo agora?"));
   assert(r && r.length > 0);
+  // Cita algum termo do léxico de Davi/Golias sem entregar o nome do evento/local.
+  const bag = normalizar(r!);
+  const termos = LEXICO.get(14)!.filter((t) => !["davi", "golias", "vale", "ela"].includes(t));
+  assert(termos.some((t) => contemTermo(bag, t)), `sem termo do cenário: ${r}`);
+  assert(!["davi", "golias"].some((t) => bag.includes(t)), `entregou o evento: ${r}`);
+});
+
+Deno.test("respostaHeuristica: não repete detalhe que o próprio bot já citou", () => {
+  // O bot já citou "funda" e "gigante"; a próxima resposta traz detalhe NOVO.
+  const base = ctx({
+    historico: [resp("Bot", "?", "a funda e o gigante estavam lá")],
+  });
+  for (let i = 0; i < 20; i++) {
+    const bag = normalizar(respostaHeuristica(base, perguntaAo("Bot", "E então?"))!);
+    assert(!bag.includes("funda") && !bag.includes("gigante"), `repetiu detalhe: ${bag}`);
+  }
+});
+
+Deno.test("respostaHeuristica: espia com pistas fortes se mistura usando o evento deduzido", () => {
+  const espia = ctx({
+    souEspia: true,
+    evento: null,
+    palavras: [
+      { jogador_id: "j1", apelido: "Sam", palavra: "gigante" },
+      { jogador_id: "j2", apelido: "Ester", palavra: "funda" },
+    ],
+    historico: [resp("Sam", "O que viu?", "a pedra acertou a testa dele no vale")],
+  });
+  const r = respostaHeuristica(espia, perguntaAo("Bot", "O que mais chamou sua atenção?"));
+  assert(r && r.length > 0);
+  const bag = normalizar(r!);
+  assert(
+    LEXICO.get(14)!.some((t) => contemTermo(bag, t)),
+    `espia não usou o evento deduzido: ${r}`,
+  );
+});
+
+Deno.test("respostaHeuristica: espia sem pistas cita termo concreto seguro, nunca vazio", () => {
+  const espia = ctx({ souEspia: true, evento: null });
+  const r = respostaHeuristica(espia, perguntaAo("Bot", "Há algum perigo por perto?"));
+  assert(r && r.length > 0);
+  // Concreto mas não-comprometedor: um termo comum a vários eventos.
+  const bag = normalizar(r!);
+  assert(TERMOS_SEGUROS.some((t) => contemTermo(bag, t)), `resposta vazia de conteúdo: ${r}`);
+});
+
+Deno.test("respostaHeuristica: não-espia prefere termos discretos aos que entregam o evento", () => {
+  // "funda" e "gigante" são exclusivos de Davi/Golias — entregam o par ao espia.
+  for (let i = 0; i < 30; i++) {
+    const bag = normalizar(respostaHeuristica(ctx(), perguntaAo("Bot", "E então?"))!);
+    assert(!bag.includes("funda") && !bag.includes("gigante"), `entregou o evento: ${bag}`);
+  }
 });

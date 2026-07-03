@@ -3,10 +3,11 @@
 // ============================================================
 // Mesmo papel da IA (lib/bot-ia.ts), mas SEM rede: decide as
 // jogadas por casamento de palavras-chave contra o léxico dos
-// eventos (lib/bot-lexico.ts). É o degrau entre a IA e o sorteio
-// puro: bot-agir tenta a IA, cai aqui quando ela falha/limita
-// ([[project_groq_rate_limit]]) e só recorre ao aleatório quando
-// nem a heurística tem dado suficiente.
+// eventos (lib/bot-lexico.ts, com peso por exclusividade do termo)
+// e conversa pelo ângulo da pergunta (lib/bot-conversa.ts). É o
+// degrau entre a IA e o sorteio puro: bot-agir tenta a IA, cai aqui
+// quando ela falha/limita ([[project_groq_rate_limit]]) e só recorre
+// ao aleatório quando nem a heurística tem dado suficiente.
 //
 // Cada função espelha a assinatura da equivalente em bot-ia.ts —
 // inclusive devolvendo {confianca} nas decisões analíticas — para
@@ -16,19 +17,24 @@
 // ============================================================
 
 import type { ContextoBotIA } from "./bot-ia.ts";
+import type { PerguntaAtual } from "./types.ts";
 import {
+  contemTermo,
   eventoIdPorNome,
   LEXICO,
   normalizar,
+  PALAVRAS_NOME,
+  pesoTermo,
   pontuarEvento,
   rankearEventos,
+  TERMOS_SEGUROS,
 } from "./bot-lexico.ts";
 import {
-  aleatorio,
-  PALAVRAS_BOT,
-  PERGUNTAS_BOT,
-  respostaFallback,
-} from "./bot.ts";
+  escolherPergunta,
+  moldarResposta,
+  respostaEspiaSemPalpite,
+} from "./bot-conversa.ts";
+import { aleatorio, PALAVRAS_BOT, respostaFallback } from "./bot.ts";
 
 // ── Coleta de falas ───────────────────────────────────────────
 // O que um jogador "disse" = sua palavra do turno de palavras + as
@@ -68,6 +74,11 @@ function bagGeral(ctx: ContextoBotIA): string {
     if ("pergunta" in h && h.resposta && h.destinatario_apelido !== ctx.apelido) partes.push(h.resposta);
   }
   return normalizar(partes.join(" "));
+}
+
+/** Tudo que o PRÓPRIO bot já disse — para nunca repetir o mesmo detalhe. */
+function bagPropria(ctx: ContextoBotIA): string {
+  return bagDe(ctx, ctx.apelido);
 }
 
 function clamp100(n: number): number {
@@ -219,9 +230,10 @@ export function palavraHeuristica(ctx: ContextoBotIA): string | null {
 }
 
 /**
- * Pergunta a fazer. O texto vem do pool (heurística não gera linguagem livre),
- * mas o ALVO é escolhido: o grupo mira o mais suspeito; o espia mira quem menos
- * falou, para extrair pista nova. Null se não há a quem perguntar.
+ * Pergunta a fazer. O ALVO é escolhido: o grupo mira o mais suspeito; o espia
+ * mira quem menos falou, para extrair pista nova. O TEXTO vem de bot-conversa:
+ * nunca repete pergunta da rodada e varia o ângulo por destinatário. Null se
+ * não há a quem perguntar.
  */
 export function perguntaHeuristica(ctx: ContextoBotIA): { destinatario_id: string; texto: string } | null {
   if (ctx.jogadores.length === 0) return null;
@@ -235,33 +247,70 @@ export function perguntaHeuristica(ctx: ContextoBotIA): { destinatario_id: strin
       (a, b) => (falas.get(a.apelido)?.qtd ?? 0) - (falas.get(b.apelido)?.qtd ?? 0),
     )[0]?.id;
   }
-  return {
-    destinatario_id: destinatario_id ?? aleatorio(ctx.jogadores).id,
-    texto: aleatorio(PERGUNTAS_BOT),
-  };
+  const escolhido = destinatario_id ?? aleatorio(ctx.jogadores).id;
+  const apelido = ctx.jogadores.find((j) => j.id === escolhido)?.apelido ?? "";
+  return { destinatario_id: escolhido, texto: escolherPergunta(ctx.historico, apelido) };
 }
 
-// Templates do não-espia: provam vivência citando um termo concreto do cenário.
-const MOLDES_RESPOSTA = [
-  (kw: string) => `Sim, ${kw} estava bem ali, vi de perto.`,
-  (kw: string) => `Dava pra notar ${kw} sem esforço.`,
-  (kw: string) => `O que mais me marcou foi ${kw}.`,
-  (kw: string) => `Lembro de ${kw} como se fosse agora.`,
-  (kw: string) => `Tinha a ver com ${kw}, isso eu garanto.`,
-];
+// Confiança mínima do palpite (score e margem PESADOS) para o espia responder
+// usando termos do evento deduzido — abaixo disso, resposta genérica plausível.
+const PALPITE_RESPOSTA_SCORE = 2.5;
+const PALPITE_RESPOSTA_MARGEM = 1.5;
+
+/** Termos do evento que o bot pode citar: concretos, não-óbvios e INÉDITOS na
+ * boca dele (cada resposta acrescenta um detalhe novo). */
+function termosCitaveis(ctx: ContextoBotIA, eventoId: number, evitar: Set<string>): string[] {
+  const ditos = bagPropria(ctx);
+  const base = (LEXICO.get(eventoId) ?? []).filter((t) => t.length >= 4 && !evitar.has(t));
+  const ineditos = base.filter((t) => !contemTermo(ditos, t));
+  return ineditos.length ? ineditos : base;
+}
 
 /**
- * Resposta a uma pergunta.
- * - Não-espia: encaixa um termo concreto do cenário num molde, para soar como
- *   quem esteve lá (sem entregar o nome do evento/local).
- * - Espia: cai na resposta-fallback plausível e não-evasiva (lib/bot.ts).
+ * Termo "seguro" que o espia pode citar sem se comprometer: comum a vários
+ * eventos, inédito na boca dele e, quando as pistas dão algum sinal, presente
+ * também nos candidatos do topo do ranking (adere ao que o grupo vem falando).
  */
-export function respostaHeuristica(ctx: ContextoBotIA): string | null {
-  if (ctx.souEspia) return respostaFallback(true);
+function termoSeguroEspia(ctx: ContextoBotIA): string | null {
+  const ditos = bagPropria(ctx);
+  const pool = TERMOS_SEGUROS.filter((t) => !contemTermo(ditos, t));
+  if (pool.length === 0) return null;
+  const topIds = rankearEventos(bagGeral(ctx))
+    .slice(0, 3)
+    .filter((r) => r.score > 0)
+    .map((r) => r.id);
+  const aderentes = pool.filter((t) => topIds.some((id) => (LEXICO.get(id) ?? []).includes(t)));
+  return aleatorio(aderentes.length ? aderentes : pool);
+}
+
+/**
+ * Resposta a uma pergunta — acompanha o ÂNGULO dela (bot-conversa).
+ * - Não-espia: molde do ângulo da pergunta + termo do cenário ainda não citado
+ *   por ele. Prefere termos COMPARTILHADOS com outros eventos: fala do cenário
+ *   sem entregá-lo ao espia (evasivo sem ser vazio); só usa um termo exclusivo
+ *   quando não há opção discreta.
+ * - Espia: se as pistas apontam um evento com folga, responde com um termo
+ *   DELE para se misturar; senão, cita um termo "seguro" (comum a vários
+ *   eventos) — concreto e engajado, mas que não aposta em cenário nenhum.
+ */
+export function respostaHeuristica(ctx: ContextoBotIA, pergunta: PerguntaAtual): string | null {
+  if (ctx.souEspia) {
+    const ranking = rankearEventos(bagGeral(ctx));
+    const top = ranking[0];
+    const margem = top ? top.score - (ranking[1]?.score ?? 0) : 0;
+    if (top && top.score >= PALPITE_RESPOSTA_SCORE && margem >= PALPITE_RESPOSTA_MARGEM) {
+      const termos = termosCitaveis(ctx, top.id, PALAVRAS_NOME.get(top.id) ?? new Set());
+      if (termos.length) return moldarResposta(pergunta.texto, aleatorio(termos));
+    }
+    const seguro = termoSeguroEspia(ctx);
+    if (seguro) return moldarResposta(pergunta.texto, seguro);
+    return respostaEspiaSemPalpite(pergunta.texto);
+  }
+
   const id = ctx.evento ? eventoIdPorNome(ctx.evento.evento) : null;
   if (id == null) return null;
-  const evitar = palavrasObvias(ctx);
-  const termos = (LEXICO.get(id) ?? []).filter((t) => t.length >= 4 && !evitar.has(t));
+  const termos = termosCitaveis(ctx, id, palavrasObvias(ctx));
   if (termos.length === 0) return respostaFallback(false);
-  return aleatorio(MOLDES_RESPOSTA)(aleatorio(termos));
+  const discretos = termos.filter((t) => pesoTermo(t) <= 0.75);
+  return moldarResposta(pergunta.texto, aleatorio(discretos.length ? discretos : termos));
 }

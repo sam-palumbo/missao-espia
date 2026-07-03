@@ -156,7 +156,15 @@ for (let tick = 0; tick < 400 && !rodada.encerrada_em; tick++) {
       }
     } else if (fase === "aguardando_resposta") {
       if (estado.pergunta_atual?.destinatario_id === hostJogadorId) {
-        await callGameRaw(hostToken, "responder_pergunta", { rodada_id: rodada.id, resposta: "Não sei dizer." });
+        // Engajada mas sem entregar o cenário — evasiva vazia ("não sei")
+        // denuncia espia e suja a leitura dos bots sobre o host.
+        const respostasHost = [
+          "Foi intenso, tinha muita gente e dava pra sentir o peso do momento.",
+          "Lembro do barulho e da poeira, todo mundo atento ao que acontecia.",
+          "Vi de perto, foi o tipo de cena que não se esquece.",
+        ];
+        const resposta = respostasHost[Math.floor(Math.random() * respostasHost.length)];
+        await callGameRaw(hostToken, "responder_pergunta", { rodada_id: rodada.id, resposta });
       } else {
         await callGame(hostToken, "bot_agir", { rodada_id: rodada.id });
       }

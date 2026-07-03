@@ -95,10 +95,10 @@ Os bots decidem em três degraus, em `supabase/functions/game/handlers/bot-agir.
 ```
 
 - **IA (`lib/bot-ia.ts`):** chama uma API compatível com OpenAI. Provedor/modelo/chave parametrizados por env (`IA_PROVIDER`/`IA_API_KEY`/`IA_MODEL`/`IA_API_URL`; presets groq/nvidia/openai). Default de código: Groq `llama-3.3-70b-versatile`; produção pode sobrescrever via secret.
-- **Heurística (`lib/bot-heuristica.ts` + `lib/bot-lexico.ts`):** decisão **offline** por casamento de palavras-chave contra um léxico por evento. Espelha as assinaturas da IA (inclui `{confianca}`), então os mesmos limiares de `bot-agir` valem para ambas.
+- **Heurística (`lib/bot-heuristica.ts` + `lib/bot-lexico.ts` + `lib/bot-conversa.ts`):** decisão **offline** por casamento de palavras-chave contra um léxico por evento (termos pesados por exclusividade — "funda" vale mais que "fogo"). As respostas acompanham o **ângulo** da pergunta (visão/pessoas/sentimento/perigo/ação/lugar/memória, em `bot-conversa.ts`), nunca repetem um detalhe já dito pelo próprio bot, e as perguntas giram de ângulo por destinatário sem repetir texto na rodada. Espelha as assinaturas da IA (inclui `{confianca}`), então os mesmos limiares de `bot-agir` valem para ambas.
 - **Sorteio (`lib/bot.ts`):** pools fixos, último recurso.
 
-> **Gotcha ao auditar transcrições:** a heurística e o sorteio foram feitos para "soar engajados". A IA (Groq free) é gargalada por rate limit — sob carga retorna HTTP 429 e a decisão cai para a heurística/sorteio. Sintoma: "bots genéricos". Suspeite de 429 **antes** de culpar o prompt. Respostas da heurística usam moldes fixos (`MOLDES_RESPOSTA`), ex.: *"Dava pra notar ___ sem esforço."* + termo do léxico — on-theme, mas sem acompanhar a pergunta.
+> **Gotcha ao auditar transcrições:** a heurística e o sorteio foram feitos para "soar engajados". A IA (Groq free) é gargalada por rate limit — sob carga retorna HTTP 429 e a decisão cai para a heurística/sorteio. Sintoma: "bots genéricos". Suspeite de 429 **antes** de culpar o prompt. Respostas da heurística usam moldes por ângulo da pergunta (`bot-conversa.ts`) + termo do léxico, ex.: *"Senti um aperto quando percebi ___."* — seguem o tema da pergunta, mas o texto é de molde fixo (não é linguagem livre).
 >
 > A NVIDIA DeepSeek hospedada foi testada e descartada: 20–60s por chamada (acima do timeout de 20s) joga tudo no fallback. Ficamos no Groq.
 

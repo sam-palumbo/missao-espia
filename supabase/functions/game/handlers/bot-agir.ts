@@ -185,7 +185,7 @@ export async function botAgir(userId: string, payload: unknown) {
     if (!bot || !perguntaAtual) return { agiu: false };
     const ctxBot = contexto(bot);
     const resposta = (await respostaIA(ctxBot, perguntaAtual))
-      ?? respostaHeuristica(ctxBot)
+      ?? respostaHeuristica(ctxBot, perguntaAtual)
       ?? respostaFallback(estado.espia_ids.includes(bot.id));
     await responderPergunta(userId, { rodada_id, resposta, bot_id: bot.id });
     return { agiu: true, acao: "responder_pergunta" };

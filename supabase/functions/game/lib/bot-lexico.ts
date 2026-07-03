@@ -95,23 +95,54 @@ export function eventoIdPorNome(nome: string): number | null {
   return EVENTOS.find((e) => normalizar(e.evento) === alvo)?.id ?? null;
 }
 
+/** Palavras do nome do evento/local (as "óbvias" demais para dizer), por id. */
+export const PALAVRAS_NOME: Map<number, Set<string>> = new Map(
+  EVENTOS.map((ev) => [ev.id, new Set(tokens(normalizar(`${ev.evento} ${ev.local}`)))]),
+);
+
 /**
  * Um termo do léxico aparece numa fala?
  * - frase (com espaço): casa como substring ("três dias" em "...três dias...").
  * - palavra única: casa no início de palavra, aceitando sufixo, para pegar
  *   plurais/flexões ("peixe" → "peixes") sem falsos positivos ("mar" em "amargo").
  */
-function contemTermo(bag: string, termo: string): boolean {
+export function contemTermo(bag: string, termo: string): boolean {
   if (!termo) return false;
   if (termo.includes(" ")) return bag.includes(termo);
   return new RegExp(`\\b${termo}`).test(bag);
 }
 
-/** Quantos termos do léxico do evento aparecem na fala (bag já normalizada). */
+// DF (document frequency): em quantos eventos cada termo aparece. "fogo" está
+// em meia dúzia de léxicos e quase não discrimina; "funda" só existe num.
+const DF: Map<string, number> = new Map();
+for (const termos of LEXICO.values()) {
+  for (const t of termos) DF.set(t, (DF.get(t) ?? 0) + 1);
+}
+
+/** Peso de evidência de um termo: exclusivo vale 1; compartilhado cai até 0.25. */
+export function pesoTermo(termo: string): number {
+  const df = DF.get(termo) ?? 1;
+  return df <= 1 ? 1 : df === 2 ? 0.75 : df <= 4 ? 0.5 : 0.25;
+}
+
+/**
+ * Termos "seguros" para o ESPIA citar: aparecem em 3+ eventos, então soam
+ * como vivência concreta sem apostar num cenário específico — evasivo sem
+ * ser vazio.
+ */
+export const TERMOS_SEGUROS: string[] = [...DF.entries()]
+  .filter(([termo, df]) => df >= 3 && !termo.includes(" ") && termo.length >= 4)
+  .map(([termo]) => termo);
+
+/**
+ * Aderência da fala ao evento: soma dos PESOS dos termos do léxico presentes
+ * (bag já normalizada). Zero = nenhum termo casou. Pesar por exclusividade
+ * evita que termos comuns a vários eventos inflem a confiança.
+ */
 export function pontuarEvento(bag: string, eventoId: number): number {
   const termos = LEXICO.get(eventoId) ?? [];
   let score = 0;
-  for (const termo of termos) if (contemTermo(bag, termo)) score++;
+  for (const termo of termos) if (contemTermo(bag, termo)) score += pesoTermo(termo);
   return score;
 }
 

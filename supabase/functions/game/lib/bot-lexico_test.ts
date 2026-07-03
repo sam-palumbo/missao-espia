@@ -3,8 +3,10 @@ import {
   eventoIdPorNome,
   LEXICO,
   normalizar,
+  pesoTermo,
   pontuarEvento,
   rankearEventos,
+  TERMOS_SEGUROS,
 } from "./bot-lexico.ts";
 import { EVENTOS } from "./eventos.ts";
 
@@ -29,12 +31,26 @@ Deno.test("eventoIdPorNome: resolve pelo nome exato do evento", () => {
   assertEquals(eventoIdPorNome("Evento Inexistente"), null);
 });
 
-Deno.test("pontuarEvento: conta termos do léxico presentes na fala", () => {
-  // Davi/Golias (14): "gigante", "funda", "pedra" são termos do léxico.
+Deno.test("pontuarEvento: soma pesos dos termos do léxico presentes na fala", () => {
+  // Davi/Golias (14): "gigante" e "funda" são exclusivos (peso 1);
+  // "pedra" é compartilhado com outros eventos (peso menor).
   const bag = normalizar("o gigante caiu com a pedra da funda");
-  assert(pontuarEvento(bag, 14) >= 3);
+  assert(pontuarEvento(bag, 14) >= 2);
   // Mesma fala não deve aderir a um evento sem relação (ex.: 21 Água em Vinho).
   assert(pontuarEvento(bag, 14) > pontuarEvento(bag, 21));
+});
+
+Deno.test("TERMOS_SEGUROS: só termos compartilhados por 3+ eventos (nada exclusivo)", () => {
+  assert(TERMOS_SEGUROS.length >= 5, `pool pequeno demais: ${TERMOS_SEGUROS.length}`);
+  assert(TERMOS_SEGUROS.includes("fogo"));
+  assert(!TERMOS_SEGUROS.includes("funda")); // exclusivo de Davi/Golias
+  for (const t of TERMOS_SEGUROS) assert(pesoTermo(t) <= 0.5, `termo pouco compartilhado: ${t}`);
+});
+
+Deno.test("pesoTermo: termo exclusivo pesa 1; termo comum a vários eventos pesa menos", () => {
+  assertEquals(pesoTermo("funda"), 1); // só em Davi/Golias
+  assert(pesoTermo("fogo") <= 0.5, `"fogo" deveria pesar pouco: ${pesoTermo("fogo")}`);
+  assert(pesoTermo("anjo") <= 0.5, `"anjo" deveria pesar pouco: ${pesoTermo("anjo")}`);
 });
 
 Deno.test("pontuarEvento: casa plural por início de palavra (peixe → peixes)", () => {
