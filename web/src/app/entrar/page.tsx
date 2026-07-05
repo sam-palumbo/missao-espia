@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { gameActions } from "@/lib/game-actions";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { salvarApelido, useApelido } from "@/hooks/useApelido";
 import { PageShell, InsetFrame, Eyebrow, PrimaryBtn, OutlineBtn, MEIcon, T, F } from "@/components/ui/design";
 
 function EntrarForm() {
@@ -14,7 +15,7 @@ function EntrarForm() {
   const router = useRouter();
   const { isAnonymous, loading: authLoading, sair } = useAuth();
   const [codigo, setCodigo] = useState((params.get("code") ?? "").toUpperCase());
-  const [apelido, setApelido] = useState("");
+  const [apelido, setApelido] = useApelido();
   const [senha, setSenha] = useState("");
   const [precisaSenha, setPrecisaSenha] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ function EntrarForm() {
     setLoading(true);
     try {
       const { sala } = await gameActions.entrarSala(codigo, apelido.trim(), senha || undefined);
+      salvarApelido(apelido.trim());
       router.push(`/sala/${sala.codigo}/lobby`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao entrar";

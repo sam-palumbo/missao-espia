@@ -8,6 +8,7 @@ import { gameActions } from "@/lib/game-actions";
 import { EVENTOS } from "@/lib/eventos";
 import { numEspias } from "@shared/espias";
 import { calcularMinutosRodada } from "@shared/utils";
+import { salvarApelido, useApelido } from "@/hooks/useApelido";
 import { toast } from "sonner";
 import { PageShell, InsetFrame, MEMedallion, MERule, Eyebrow, PrimaryBtn, T, F } from "@/components/ui/design";
 
@@ -167,7 +168,7 @@ function TestamentoCard({ nome, medallion, numLocais, idMin, idMax, selected, on
 
 export default function CriarPage() {
   const router = useRouter();
-  const [apelido, setApelido] = useState("");
+  const [apelido, setApelido] = useApelido();
   const [numRodadas, setNumRodadas] = useState(5);
   const [maxJogadores, setMaxJogadores] = useState(12);
   const [duracaoMinutos, setDuracaoMinutos] = useState(() => duracaoRecomendada(12));
@@ -196,6 +197,7 @@ export default function CriarPage() {
     try {
       const testamentos = ([atSel && "AT", ntSel && "NT"] as const).filter(Boolean) as string[];
       const { sala } = await gameActions.criarSala(apelido.trim(), numRodadas, { senha: senha || undefined, testamentos, max_jogadores: maxJogadores, duracao_minutos: duracaoMinutos });
+      salvarApelido(apelido.trim());
       router.push(`/sala/${sala.codigo}/lobby`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao criar sala");
