@@ -1,5 +1,7 @@
+import type { ResultadoVotacaoHistorico } from "./types.ts";
+export type { ResultadoVotacaoHistorico };
+
 export type ResultadoVotacao = "aguardando" | "rejeitado" | "aprovado";
-export type ResultadoVotacaoHistorico = "eliminado" | "sobreviveu" | "espia_pego";
 
 export function classificarResultadoVotacao(
   resolucao: Exclude<ResultadoVotacao, "aguardando">,

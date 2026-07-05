@@ -4,7 +4,7 @@ import { limiteEliminacoesErradas } from "../lib/espias.ts";
 import { atualizarEstadoComVersao, getJogadorAtor } from "../lib/queries.ts";
 import { classificarResultadoVotacao, resolverVotacao, validarVoto } from "../lib/votacao.ts";
 import { encerrarRodada }        from "./encerrar-rodada.ts";
-import type { HistoricoVotacao, VotarPayload } from "../lib/types.ts";
+import type { EstadoRodada, HistoricoVotacao, VotarPayload } from "../lib/types.ts";
 
 export async function votar(userId: string, payload: unknown) {
   const { rodada_id, aprovado, bot_id } = payload as VotarPayload;
@@ -21,7 +21,7 @@ export async function votar(userId: string, payload: unknown) {
   if (!rodada) throw Object.assign(new Error("Rodada não encontrada"), { status: 404 });
   if (rodada.encerrada_em) throw new Error("Rodada encerrada");
 
-  const estado = rodada.estado;
+  const estado = rodada.estado as EstadoRodada;
   if (estado.fase !== "votacao") throw new Error("Não há votação em andamento");
 
   // Buscar jogador votante

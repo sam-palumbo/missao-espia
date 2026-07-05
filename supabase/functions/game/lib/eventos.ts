@@ -1,4 +1,5 @@
-export type Testament = "AT" | "NT";
+import type { Testament } from "./types.ts";
+export type { Testament };
 
 export interface Evento {
   id: number;
