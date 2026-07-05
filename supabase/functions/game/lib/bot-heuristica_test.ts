@@ -7,6 +7,7 @@ import {
   adivinhacaoHeuristica,
   palavraHeuristica,
   perguntaHeuristica,
+  pressaoSobre,
   respostaHeuristica,
   votoHeuristica,
 } from "./bot-heuristica.ts";
@@ -117,6 +118,83 @@ Deno.test("votoHeuristica: sem falas do acusado, não elimina", () => {
 Deno.test("votoHeuristica: espia sempre devolve um booleano (deflexão)", () => {
   const v = votoHeuristica(ctx({ souEspia: true, evento: null }), "Sam");
   assertEquals(typeof v, "boolean");
+});
+
+Deno.test("votoHeuristica: espia rejeita eliminar quem claramente provou vivência (camuflagem)", () => {
+  // As pistas apontam Davi/Golias e o acusado Sam aderiu forte a esse cenário:
+  // um inocente votaria não — o espia imita para não destoar no histórico.
+  const espia = ctx({
+    souEspia: true,
+    evento: null,
+    palavras: [{ jogador_id: "j2", apelido: "Ester", palavra: "gigante" }],
+    historico: [resp("Sam", "?", "a funda do pastor acertou a testa dele no vale")],
+  });
+  for (let i = 0; i < 20; i++) assertEquals(votoHeuristica(espia, "Sam"), false);
+});
+
+Deno.test("pressaoSobre: cresce com perguntas dirigidas ao bot e votação sofrida", () => {
+  assertEquals(pressaoSobre(ctx()), 0);
+  const interrogado = ctx({
+    historico: [
+      { turno_numero: 2, perguntador_apelido: "Sam", destinatario_apelido: "Bot", pergunta: "?", resposta: "..." },
+      { turno_numero: 2, perguntador_apelido: "Ester", destinatario_apelido: "Bot", pergunta: "?", resposta: "..." },
+    ],
+  });
+  const p1 = pressaoSobre(interrogado);
+  assert(p1 >= 35, `duas perguntas seguidas ao bot deveriam pressionar: ${p1}`);
+  const sobrevivente = ctx({
+    historico: [
+      ...interrogado.historico,
+      { tipo: "votacao" as const, acusado_apelido: "Bot", votos: [], resultado: "sobreviveu" as const },
+    ],
+  });
+  assert(pressaoSobre(sobrevivente) >= 70, "votação sofrida deveria elevar a pressão ao nível de cerco");
+});
+
+Deno.test("acusadoHeuristica: uma fala só, sem contradição, não sustenta acusação", () => {
+  // Ester deu UMA resposta genérica (score 0, sem aderir a outro evento):
+  // evidência rala — confiança fica abaixo do limiar de acusar (65).
+  const grupo = ctx({
+    palavras: [{ jogador_id: "j1", apelido: "Sam", palavra: "pedra" }],
+    historico: [
+      resp("Sam", "?", "o gigante caiu no vale"),
+      resp("Ester", "?", "foi um momento e tanto, sinceramente"),
+    ],
+  });
+  const out = acusadoHeuristica(grupo);
+  assert(out);
+  assertEquals(out!.acusado_id, "j2");
+  assert(out!.confianca <= 55, `evidência rala deveria segurar a acusação: ${out!.confianca}`);
+});
+
+Deno.test("adivinhacaoHeuristica: pistas corroboradas por 2 falantes valem mais que de 1 só", () => {
+  const duasFontes = ctx({
+    souEspia: true,
+    evento: null,
+    palavras: [
+      { jogador_id: "j1", apelido: "Sam", palavra: "gigante" },
+      { jogador_id: "j2", apelido: "Ester", palavra: "funda" },
+    ],
+  });
+  const umaFonte = ctx({
+    souEspia: true,
+    evento: null,
+    palavras: [{ jogador_id: "j1", apelido: "Sam", palavra: "gigante" }],
+    historico: [resp("Sam", "?", "a funda estava ali")],
+  });
+  const a = adivinhacaoHeuristica(duasFontes)!;
+  const b = adivinhacaoHeuristica(umaFonte)!;
+  assertEquals(a.evento_id, 14);
+  assertEquals(b.evento_id, 14);
+  assert(a.confianca > b.confianca, `corroboração deveria valer mais: ${a.confianca} vs ${b.confianca}`);
+});
+
+Deno.test("perguntaHeuristica: grupo interroga primeiro quem ainda não falou", () => {
+  // Sam já falou; Ester está calada — sem fala não há evidência sobre ela.
+  const grupo = ctx({
+    historico: [resp("Sam", "?", "o gigante caiu no vale")],
+  });
+  assertEquals(perguntaHeuristica(grupo)!.destinatario_id, "j2");
 });
 
 Deno.test("acusarDeflexaoHeuristica: espia mira quem mais o pressionou", () => {

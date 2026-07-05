@@ -87,12 +87,34 @@ function clamp100(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+/**
+ * Quanta suspeita pesa sobre o PRÓPRIO bot (0-100): perguntas recentes
+ * dirigidas a ele (o grupo interroga quem desconfia) e votação já sofrida.
+ * Guia a estratégia do espia em bot-agir: escondido até o estouro vale 2 +
+ * palpite grátis, então sem pressão não se arrisca; sob cerco (pego rende no
+ * máximo 1), adivinhar logo passa a compensar.
+ */
+export function pressaoSobre(ctx: ContextoBotIA): number {
+  const perguntas = ctx.historico.filter((h) => "pergunta" in h);
+  const recentes = perguntas.slice(-6);
+  let pressao = recentes.filter(
+    (h) => "pergunta" in h && h.destinatario_apelido === ctx.apelido,
+  ).length * 18;
+  for (const h of ctx.historico) {
+    if (h.tipo === "votacao" && h.acusado_apelido === ctx.apelido) pressao += 45;
+  }
+  return Math.min(100, pressao);
+}
+
 // ── Decisões analíticas ───────────────────────────────────────
 
 /**
  * Palpite do espia: cruza TODAS as pistas (falas dos outros) com o léxico e
- * escolhe o evento mais aderente. Confiança cresce com o score do topo e com
- * a margem sobre o segundo — sem clareza, fica baixa e o espia segue escondido.
+ * escolhe o evento mais aderente. Confiança cresce com o score do topo, com
+ * a margem sobre o segundo e com a CORROBORAÇÃO — pistas do topo vindas de
+ * falantes distintos valem mais que várias frases de um só (um jogador
+ * estranho não distorce o palpite). Sem clareza, fica baixa e o espia segue
+ * escondido.
  */
 export function adivinhacaoHeuristica(ctx: ContextoBotIA): { evento_id: number; confianca: number } | null {
   const bag = bagGeral(ctx);
@@ -101,7 +123,14 @@ export function adivinhacaoHeuristica(ctx: ContextoBotIA): { evento_id: number; 
   const top = ranking[0];
   if (!top || top.score === 0) return null;
   const margem = top.score - (ranking[1]?.score ?? 0);
-  const confianca = clamp100(top.score * 14 + margem * 16);
+
+  let fontes = 0;
+  for (const apelido of falasPorApelido(ctx).keys()) {
+    if (apelido === ctx.apelido) continue;
+    if (pontuarEvento(bagDe(ctx, apelido), top.id) > 0) fontes++;
+  }
+  const corroboracao = fontes >= 3 ? 15 : fontes === 2 ? 10 : 0;
+  const confianca = clamp100(top.score * 14 + margem * 16 + corroboracao);
   return { evento_id: top.id, confianca };
 }
 
@@ -148,6 +177,9 @@ export function acusadoHeuristica(ctx: ContextoBotIA): { acusado_id: string; con
   if (suspeito.score === 0) {
     confianca = 40 + suspeito.qtd * 12 + (mediaDemais >= 1 ? 20 : 0) +
       (pontuados.length >= 3 ? 10 : 0) + (suspeito.outro >= 1.5 ? 15 : 0);
+    // Uma fala só e nenhuma contradição é evidência rala — não sustenta
+    // acusação (eliminar inocente consome a tolerância do grupo).
+    if (suspeito.qtd < 2 && suspeito.outro < 1.5) confianca = Math.min(confianca, 55);
   } else {
     // Demonstrou conhecer o cenário — acusar é arriscado.
     confianca = Math.max(0, 25 - suspeito.score * 10);
@@ -167,7 +199,15 @@ export function votoHeuristica(
   acusadoApelido: string,
   custoErroAlto = false,
 ): boolean | null {
-  if (ctx.souEspia) return Math.random() < 0.65;
+  if (ctx.souEspia) {
+    // Eliminar inocente favorece o espia (consome a tolerância do grupo), mas
+    // o voto é PÚBLICO no histórico: aprovar contra quem claramente provou
+    // vivência destoaria de como um inocente votaria — rejeita para se
+    // camuflar. Nos demais casos, empurra a eliminação.
+    const top = rankearEventos(bagGeral(ctx))[0];
+    if (top && top.score > 0 && pontuarEvento(bagDe(ctx, acusadoApelido), top.id) >= 2) return false;
+    return Math.random() < 0.85;
+  }
   if (!ctx.evento) return null;
   const verdadeiroId = eventoIdPorNome(ctx.evento.evento);
   if (verdadeiroId == null) return null;
@@ -268,17 +308,20 @@ export function palavraHeuristica(ctx: ContextoBotIA): string | null {
 }
 
 /**
- * Pergunta a fazer. O ALVO é escolhido: o grupo mira o mais suspeito; o espia
- * mira quem menos falou, para extrair pista nova. O TEXTO vem de bot-conversa:
- * nunca repete pergunta da rodada e varia o ângulo por destinatário. Null se
- * não há a quem perguntar.
+ * Pergunta a fazer. O ALVO é escolhido: o grupo primeiro extrai fala de quem
+ * ainda não disse nada (sem evidência não há como suspeitar) e depois
+ * pressiona o mais suspeito; o espia mira quem menos falou, para extrair
+ * pista nova. O TEXTO vem de bot-conversa: nunca repete pergunta da rodada e
+ * varia o ângulo por destinatário. Null se não há a quem perguntar.
  */
 export function perguntaHeuristica(ctx: ContextoBotIA): { destinatario_id: string; texto: string } | null {
   if (ctx.jogadores.length === 0) return null;
   let destinatario_id: string | undefined;
 
   if (!ctx.souEspia) {
-    destinatario_id = acusadoHeuristica(ctx)?.acusado_id;
+    const falas = falasPorApelido(ctx);
+    const calado = ctx.jogadores.find((j) => (falas.get(j.apelido)?.qtd ?? 0) === 0);
+    destinatario_id = calado?.id ?? acusadoHeuristica(ctx)?.acusado_id;
   } else {
     const falas = falasPorApelido(ctx);
     destinatario_id = [...ctx.jogadores].sort(
@@ -339,7 +382,13 @@ export function respostaHeuristica(ctx: ContextoBotIA, pergunta: PerguntaAtual):
     const top = ranking[0];
     const margem = top ? top.score - (ranking[1]?.score ?? 0) : 0;
     if (top && top.score >= PALPITE_RESPOSTA_SCORE && margem >= PALPITE_RESPOSTA_MARGEM) {
-      const termos = termosCitaveis(ctx, top.id, PALAVRAS_NOME.get(top.id) ?? new Set());
+      // Persona consistente: se o bot já se misturou citando um evento que
+      // segue plausível (top-3), continua NELE em vez de trocar de história a
+      // cada resposta — contradição entre as próprias falas entrega o espia.
+      const ditos = bagPropria(ctx);
+      const alvo = ranking.slice(0, 3)
+        .find((r) => r.score > 0 && pontuarEvento(ditos, r.id) >= 1)?.id ?? top.id;
+      const termos = termosCitaveis(ctx, alvo, PALAVRAS_NOME.get(alvo) ?? new Set());
       if (termos.length) return moldarResposta(pergunta.texto, aleatorio(termos));
     }
     const seguro = termoSeguroEspia(ctx);

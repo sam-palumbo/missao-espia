@@ -22,7 +22,8 @@ import {
 } from "../lib/bot-ia.ts";
 import {
   acusadoHeuristica, acusarDeflexaoHeuristica, adivinhacaoHeuristica,
-  palavraHeuristica, perguntaHeuristica, respostaHeuristica, votoHeuristica,
+  palavraHeuristica, perguntaHeuristica, pressaoSobre, respostaHeuristica,
+  votoHeuristica,
 } from "../lib/bot-heuristica.ts";
 import { dizerPalavra } from "./dizer-palavra.ts";
 import { fazerPergunta } from "./fazer-pergunta.ts";
@@ -34,17 +35,24 @@ import { adivinhar } from "./adivinhar.ts";
 import { adivinharFimTempo } from "./adivinhar-fim-tempo.ts";
 import type { BotAgirPayload, Jogador } from "../lib/types.ts";
 
-// Quando a IA está disponível, ela decide POR CONFIANÇA: o espia só
-// adivinha e o grupo só acusa quando a confiança supera o limiar abaixo —
-// alinhado à estratégia de pontos (esconder-se vale 2; errar custa 0).
-const LIMIAR_ADIVINHAR_ESPIA = 70; // confiança mínima para o espia arriscar
+// Estratégia do ESPIA por valor esperado: escondido até o estouro vale 2 e o
+// palpite do fim de tempo é GRÁTIS (errar não desconta os 2). Adivinhar no
+// meio da rodada só compensa quando o cerco fecha — pego rende no máximo 1 —
+// então o limiar de confiança cai conforme a PRESSÃO sobre o bot sobe.
+const LIMIAR_ADIVINHAR_TRANQUILO = 90;   // sem pressão: quase nunca arrisca
+const LIMIAR_ADIVINHAR_PRESSIONADO = 70; // grupo de olho nele
+const LIMIAR_ADIVINHAR_CERCADO = 55;     // prestes a ser pego: 3×0.55 > 1
+const PRESSAO_MEDIA = 35;
+const PRESSAO_ALTA = 70;
+const CHANCE_ESPIA_ACUSAR_CALMO = 0.06;      // deflexão rara quando ninguém desconfia
+const CHANCE_ESPIA_ACUSAR_PRESSIONADO = 0.3; // sob pressão, desviar o holofote compensa
+
+// Limiares do GRUPO para acusar.
 const LIMIAR_ACUSAR_BASE = 65;     // confiança mínima para acusar (grupo com folga)
 const LIMIAR_ACUSAR_SEM_TOLERANCIA = 85; // exigência maior quando 1 erro encerra o jogo
-const CHANCE_ESPIA_ACUSAR = 0.12;  // por turno do espia: acusa para desviar suspeita de si
 
-// Chances do fallback aleatório, usadas só quando a IA está indisponível.
-const CHANCE_ADIVINHAR_ESPIA = 0.25; // por turno do bot espia, a partir da 3ª volta
-const CHANCE_ACUSAR = 0.2;           // por turno do bot, quando acusação é permitida
+// Chances do fallback aleatório, usadas só quando IA e heurística falham.
+const CHANCE_ACUSAR = 0.2; // por turno do bot, quando acusação é permitida
 const CHANCE_VOTO_SIM = 0.6;
 
 export async function botAgir(userId: string, payload: unknown) {
@@ -111,19 +119,26 @@ export async function botAgir(userId: string, payload: unknown) {
 
     const souEspia = estado.espia_ids.includes(bot.id);
 
-    // Espia: a partir da 3ª volta, a IA estima confiança e só arrisca se for
-    // alta o bastante; sem IA, cai no sorteio de chance fixa. A consulta à IA
-    // (que reenvia os 32 eventos) é a mais cara em tokens, então só roda em
-    // parte dos turnos — poupa o limite de tokens/minuto da Groq.
-    if (souEspia && (estado.turno_numero_atual ?? 1) >= 3 && Math.random() < 0.4) {
+    // Espia: avalia adivinhar a partir da 2ª volta, com limiar dado pela
+    // pressão sobre ele (ver constantes). Com o tempo acabando, NUNCA arrisca
+    // no meio da rodada — o palpite grátis do fim de tempo está logo ali. Sem
+    // palpite algum, não chuta: chute aleatório é quase certeza de 0 quando
+    // esconder-se vale 2. A consulta à IA (que reenvia os 32 eventos) é a mais
+    // cara em tokens, então sem pressão só roda em parte dos turnos.
+    if (souEspia && (estado.turno_numero_atual ?? 1) >= 2 && !tempoAcabando) {
       const ctxBot = contexto(bot);
-      const palpite = (await adivinhacaoIA(ctxBot)) ?? adivinhacaoHeuristica(ctxBot);
-      const deveAdivinhar = palpite
-        ? palpite.confianca >= LIMIAR_ADIVINHAR_ESPIA
-        : Math.random() < CHANCE_ADIVINHAR_ESPIA;
-      if (deveAdivinhar) {
-        await adivinhar(userId, { rodada_id, evento_id: palpite?.evento_id ?? eventoAleatorioId(), bot_id: bot.id });
-        return { agiu: true, acao: "adivinhar" };
+      const pressao = pressaoSobre(ctxBot);
+      if (pressao >= PRESSAO_MEDIA || Math.random() < 0.35) {
+        const palpite = (await adivinhacaoIA(ctxBot)) ?? adivinhacaoHeuristica(ctxBot);
+        const limiar = pressao >= PRESSAO_ALTA
+          ? LIMIAR_ADIVINHAR_CERCADO
+          : pressao >= PRESSAO_MEDIA
+            ? LIMIAR_ADIVINHAR_PRESSIONADO
+            : LIMIAR_ADIVINHAR_TRANQUILO;
+        if (palpite && palpite.confianca >= limiar) {
+          await adivinhar(userId, { rodada_id, evento_id: palpite.evento_id, bot_id: bot.id });
+          return { agiu: true, acao: "adivinhar" };
+        }
       }
     }
 
@@ -149,17 +164,21 @@ export async function botAgir(userId: string, payload: unknown) {
       }
     }
 
-    // Espia: ocasionalmente acusa para desviar a suspeita de si e se misturar.
-    if (
-      souEspia && alvos.length > 0 && !estado.acusou_neste_turno &&
-      !isPrimeiroTurno(estado) && Math.random() < CHANCE_ESPIA_ACUSAR
-    ) {
+    // Espia: acusa para desviar a suspeita de si — raramente quando ninguém
+    // desconfia (acusação sem contexto chama atenção), com vontade quando o
+    // holofote está nele. Se aprovada, ainda consome a tolerância do grupo.
+    if (souEspia && alvos.length > 0 && !estado.acusou_neste_turno && !isPrimeiroTurno(estado)) {
       const ctxBot = contexto(bot);
-      const alvo = (await acusarDeflexaoIA(ctxBot))?.acusado_id
-        ?? acusarDeflexaoHeuristica(ctxBot)?.acusado_id
-        ?? aleatorio(alvos).id;
-      await acusar(userId, { rodada_id, acusado_id: alvo, bot_id: bot.id });
-      return { agiu: true, acao: "acusar" };
+      const chance = pressaoSobre(ctxBot) >= PRESSAO_MEDIA
+        ? CHANCE_ESPIA_ACUSAR_PRESSIONADO
+        : CHANCE_ESPIA_ACUSAR_CALMO;
+      if (Math.random() < chance) {
+        const alvo = (await acusarDeflexaoIA(ctxBot))?.acusado_id
+          ?? acusarDeflexaoHeuristica(ctxBot)?.acusado_id
+          ?? aleatorio(alvos).id;
+        await acusar(userId, { rodada_id, acusado_id: alvo, bot_id: bot.id });
+        return { agiu: true, acao: "acusar" };
+      }
     }
 
     if (modo === "presencial" || alvos.length === 0) {
